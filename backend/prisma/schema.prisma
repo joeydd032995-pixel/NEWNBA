@@ -1,0 +1,584 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// USER & AUTH
+// ============================================================
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String
+  firstName         String?
+  lastName          String?
+  planType          PlanType  @default(FREE)
+  isActive          Boolean   @default(true)
+  refreshToken      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  customModels      CustomModel[]
+  ensembleModels    EnsembleModel[]
+  optimizationRuns  OptimizationRun[]
+  abTests           ABTest[]
+  savedFilters      SavedFilter[]
+  alerts            Alert[]
+  betSlips          BetSlip[]
+  modelPredictions  ModelPrediction[]
+
+  @@map("users")
+}
+
+enum PlanType {
+  FREE
+  PRO
+  PREMIUM
+}
+
+// ============================================================
+// SPORTS & TEAMS
+// ============================================================
+model Sport {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  teams       Team[]
+  events      Event[]
+  markets     Market[]
+
+  @@map("sports")
+}
+
+model Team {
+  id           String   @id @default(uuid())
+  sportId      String
+  name         String
+  abbreviation String
+  city         String?
+  conference   String?
+  division     String?
+  logoUrl      String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sport        Sport    @relation(fields: [sportId], references: [id])
+  players      Player[]
+  homeEvents   Event[]  @relation("HomeTeam")
+  awayEvents   Event[]  @relation("AwayTeam")
+
+  @@unique([sportId, abbreviation])
+  @@map("teams")
+}
+
+model Player {
+  id           String   @id @default(uuid())
+  teamId       String?
+  name         String
+  position     String?
+  jerseyNumber String?
+  height       String?
+  weight       Int?
+  age          Int?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  team         Team?    @relation(fields: [teamId], references: [id])
+  statLines    StatLine[]
+
+  @@map("players")
+}
+
+model StatLine {
+  id             String   @id @default(uuid())
+  playerId       String
+  eventId        String
+  season         String
+  gameDate       DateTime
+  // Counting stats
+  points         Float    @default(0)
+  rebounds       Float    @default(0)
+  assists        Float    @default(0)
+  steals         Float    @default(0)
+  blocks         Float    @default(0)
+  turnovers      Float    @default(0)
+  minutes        Float    @default(0)
+  // Shooting
+  fgm            Float    @default(0)
+  fga            Float    @default(0)
+  fgPct          Float    @default(0)
+  fg3m           Float    @default(0)
+  fg3a           Float    @default(0)
+  fg3Pct         Float    @default(0)
+  ftm            Float    @default(0)
+  fta            Float    @default(0)
+  ftPct          Float    @default(0)
+  // Advanced
+  plusMinus      Float    @default(0)
+  usgPct         Float    @default(0)
+  tsPct          Float    @default(0)
+  efgPct         Float    @default(0)
+  bpm            Float    @default(0)
+  createdAt      DateTime @default(now())
+
+  player         Player   @relation(fields: [playerId], references: [id])
+  event          Event    @relation(fields: [eventId], references: [id])
+
+  @@map("stat_lines")
+}
+
+// ============================================================
+// EVENTS & MARKETS
+// ============================================================
+model Event {
+  id             String      @id @default(uuid())
+  sportId        String
+  homeTeamId     String
+  awayTeamId     String
+  startTime      DateTime
+  status         EventStatus @default(SCHEDULED)
+  homeScore      Int?
+  awayScore      Int?
+  period         String?
+  timeRemaining  String?
+  season         String?
+  week           Int?
+  isNeutralSite  Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  sport          Sport    @relation(fields: [sportId], references: [id])
+  homeTeam       Team     @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam       Team     @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  markets        Market[]
+  statLines      StatLine[]
+  evMetrics      EVMetrics[]
+  arbitrageOpps  ArbitrageOpportunity[]
+
+  @@map("events")
+}
+
+enum EventStatus {
+  SCHEDULED
+  LIVE
+  FINAL
+  POSTPONED
+  CANCELLED
+}
+
+model Book {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  logoUrl     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  marketOdds  MarketOdds[]
+
+  @@map("books")
+}
+
+model Market {
+  id           String     @id @default(uuid())
+  eventId      String
+  sportId      String
+  marketType   MarketType
+  description  String?
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  event        Event       @relation(fields: [eventId], references: [id])
+  sport        Sport       @relation(fields: [sportId], references: [id])
+  marketOdds   MarketOdds[]
+  evMetrics    EVMetrics[]
+  arbOpps      ArbitrageOpportunity[]
+
+  @@map("markets")
+}
+
+enum MarketType {
+  MONEYLINE
+  SPREAD
+  TOTAL
+  PLAYER_PROP
+  TEAM_PROP
+  FUTURES
+  PARLAY
+}
+
+model MarketOdds {
+  id          String   @id @default(uuid())
+  marketId    String
+  bookId      String
+  outcome     String
+  odds        Float
+  line        Float?
+  isOpen      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  market      Market   @relation(fields: [marketId], references: [id])
+  book        Book     @relation(fields: [bookId], references: [id])
+  oddsHistory OddsHistory[]
+
+  @@map("market_odds")
+}
+
+model OddsHistory {
+  id           String     @id @default(uuid())
+  marketOddsId String
+  odds         Float
+  line         Float?
+  recordedAt   DateTime   @default(now())
+
+  marketOdds   MarketOdds @relation(fields: [marketOddsId], references: [id])
+
+  @@map("odds_history")
+}
+
+// ============================================================
+// EV & ARBITRAGE
+// ============================================================
+model EVMetrics {
+  id              String   @id @default(uuid())
+  marketId        String
+  eventId         String
+  outcome         String
+  bookOdds        Float
+  trueProb        Float
+  impliedProb     Float
+  ev              Float
+  evPct           Float
+  kellyFraction   Float
+  modelUsed       String?
+  calculatedAt    DateTime @default(now())
+
+  market          Market   @relation(fields: [marketId], references: [id])
+  event           Event    @relation(fields: [eventId], references: [id])
+
+  @@map("ev_metrics")
+}
+
+model ArbitrageOpportunity {
+  id           String   @id @default(uuid())
+  marketId     String
+  eventId      String
+  legs         Json
+  profit       Float
+  profitPct    Float
+  totalStake   Float
+  isActive     Boolean  @default(true)
+  detectedAt   DateTime @default(now())
+  expiresAt    DateTime?
+
+  market       Market   @relation(fields: [marketId], references: [id])
+  event        Event    @relation(fields: [eventId], references: [id])
+
+  @@map("arbitrage_opportunities")
+}
+
+// ============================================================
+// ANALYTICS MODELS
+// ============================================================
+model CustomModel {
+  id           String   @id @default(uuid())
+  userId       String
+  name         String
+  description  String?
+  weights      Json
+  isActive     Boolean  @default(true)
+  isPublic     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user              User              @relation(fields: [userId], references: [id])
+  predictions       ModelPrediction[]
+  performance       ModelPerformance[]
+  ensembleComponents EnsembleComponent[]
+  abTestVariantA    ABTest[]          @relation("VariantA")
+  abTestVariantB    ABTest[]          @relation("VariantB")
+
+  @@map("custom_models")
+}
+
+model ModelPrediction {
+  id           String   @id @default(uuid())
+  modelId      String
+  userId       String
+  eventId      String?
+  marketId     String?
+  outcome      String
+  predictedProb Float
+  confidence   Float
+  actualResult Boolean?
+  isResolved   Boolean  @default(false)
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  resolvedAt   DateTime?
+
+  model        CustomModel @relation(fields: [modelId], references: [id])
+  user         User        @relation(fields: [userId], references: [id])
+
+  @@map("model_predictions")
+}
+
+model ModelPerformance {
+  id           String   @id @default(uuid())
+  modelId      String
+  period       String
+  totalBets    Int      @default(0)
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  pushes       Int      @default(0)
+  roi          Float    @default(0)
+  winRate      Float    @default(0)
+  sharpeRatio  Float    @default(0)
+  calibration  Float    @default(0)
+  avgEV        Float    @default(0)
+  totalProfit  Float    @default(0)
+  maxDrawdown  Float    @default(0)
+  calculatedAt DateTime @default(now())
+
+  model        CustomModel @relation(fields: [modelId], references: [id])
+
+  @@map("model_performance")
+}
+
+// ============================================================
+// ENSEMBLE MODELS
+// ============================================================
+model EnsembleModel {
+  id           String           @id @default(uuid())
+  userId       String
+  name         String
+  description  String?
+  strategy     EnsembleStrategy
+  isActive     Boolean          @default(true)
+  metadata     Json?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user         User               @relation(fields: [userId], references: [id])
+  components   EnsembleComponent[]
+
+  @@map("ensemble_models")
+}
+
+enum EnsembleStrategy {
+  WEIGHTED_AVERAGE
+  VOTING
+  STACKING
+  BOOSTING
+}
+
+model EnsembleComponent {
+  id              String   @id @default(uuid())
+  ensembleModelId String
+  modelId         String
+  weight          Float    @default(1.0)
+  order           Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  ensembleModel   EnsembleModel @relation(fields: [ensembleModelId], references: [id])
+  model           CustomModel   @relation(fields: [modelId], references: [id])
+
+  @@map("ensemble_components")
+}
+
+// ============================================================
+// GENETIC ALGORITHM OPTIMIZATION
+// ============================================================
+model OptimizationRun {
+  id               String   @id @default(uuid())
+  userId           String
+  name             String
+  status           OptimizationStatus @default(PENDING)
+  config           Json
+  bestFitness      Float?
+  bestWeights      Json?
+  generations      Int      @default(0)
+  populationSize   Int      @default(50)
+  mutationRate     Float    @default(0.1)
+  crossoverRate    Float    @default(0.8)
+  elitismCount     Int      @default(2)
+  convergenceData  Json?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user             User                   @relation(fields: [userId], references: [id])
+  candidates       OptimizationCandidate[]
+
+  @@map("optimization_runs")
+}
+
+enum OptimizationStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model OptimizationCandidate {
+  id               String   @id @default(uuid())
+  optimizationRunId String
+  generation       Int
+  weights          Json
+  fitness          Float
+  roi              Float?
+  winRate          Float?
+  sharpeRatio      Float?
+  isElite          Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  optimizationRun  OptimizationRun @relation(fields: [optimizationRunId], references: [id])
+
+  @@map("optimization_candidates")
+}
+
+// ============================================================
+// A/B TESTING
+// ============================================================
+model ABTest {
+  id              String       @id @default(uuid())
+  userId          String
+  name            String
+  description     String?
+  status          ABTestStatus @default(DRAFT)
+  variantAId      String
+  variantBId      String
+  sampleSize      Int          @default(100)
+  confidenceLevel Float        @default(0.95)
+  startedAt       DateTime?
+  endedAt         DateTime?
+  winnerId        String?
+  pValue          Float?
+  tStatistic      Float?
+  isSignificant   Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user            User           @relation(fields: [userId], references: [id])
+  variantA        CustomModel    @relation("VariantA", fields: [variantAId], references: [id])
+  variantB        CustomModel    @relation("VariantB", fields: [variantBId], references: [id])
+  results         ABTestResult[]
+
+  @@map("ab_tests")
+}
+
+enum ABTestStatus {
+  DRAFT
+  RUNNING
+  COMPLETED
+  PAUSED
+}
+
+model ABTestResult {
+  id           String   @id @default(uuid())
+  abTestId     String
+  variant      String
+  outcome      Boolean
+  predictedProb Float
+  actualProb   Float?
+  ev           Float?
+  recordedAt   DateTime @default(now())
+
+  abTest       ABTest   @relation(fields: [abTestId], references: [id])
+
+  @@map("ab_test_results")
+}
+
+// ============================================================
+// USER FEATURES
+// ============================================================
+model SavedFilter {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  filters     Json
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@map("saved_filters")
+}
+
+model Alert {
+  id           String      @id @default(uuid())
+  userId       String
+  name         String
+  type         AlertType
+  conditions   Json
+  isActive     Boolean     @default(true)
+  lastTriggered DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user         User        @relation(fields: [userId], references: [id])
+
+  @@map("alerts")
+}
+
+enum AlertType {
+  EV_THRESHOLD
+  ARBITRAGE
+  LINE_MOVEMENT
+  INJURY
+  CUSTOM
+}
+
+model BetSlip {
+  id           String       @id @default(uuid())
+  userId       String
+  name         String?
+  totalOdds    Float?
+  totalStake   Float        @default(0)
+  status       BetSlipStatus @default(OPEN)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id])
+  items        BetSlipItem[]
+
+  @@map("bet_slips")
+}
+
+enum BetSlipStatus {
+  OPEN
+  SUBMITTED
+  WON
+  LOST
+  VOID
+}
+
+model BetSlipItem {
+  id          String   @id @default(uuid())
+  betSlipId   String
+  marketId    String?
+  eventId     String?
+  outcome     String
+  odds        Float
+  stake       Float    @default(0)
+  ev          Float?
+  isLocked    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  betSlip     BetSlip  @relation(fields: [betSlipId], references: [id])
+
+  @@map("bet_slip_items")
+}
