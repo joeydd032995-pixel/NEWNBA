@@ -1,0 +1,12 @@
+import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
+import { JobsService } from './jobs.service';
+import { EVModule } from '../../modules/ev/ev.module';
+import { ArbitrageModule } from '../../modules/arbitrage/arbitrage.module';
+import { PrismaModule } from '../../modules/prisma/prisma.module';
+
+@Module({
+  imports: [ScheduleModule.forRoot(), EVModule, ArbitrageModule, PrismaModule],
+  providers: [JobsService],
+})
+export class JobsModule {}
