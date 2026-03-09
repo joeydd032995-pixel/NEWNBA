@@ -179,7 +179,8 @@ export class AnalyticsController {
   @Post('optimization/:id/start')
   async startOptimization(@Param('id') id: string, @Request() req) {
     const run = await this.optimizationService.getOptimizationRun(id);
-    this.optimizationService.runGeneticAlgorithm(id, run.config as GAConfig).catch(console.error);
+    if (!run) throw new Error(`Optimization run ${id} not found`);
+    this.optimizationService.runGeneticAlgorithm(id, run.config as unknown as GAConfig).catch(console.error);
     return { message: 'Optimization started', runId: id };
   }
 
