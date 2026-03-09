@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 
@@ -22,6 +22,8 @@ export interface ArbitrageResult {
 
 @Injectable()
 export class ArbitrageService {
+  private readonly logger = new Logger(ArbitrageService.name);
+
   constructor(
     private prisma: PrismaService,
     private analyticsService: AnalyticsService,
@@ -100,6 +102,10 @@ export class ArbitrageService {
 
     // Get eventId
     const market = await this.prisma.market.findUnique({ where: { id: marketId } });
+    if (!market) {
+      this.logger.warn(`Market ${marketId} not found; skipping arbitrage opportunity save`);
+      return arb;
+    }
 
     // Save to DB
     await this.prisma.arbitrageOpportunity.create({
@@ -128,7 +134,9 @@ export class ArbitrageService {
       try {
         const arb = await this.scanMarketArbitrage(market.id);
         if (arb) opportunities.push(arb);
-      } catch (e) {}
+      } catch (e) {
+        this.logger.error(`Failed to scan market ${market.id} for arbitrage: ${e.message}`);
+      }
     }
 
     return opportunities;

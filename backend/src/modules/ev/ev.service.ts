@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 
 @Injectable()
 export class EVService {
+  private readonly logger = new Logger(EVService.name);
+
   constructor(
     private prisma: PrismaService,
     private analyticsService: AnalyticsService,
@@ -38,7 +40,7 @@ export class EVService {
     });
 
     // Calculate EV for each book/outcome combo
-    const results = [];
+    const results: Array<{ marketOddsId: string; bookName: string; outcome: string; odds: number } & ReturnType<AnalyticsService['calcEV']>> = [];
     for (const mo of marketOdds) {
       const trueProb = probMap[mo.outcome] ?? 0.5;
       const evResult = this.analyticsService.calcEV(trueProb, mo.odds);
@@ -67,7 +69,7 @@ export class EVService {
               evPct: evResult.evPct,
               kellyFraction: evResult.kellyFraction,
             },
-          }).catch(() => null);
+          }).catch((e) => this.logger.error(`Failed to save EV metric for market ${marketId}: ${e.message}`));
         }
       }
     }
@@ -111,13 +113,13 @@ export class EVService {
       select: { id: true },
     });
 
-    const results = [];
+    const results: Awaited<ReturnType<typeof this.calculateEVForMarket>> = [];
     for (const market of markets) {
       try {
         const evs = await this.calculateEVForMarket(market.id);
         results.push(...evs);
       } catch (e) {
-        // Skip individual market errors
+        this.logger.error(`Failed to calculate EV for market ${market.id}: ${e.message}`);
       }
     }
 
