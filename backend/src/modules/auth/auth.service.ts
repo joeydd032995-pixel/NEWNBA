@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -41,6 +41,7 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, user.email);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
     const fullUser = await this.prisma.user.findUnique({ where: { id: user.id } });
+    if (!fullUser) throw new NotFoundException('User not found');
     return { user: this.sanitizeUser(fullUser), ...tokens };
   }
 
@@ -72,6 +73,7 @@ export class AuthService {
 
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
     return this.sanitizeUser(user);
   }
 

@@ -51,8 +51,8 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/nba_betting?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: dev-jwt-secret-change-in-production
-      JWT_REFRESH_SECRET: dev-refresh-secret-change-in-production
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-in-production}
       JWT_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_IN: 7d
       FRONTEND_URL: http://localhost:5173
