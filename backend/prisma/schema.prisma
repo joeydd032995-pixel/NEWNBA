@@ -95,6 +95,7 @@ model Player {
 
   team         Team?    @relation(fields: [teamId], references: [id])
   statLines    StatLine[]
+  propMarkets  Market[]
 
   @@index([teamId])
   @@map("players")
@@ -196,23 +197,27 @@ model Book {
 }
 
 model Market {
-  id           String     @id @default(uuid())
+  id           String        @id @default(uuid())
   eventId      String
   sportId      String
   marketType   MarketType
+  playerId     String?
+  propStatType PropStatType?
   description  String?
-  isActive     Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   event        Event       @relation(fields: [eventId], references: [id])
   sport        Sport       @relation(fields: [sportId], references: [id])
+  player       Player?     @relation(fields: [playerId], references: [id])
   marketOdds   MarketOdds[]
   evMetrics    EVMetrics[]
   arbOpps      ArbitrageOpportunity[]
 
   @@index([eventId])
   @@index([sportId])
+  @@index([playerId])
   @@map("markets")
 }
 
@@ -224,6 +229,20 @@ enum MarketType {
   TEAM_PROP
   FUTURES
   PARLAY
+}
+
+enum PropStatType {
+  POINTS
+  REBOUNDS
+  ASSISTS
+  STEALS
+  BLOCKS
+  THREES
+  MINUTES
+  PRA
+  PR
+  PA
+  RA
 }
 
 model MarketOdds {

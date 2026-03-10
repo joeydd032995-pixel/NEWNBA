@@ -1,4 +1,4 @@
-import { PrismaClient, PlanType } from '@prisma/client';
+import { PrismaClient, PlanType, PropStatType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -197,6 +197,181 @@ async function main() {
     }),
   ]);
   console.log('✅ Users seeded');
+
+  // ─── Historical events + StatLines ───────────────────────────────────────
+  // Player stat profiles: [avg, stddev] per stat
+  const playerProfiles: Record<string, {
+    pts: [number, number]; reb: [number, number]; ast: [number, number];
+    stl: [number, number]; blk: [number, number]; fg3m: [number, number];
+    min: [number, number]; fgm: [number, number]; fga: [number, number];
+    ftm: [number, number]; fta: [number, number];
+  }> = {
+    'Jayson Tatum':              { pts:[27,5],  reb:[8,2],  ast:[4.5,1.5], stl:[1,0.5], blk:[0.8,0.5], fg3m:[3,1.2], min:[36,3], fgm:[10,2],  fga:[21,3],  ftm:[6,2],  fta:[7,2] },
+    'Jaylen Brown':              { pts:[23,5],  reb:[5,1.5],ast:[3.5,1.2], stl:[1,0.5], blk:[0.5,0.4], fg3m:[2,1],   min:[34,3], fgm:[9,2],   fga:[19,3],  ftm:[4,1.5],fta:[5,2] },
+    'LeBron James':              { pts:[25,5],  reb:[7,2],  ast:[8,2],     stl:[1.3,0.6],blk:[0.6,0.4],fg3m:[2,1],   min:[35,3], fgm:[10,2],  fga:[19,3],  ftm:[5,2],  fta:[6,2] },
+    'Anthony Davis':             { pts:[26,5],  reb:[12,2.5],ast:[3,1],    stl:[1.1,0.5],blk:[2.3,0.8],fg3m:[0.3,0.5],min:[35,3],fgm:[10,2],  fga:[18,3],  ftm:[6,2],  fta:[8,2.5]},
+    'Stephen Curry':             { pts:[29,5],  reb:[5,1.5],ast:[6,2],     stl:[1.5,0.6],blk:[0.3,0.3],fg3m:[5,1.5], min:[34,3], fgm:[10,2],  fga:[20,3],  ftm:[4,1.5],fta:[5,2] },
+    'Draymond Green':            { pts:[9,3],   reb:[7,2],  ast:[6,2],     stl:[1,0.5], blk:[0.8,0.5], fg3m:[0.5,0.7],min:[30,4], fgm:[3,1],   fga:[7,2],   ftm:[2,1],  fta:[3,1.5]},
+    'Giannis Antetokounmpo':     { pts:[30,5],  reb:[11,2.5],ast:[5.5,2],  stl:[1.1,0.5],blk:[1.4,0.6],fg3m:[0.5,0.7],min:[33,3],fgm:[11,2],  fga:[19,3],  ftm:[8,3],  fta:[11,3.5]},
+    'Nikola Jokic':              { pts:[26,5],  reb:[12,2.5],ast:[9,2.5],  stl:[1.3,0.6],blk:[0.9,0.5],fg3m:[0.8,0.8],min:[34,3],fgm:[10,2],  fga:[17,3],  ftm:[6,2],  fta:[7,2.5]},
+    'Jamal Murray':              { pts:[21,5],  reb:[4,1.5],ast:[6.5,2],   stl:[0.9,0.5],blk:[0.4,0.4],fg3m:[2.5,1.2],min:[34,3],fgm:[8,2],   fga:[17,3],  ftm:[3,1.5],fta:[4,2] },
+    'Kevin Durant':              { pts:[27,5],  reb:[6.5,2],ast:[5,1.5],   stl:[0.8,0.5],blk:[1.1,0.5],fg3m:[2,1],   min:[36,3], fgm:[11,2],  fga:[20,3],  ftm:[5,2],  fta:[6,2.5]},
+    'Joel Embiid':               { pts:[33,6],  reb:[10,2.5],ast:[4.2,1.5],stl:[1,0.5], blk:[1.7,0.7], fg3m:[1.2,0.9],min:[33,4], fgm:[11,2.5],fga:[19,3.5],ftm:[10,3.5],fta:[13,4]},
+    'Jimmy Butler':              { pts:[22,5],  reb:[5.5,1.5],ast:[5,1.5], stl:[1.5,0.6],blk:[0.5,0.4],fg3m:[1,0.8], min:[33,3], fgm:[8,2],   fga:[16,3],  ftm:[6,2.5],fta:[7,3] },
+    'Luka Doncic':               { pts:[33,6],  reb:[9,2.5],ast:[9.5,2.5], stl:[1.4,0.6],blk:[0.5,0.4],fg3m:[3,1.5], min:[35,3], fgm:[12,2.5],fga:[25,4],  ftm:[7,2.5],fta:[8,3] },
+    'Kyrie Irving':              { pts:[24,5],  reb:[5,1.5],ast:[5,1.5],   stl:[1.3,0.6],blk:[0.5,0.4],fg3m:[3,1.3], min:[34,3], fgm:[9,2],   fga:[19,3],  ftm:[3,1.5],fta:[4,2] },
+    'Shai Gilgeous-Alexander':   { pts:[30,5],  reb:[5,1.5],ast:[6,1.5],   stl:[2,0.7], blk:[0.9,0.5], fg3m:[1.5,1], min:[34,3], fgm:[11,2],  fga:[21,3],  ftm:[7,2.5],fta:[9,3] },
+    'Anthony Edwards':           { pts:[25,5],  reb:[5,1.5],ast:[5,1.5],   stl:[1.3,0.6],blk:[0.6,0.4],fg3m:[3.5,1.5],min:[34,3],fgm:[9,2],   fga:[21,4],  ftm:[4,2],  fta:[5,2.5]},
+    'Zion Williamson':           { pts:[26,5],  reb:[7,2],  ast:[4.5,1.5], stl:[0.9,0.5],blk:[0.6,0.4],fg3m:[0.1,0.3],min:[30,4], fgm:[10,2],  fga:[17,3],  ftm:[6,2.5],fta:[8,3] },
+    'Jalen Brunson':             { pts:[28,5],  reb:[3.5,1.2],ast:[6.5,2], stl:[0.9,0.5],blk:[0.2,0.3],fg3m:[3,1.2], min:[34,3], fgm:[10,2],  fga:[20,3],  ftm:[5,2],  fta:[6,2.5]},
+    "De'Aaron Fox":              { pts:[26,5],  reb:[4.5,1.5],ast:[6,2],   stl:[1.5,0.6],blk:[0.5,0.4],fg3m:[2,1],   min:[34,3], fgm:[10,2],  fga:[20,3],  ftm:[4,1.5],fta:[5,2] },
+    'Donovan Mitchell':          { pts:[28,5],  reb:[4,1.5],ast:[4.5,1.5], stl:[1.5,0.6],blk:[0.4,0.4],fg3m:[3,1.3], min:[34,3], fgm:[10,2],  fga:[21,3],  ftm:[5,2],  fta:[6,2.5]},
+  };
+
+  function gauss(mean: number, std: number): number {
+    // Box-Muller transform
+    const u1 = Math.random(), u2 = Math.random();
+    const z = Math.sqrt(-2 * Math.log(u1 + 0.0001)) * Math.cos(2 * Math.PI * u2);
+    return Math.max(0, Math.round((mean + std * z) * 10) / 10);
+  }
+
+  // Get all seeded players
+  const allPlayers = await prisma.player.findMany({ include: { team: true } });
+
+  // Create 20 historical events (past 60 days)
+  const teamList = Object.values(teams);
+  const historicalEvents: any[] = [];
+  for (let i = 0; i < 20; i++) {
+    const daysAgo = 3 + i * 3; // every 3 days going back
+    const gameDate = new Date(now.getTime() - daysAgo * 86400000);
+    const homeIdx = i % teamList.length;
+    const awayIdx = (i + 5) % teamList.length;
+    if (homeIdx === awayIdx) continue;
+    const evt = await prisma.event.create({
+      data: {
+        sportId: nba.id,
+        homeTeamId: teamList[homeIdx].id,
+        awayTeamId: teamList[awayIdx].id,
+        startTime: gameDate,
+        season: '2024-25',
+        status: 'FINAL',
+        homeScore: Math.floor(Math.random() * 25 + 100),
+        awayScore: Math.floor(Math.random() * 25 + 100),
+      },
+    });
+    historicalEvents.push(evt);
+  }
+  console.log(`✅ ${historicalEvents.length} historical events seeded`);
+
+  // Seed StatLines for each player across historical events
+  for (const player of allPlayers) {
+    const profile = playerProfiles[player.name];
+    if (!profile) continue;
+    // Give each player stats in ~15 of the 20 historical games
+    const gameSubset = historicalEvents.slice(0, 17);
+    for (const evt of gameSubset) {
+      const pts  = gauss(profile.pts[0],  profile.pts[1]);
+      const reb  = gauss(profile.reb[0],  profile.reb[1]);
+      const ast  = gauss(profile.ast[0],  profile.ast[1]);
+      const stl  = gauss(profile.stl[0],  profile.stl[1]);
+      const blk  = gauss(profile.blk[0],  profile.blk[1]);
+      const fg3m = gauss(profile.fg3m[0], profile.fg3m[1]);
+      const min  = gauss(profile.min[0],  profile.min[1]);
+      const fgm  = gauss(profile.fgm[0],  profile.fgm[1]);
+      const fga  = Math.max(fgm + 2, gauss(profile.fga[0], profile.fga[1]));
+      const ftm  = gauss(profile.ftm[0],  profile.ftm[1]);
+      const fta  = Math.max(ftm, gauss(profile.fta[0], profile.fta[1]));
+      await prisma.statLine.create({
+        data: {
+          playerId: player.id,
+          eventId: evt.id,
+          season: '2024-25',
+          gameDate: evt.startTime,
+          points: pts, rebounds: reb, assists: ast, steals: stl, blocks: blk,
+          turnovers: gauss(2, 1), minutes: min,
+          fgm, fga, fgPct: fga > 0 ? fgm / fga : 0,
+          fg3m, fg3a: Math.max(fg3m, gauss(profile.fg3m[0] * 2.5, 1.5)),
+          fg3Pct: fg3m > 0 ? Math.random() * 0.15 + 0.33 : 0,
+          ftm, fta, ftPct: fta > 0 ? ftm / fta : 0,
+          plusMinus: gauss(0, 10), usgPct: gauss(0.25, 0.05),
+          tsPct: fga > 0 ? pts / (2 * (fga + 0.475 * fta)) : 0,
+          efgPct: fga > 0 ? (fgm + 0.5 * fg3m) / fga : 0,
+          bpm: gauss(profile.pts[0] / 10, 2),
+        },
+      }).catch(() => null); // skip dupes on re-seed
+    }
+  }
+  console.log('✅ Historical stat lines seeded');
+
+  // ─── Player Prop Markets for upcoming events ──────────────────────────────
+  const propConfigs: Array<{ stat: PropStatType; label: string; getLine: (p: string) => number }> = [
+    { stat: PropStatType.POINTS,   label: 'Points',           getLine: (n) => Math.round((playerProfiles[n]?.pts[0]  ?? 20) - 1.5) + 0.5 },
+    { stat: PropStatType.REBOUNDS, label: 'Rebounds',         getLine: (n) => Math.round((playerProfiles[n]?.reb[0]  ?? 5)  - 0.5) + 0.5 },
+    { stat: PropStatType.ASSISTS,  label: 'Assists',          getLine: (n) => Math.round((playerProfiles[n]?.ast[0]  ?? 4)  - 0.5) + 0.5 },
+    { stat: PropStatType.THREES,   label: '3-Pointers Made',  getLine: (n) => Math.round((playerProfiles[n]?.fg3m[0] ?? 2)  - 0.5) + 0.5 },
+    { stat: PropStatType.PRA,      label: 'Pts+Reb+Ast',      getLine: (n) => {
+      const p = playerProfiles[n]; if (!p) return 29.5;
+      return Math.round(p.pts[0] + p.reb[0] + p.ast[0] - 2) + 0.5;
+    }},
+    { stat: PropStatType.PR,       label: 'Pts+Reb',          getLine: (n) => {
+      const p = playerProfiles[n]; if (!p) return 19.5;
+      return Math.round(p.pts[0] + p.reb[0] - 1.5) + 0.5;
+    }},
+  ];
+
+  // Only create props for players who have a profile (our star players)
+  const starPlayers = allPlayers.filter(p => playerProfiles[p.name]);
+
+  for (const evt of [...eventsData.map((_, i) => i)]) {
+    // Get the seeded event — we'll use prisma to get upcoming events
+  }
+
+  // Get upcoming events
+  const upcomingEvents = await prisma.event.findMany({
+    where: { status: 'SCHEDULED' },
+    include: { homeTeam: { include: { players: true } }, awayTeam: { include: { players: true } } },
+  });
+
+  let propCount = 0;
+  for (const upEvt of upcomingEvents) {
+    const eventPlayers = [
+      ...upEvt.homeTeam.players,
+      ...upEvt.awayTeam.players,
+    ].filter(p => playerProfiles[p.name]);
+
+    for (const player of eventPlayers) {
+      for (const cfg of propConfigs) {
+        const line = cfg.getLine(player.name);
+
+        // Create the PLAYER_PROP market
+        const market = await prisma.market.create({
+          data: {
+            eventId: upEvt.id,
+            sportId: nba.id,
+            marketType: 'PLAYER_PROP',
+            playerId: player.id,
+            propStatType: cfg.stat,
+            description: `${player.name} ${cfg.label} O/U ${line}`,
+          },
+        });
+
+        // Seed odds: over and under for each book with slight variation
+        const baseOver  = -115 + Math.floor(Math.random() * 21) - 10; // -125 to -105
+        const baseUnder = -115 + Math.floor(Math.random() * 21) - 10;
+        for (const book of books) {
+          const bookVar = Math.floor(Math.random() * 11) - 5; // ±5
+          await prisma.marketOdds.createMany({
+            data: [
+              { marketId: market.id, bookId: book.id, outcome: 'over',  odds: baseOver  + bookVar, line },
+              { marketId: market.id, bookId: book.id, outcome: 'under', odds: baseUnder + bookVar, line },
+            ],
+          });
+        }
+        propCount++;
+      }
+    }
+  }
+  console.log(`✅ ${propCount} player prop markets seeded`);
 
   console.log('🎉 Seeding complete!');
 }

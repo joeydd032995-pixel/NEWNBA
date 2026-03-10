@@ -5,9 +5,10 @@ import { EVModule } from '../../modules/ev/ev.module';
 import { ArbitrageModule } from '../../modules/arbitrage/arbitrage.module';
 import { PrismaModule } from '../../modules/prisma/prisma.module';
 import { OddsApiModule } from '../odds-api/odds-api.module';
+import { NbaDataModule } from '../nba-data/nba-data.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), EVModule, ArbitrageModule, PrismaModule, OddsApiModule],
+  imports: [ScheduleModule.forRoot(), EVModule, ArbitrageModule, PrismaModule, OddsApiModule, NbaDataModule],
   providers: [JobsService],
 })
 export class JobsModule {}

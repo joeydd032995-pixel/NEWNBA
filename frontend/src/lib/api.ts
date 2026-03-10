@@ -12,7 +12,8 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/')
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true
       try {
         // Cookies are sent automatically; the server rotates them in the response
@@ -100,6 +101,12 @@ export const alertsApi = {
   update: (id: string, data: any) => api.patch(`/alerts/${id}`, data),
   remove: (id: string) => api.delete(`/alerts/${id}`),
   toggle: (id: string) => api.patch(`/alerts/${id}/toggle`),
+}
+
+// Player Props
+export const playerPropsApi = {
+  getFeed: (params?: any) => api.get('/player-props/feed', { params }),
+  getPlayers: () => api.get('/player-props/players'),
 }
 
 // A/B Testing
