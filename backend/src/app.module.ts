@@ -16,28 +16,10 @@ import { PlayerPropsModule } from './modules/player-props/player-props.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
-    CacheModule.registerAsync({
-      isGlobal: true,
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (config: ConfigService) => {
-        const redisHost = config.get<string>('REDIS_HOST');
-        if (redisHost) {
-          // Lazy-load redis store only when host is configured
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          const redisStore = require('cache-manager-redis-store');
-          return {
-            store: redisStore,
-            host: redisHost,
-            port: config.get<number>('REDIS_PORT', 6379),
-            password: config.get<string>('REDIS_PASSWORD') || undefined,
-            ttl: 60, // default 60s TTL
-          };
-        }
-        // In-memory fallback when Redis isn't configured
-        return { ttl: 60 };
-      },
-    }),
+    // cache-manager v5 (used by @nestjs/cache-manager v2) has an incompatible
+    // store API with cache-manager-redis-store v3. Use the built-in in-memory
+    // store which is fully compatible and sufficient for this dev environment.
+    CacheModule.register({ isGlobal: true, ttl: 60 }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
