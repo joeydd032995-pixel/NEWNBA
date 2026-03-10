@@ -93,6 +93,15 @@ export const ensembleApi = {
   optimizeWeights: (id: string) => api.post(`/analytics/ensemble/${id}/optimize-weights`),
 }
 
+// Alerts
+export const alertsApi = {
+  getAll: () => api.get('/alerts'),
+  create: (data: any) => api.post('/alerts', data),
+  update: (id: string, data: any) => api.patch(`/alerts/${id}`, data),
+  remove: (id: string) => api.delete(`/alerts/${id}`),
+  toggle: (id: string) => api.patch(`/alerts/${id}/toggle`),
+}
+
 // A/B Testing
 export const abTestApi = {
   getAll: () => api.get('/analytics/ab-tests'),
