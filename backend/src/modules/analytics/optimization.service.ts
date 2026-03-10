@@ -317,9 +317,9 @@ export class OptimizationService {
     });
   }
 
-  async getOptimizationRun(id: string) {
-    return this.prisma.optimizationRun.findUnique({
-      where: { id },
+  async getOptimizationRun(id: string, userId?: string) {
+    return this.prisma.optimizationRun.findFirst({
+      where: userId ? { id, userId } : { id },
       include: {
         candidates: { where: { isElite: true }, orderBy: { generation: 'asc' } },
       },

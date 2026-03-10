@@ -48,6 +48,7 @@ export default function OptimizationPage() {
       setSelectedRun(res.data.id)
       setShowCreate(false)
     },
+    onError: () => toast.error('Failed to start optimization'),
   })
 
   const convergenceData = runDetail?.data?.convergenceData ?? Array.from({ length: 30 }, (_, i) => ({

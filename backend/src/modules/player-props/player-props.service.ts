@@ -111,17 +111,23 @@ export class PlayerPropsService {
       // Determine the line
       const line = market.marketOdds[0]?.line ?? 0;
 
-      // Compute hit rates for L5, L10, L15, L20
-      const [l5, l10, l15, l20] = await Promise.all([
+      // Compute hit rates for L5, L10, L15, L20 for both over and under
+      const [l5o, l10o, l15o, l20o, l5u, l10u, l15u, l20u] = await Promise.all([
         this.getHitRate(market.player.id, market.propStatType, line, 5,  'over'),
         this.getHitRate(market.player.id, market.propStatType, line, 10, 'over'),
         this.getHitRate(market.player.id, market.propStatType, line, 15, 'over'),
         this.getHitRate(market.player.id, market.propStatType, line, 20, 'over'),
+        this.getHitRate(market.player.id, market.propStatType, line, 5,  'under'),
+        this.getHitRate(market.player.id, market.propStatType, line, 10, 'under'),
+        this.getHitRate(market.player.id, market.propStatType, line, 15, 'under'),
+        this.getHitRate(market.player.id, market.propStatType, line, 20, 'under'),
       ]);
+      // Aliases for clarity
+      const l5 = l5o; const l10 = l10o; const l15 = l15o; const l20 = l20o;
 
-      // Primary hit rate for filtering (based on lastN)
-      const hitRateMap: Record<number, number> = { 5: l5.rate, 10: l10.rate, 15: l15.rate, 20: l20.rate };
-      const primaryHitRate = (hitRateMap[lastN] ?? l10.rate) * 100;
+      // Primary hit rate for filtering (based on lastN, using over rate as primary signal)
+      const hitRateMap: Record<number, number> = { 5: l10o.rate, 10: l10o.rate, 15: l15o.rate, 20: l20o.rate };
+      const primaryHitRate = (hitRateMap[lastN] ?? l10o.rate) * 100;
 
       if (primaryHitRate < minHitRate || primaryHitRate > maxHitRate) continue;
 
@@ -129,7 +135,7 @@ export class PlayerPropsService {
       const outcomes: any[] = [];
 
       const addOutcome = (oddsRows: typeof overOdds, direction: 'over' | 'under') => {
-        const dirHitRate = direction === 'over' ? l10.rate : 1 - l10.rate;
+        const dirHitRate = direction === 'over' ? l10o.rate : l10u.rate;
         for (const mo of oddsRows) {
           if (mo.odds < minOdds || mo.odds > maxOdds) continue;
           const evResult = this.analyticsService.calcEV(dirHitRate, mo.odds);
@@ -171,10 +177,14 @@ export class PlayerPropsService {
         description: market.description,
         line,
         hitRate: {
-          l5:  Math.round(l5.rate  * 100),
-          l10: Math.round(l10.rate * 100),
-          l15: Math.round(l15.rate * 100),
-          l20: Math.round(l20.rate * 100),
+          l5:  Math.round(l5o.rate  * 100),
+          l10: Math.round(l10o.rate * 100),
+          l15: Math.round(l15o.rate * 100),
+          l20: Math.round(l20o.rate * 100),
+          l5Under:  Math.round(l5u.rate  * 100),
+          l10Under: Math.round(l10u.rate * 100),
+          l15Under: Math.round(l15u.rate * 100),
+          l20Under: Math.round(l20u.rate * 100),
         },
         bestEV,
         outcomes,
