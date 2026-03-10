@@ -5,6 +5,7 @@ import { ArbitrageService } from '../../modules/arbitrage/arbitrage.service';
 import { PrismaService } from '../../modules/prisma/prisma.service';
 import { OddsApiService } from '../odds-api/odds-api.service';
 import { NbaDataService } from '../nba-data/nba-data.service';
+import { BallDontLieService } from '../balldontlie/balldontlie.service';
 import { MarketType } from '@prisma/client';
 
 // Map Odds API market key → our MarketType enum
@@ -22,6 +23,7 @@ export class JobsService implements OnModuleInit {
   private isArbScanRunning = false;
   private isOddsSyncRunning = false;
   private isNbaSyncRunning = false;
+  private isBdlSyncRunning = false;
 
   constructor(
     private evService: EVService,
@@ -29,6 +31,7 @@ export class JobsService implements OnModuleInit {
     private prisma: PrismaService,
     private oddsApi: OddsApiService,
     private nbaData: NbaDataService,
+    private bdl: BallDontLieService,
   ) {}
 
   onModuleInit() {
@@ -42,6 +45,11 @@ export class JobsService implements OnModuleInit {
       this.logger.log('NBA Data sidecar enabled — daily stat sync active');
     } else {
       this.logger.warn('NBA_DATA_URL not set — NBA stat sync disabled');
+    }
+    if (this.bdl.isEnabled) {
+      this.logger.log('BallDontLie API enabled — daily player stat sync active');
+    } else {
+      this.logger.warn('BALLDONTLIE_API_KEY not set — BallDontLie sync disabled');
     }
   }
 
@@ -208,6 +216,162 @@ export class JobsService implements OnModuleInit {
     }
 
     this.logger.log(`Live odds sync: ${updated} odds updated from ${events.length} API events`);
+  }
+
+  /**
+   * Daily at 08:00 UTC (04:00 ET): sync real game logs from BallDontLie.
+   * Step 1 — discovery: match our Players to BDL player IDs by name (one-time per player).
+   * Step 2 — sync: pull current-season game stats for all matched players and upsert StatLines.
+   */
+  @Cron('0 8 * * *')
+  async syncBallDontLieStats() {
+    if (!this.bdl.isEnabled || this.isBdlSyncRunning) return;
+    this.isBdlSyncRunning = true;
+    try {
+      this.logger.log('BallDontLie stat sync starting…');
+      await this.discoverBdlPlayerIds();
+      await this.syncBdlStats();
+    } catch (e) {
+      this.logger.error('BallDontLie stat sync failed:', e.message);
+    } finally {
+      this.isBdlSyncRunning = false;
+    }
+  }
+
+  /** Match DB players (bdlId IS NULL) to BallDontLie player IDs by name search. */
+  private async discoverBdlPlayerIds() {
+    const unmatched = await this.prisma.player.findMany({
+      where: { isActive: true, bdlId: null },
+      select: { id: true, name: true },
+    });
+
+    if (unmatched.length === 0) {
+      this.logger.debug('BDL discovery: all players already matched');
+      return;
+    }
+
+    let matched = 0;
+    for (const player of unmatched) {
+      try {
+        const results = await this.bdl.searchPlayers(player.name);
+        const match = results.find(
+          (r) =>
+            `${r.first_name} ${r.last_name}`.toLowerCase() === player.name.toLowerCase(),
+        );
+        if (match) {
+          await this.prisma.player.update({
+            where: { id: player.id },
+            data: { bdlId: match.id },
+          }).catch(() => null); // skip on unique constraint if two players share an id
+          matched++;
+        }
+      } catch (e) {
+        this.logger.warn(`BDL discovery failed for ${player.name}: ${e.message}`);
+      }
+    }
+    this.logger.log(`BDL discovery: ${matched}/${unmatched.length} players matched`);
+  }
+
+  /** Fetch current-season game stats for all BDL-matched players and upsert StatLines. */
+  private async syncBdlStats() {
+    const players = await this.prisma.player.findMany({
+      where: { isActive: true, bdlId: { not: null } },
+      select: { id: true, bdlId: true },
+    });
+
+    if (players.length === 0) {
+      this.logger.debug('BDL sync: no matched players yet');
+      return;
+    }
+
+    // Build bdlId → dbPlayerId lookup
+    const bdlToDb = new Map<number, string>();
+    for (const p of players) {
+      bdlToDb.set(p.bdlId!, p.id);
+    }
+
+    const currentSeason = new Date().getFullYear() - (new Date().getMonth() < 8 ? 1 : 0);
+    const BATCH = 100;
+    const bdlIds = players.map((p) => p.bdlId!);
+
+    let inserted = 0;
+    for (let i = 0; i < bdlIds.length; i += BATCH) {
+      const batch = bdlIds.slice(i, i + BATCH);
+      let stats: Awaited<ReturnType<BallDontLieService['getAllPlayerStatsForSeason']>>;
+      try {
+        stats = await this.bdl.getAllPlayerStatsForSeason(batch, currentSeason);
+      } catch (e) {
+        this.logger.warn(`BDL stat fetch failed for batch ${i}: ${e.message}`);
+        continue;
+      }
+
+      // Anchor event: we need a valid eventId for StatLine FK.
+      // Use the most recent FINAL event we have — same approach as nba_api sync.
+      const anchorEvent = await this.prisma.event.findFirst({
+        where: { status: 'FINAL' },
+        orderBy: { startTime: 'desc' },
+      });
+      if (!anchorEvent) { this.logger.warn('BDL sync: no FINAL events found'); break; }
+
+      for (const stat of stats) {
+        const dbPlayerId = bdlToDb.get(stat.player.id);
+        if (!dbPlayerId) continue;
+
+        const gameDate = new Date(stat.game.date);
+        const existing = await this.prisma.statLine.findFirst({
+          where: { playerId: dbPlayerId, gameDate },
+        });
+        if (existing) continue;
+
+        // Parse "MM:SS" → decimal minutes
+        const parseMin = (s: string): number => {
+          if (!s || !s.includes(':')) return parseFloat(s) || 0;
+          const [m, sec] = s.split(':').map(Number);
+          return m + sec / 60;
+        };
+
+        const min   = parseMin(stat.min);
+        const pts   = stat.pts   ?? 0;
+        const fga   = stat.fga   ?? 0;
+        const fta   = stat.fta   ?? 0;
+        const fgm   = stat.fgm   ?? 0;
+        const fg3m  = stat.fg3m  ?? 0;
+        const tsPct  = (fga + fta) > 0 ? pts / (2 * (fga + 0.475 * fta)) : 0;
+        const efgPct = fga > 0 ? (fgm + 0.5 * fg3m) / fga : 0;
+
+        await this.prisma.statLine.create({
+          data: {
+            playerId: dbPlayerId,
+            eventId:  anchorEvent.id,
+            season:   String(currentSeason),
+            gameDate,
+            points:    pts,
+            rebounds:  stat.reb   ?? 0,
+            assists:   stat.ast   ?? 0,
+            steals:    stat.stl   ?? 0,
+            blocks:    stat.blk   ?? 0,
+            turnovers: stat.turnover ?? 0,
+            minutes:   min,
+            fgm,
+            fga,
+            fgPct:     stat.fg_pct   ?? 0,
+            fg3m,
+            fg3a:      stat.fg3a     ?? 0,
+            fg3Pct:    stat.fg3_pct  ?? 0,
+            ftm:       stat.ftm      ?? 0,
+            fta,
+            ftPct:     stat.ft_pct   ?? 0,
+            plusMinus: 0,
+            usgPct:    0,
+            tsPct:     Math.round(tsPct  * 10000) / 10000,
+            efgPct:    Math.round(efgPct * 10000) / 10000,
+            bpm:       0,
+          },
+        }).catch(() => null);
+        inserted++;
+      }
+    }
+    this.logger.log(`BDL sync complete: ${inserted} new stat lines inserted`);
   }
 
   /**
