@@ -30,9 +30,8 @@ export const useAuthStore = create<AuthStore>()(
       login: async (email, password) => {
         set({ isLoading: true })
         try {
+          // Tokens are set as httpOnly cookies by the server
           const { data } = await authApi.login(email, password)
-          localStorage.setItem('accessToken', data.accessToken)
-          localStorage.setItem('refreshToken', data.refreshToken)
           set({ user: data.user, isAuthenticated: true })
         } finally {
           set({ isLoading: false })
@@ -43,8 +42,6 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true })
         try {
           const { data } = await authApi.signup(formData)
-          localStorage.setItem('accessToken', data.accessToken)
-          localStorage.setItem('refreshToken', data.refreshToken)
           set({ user: data.user, isAuthenticated: true })
         } finally {
           set({ isLoading: false })
@@ -53,20 +50,15 @@ export const useAuthStore = create<AuthStore>()(
 
       logout: async () => {
         try { await authApi.logout() } catch {}
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
+        // Server clears httpOnly cookies; we only reset local state
         set({ user: null, isAuthenticated: false })
       },
 
       loadProfile: async () => {
-        const token = localStorage.getItem('accessToken')
-        if (!token) return
         try {
           const { data } = await authApi.profile()
           set({ user: data, isAuthenticated: true })
         } catch {
-          localStorage.removeItem('accessToken')
-          localStorage.removeItem('refreshToken')
           set({ user: null, isAuthenticated: false })
         }
       },

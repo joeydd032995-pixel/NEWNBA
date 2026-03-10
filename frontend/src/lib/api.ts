@@ -4,37 +4,22 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 export const api = axios.create({
   baseURL: API_BASE,
-  withCredentials: true,
+  withCredentials: true, // send/receive httpOnly cookies automatically
 })
 
-// Request interceptor - add JWT token
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken')
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
-
-// Response interceptor - handle 401, auto-refresh
+// Response interceptor – on 401 silently try one cookie-based refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
-      const refreshToken = localStorage.getItem('refreshToken')
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${API_BASE}/auth/refresh`, { refreshToken })
-          localStorage.setItem('accessToken', data.accessToken)
-          localStorage.setItem('refreshToken', data.refreshToken)
-          originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
-          return api(originalRequest)
-        } catch {
-          localStorage.removeItem('accessToken')
-          localStorage.removeItem('refreshToken')
-          window.location.href = '/login'
-        }
-      } else {
+      try {
+        // Cookies are sent automatically; the server rotates them in the response
+        await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true })
+        return api(originalRequest)
+      } catch {
+        // Refresh failed – redirect to login
         window.location.href = '/login'
       }
     }
@@ -48,7 +33,7 @@ export const authApi = {
   signup: (data: any) => api.post('/auth/signup', data),
   logout: () => api.post('/auth/logout'),
   profile: () => api.get('/auth/profile'),
-  refresh: (refreshToken: string) => api.post('/auth/refresh', { refreshToken }),
+  refresh: () => api.post('/auth/refresh'),
 }
 
 // Sports
