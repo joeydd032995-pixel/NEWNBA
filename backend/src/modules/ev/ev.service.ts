@@ -90,8 +90,10 @@ export class EVService {
     const cached = await this.cache.get<any[]>(cacheKey);
     if (cached) return cached;
 
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
     const evMetrics = await this.prisma.eVMetrics.findMany({
       where: {
+        createdAt: { gte: twoHoursAgo },
         ev: { gte: filters.minEV ?? 0 },
         ...(filters.sport && {
           market: { sport: { slug: filters.sport } },
@@ -131,8 +133,8 @@ export class EVService {
       }
     }
 
-    // Invalidate feed cache so next request reflects fresh data
-    await this.cache.del('ev:feed:{}').catch(() => null);
+    // Invalidate all EV feed cache variants so next request reflects fresh data
+    await this.cache.reset().catch(() => null);
     return results;
   }
 }
