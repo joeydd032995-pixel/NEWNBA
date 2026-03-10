@@ -138,6 +138,28 @@ export class JobsService implements OnModuleInit {
     }
   }
 
+  // ─── Manual triggers (for admin endpoints) ────────────────────
+
+  async triggerOddsSync(): Promise<string> {
+    if (this.isOddsSyncRunning) return 'Odds sync already running';
+    void this.syncOdds();
+    return 'Odds sync triggered';
+  }
+
+  async triggerNbaSync(): Promise<string> {
+    if (!this.nbaData.isEnabled) return 'NBA_DATA_URL not configured';
+    if (this.isNbaSyncRunning) return 'NBA stat sync already running';
+    void this.syncNbaStats();
+    return 'NBA stat sync triggered';
+  }
+
+  async triggerBdlSync(): Promise<string> {
+    if (!this.bdl.isEnabled) return 'BALLDONTLIE_API_KEY not configured';
+    if (this.isBdlSyncRunning) return 'BDL sync already running';
+    void this.syncBallDontLieStats();
+    return 'BallDontLie stat sync triggered';
+  }
+
   // ─── Private helpers ──────────────────────────────────────────
 
   private async fetchAndPersistLiveOdds() {
@@ -155,14 +177,61 @@ export class JobsService implements OnModuleInit {
       include: { homeTeam: true, awayTeam: true },
     });
 
+    // Look up NBA sport and all teams for auto-creating events
+    const nbaSlug = 'nba';
+    const nbaSport = await this.prisma.sport.findFirst({ where: { slug: nbaSlug } });
+    const allTeams = nbaSport
+      ? await this.prisma.team.findMany({ where: { sportId: nbaSport.id, isActive: true } })
+      : [];
+
+    const findTeam = (apiName: string) =>
+      allTeams.find(
+        (t) =>
+          t.name.toLowerCase() === apiName.toLowerCase() ||
+          t.name.toLowerCase().includes(apiName.toLowerCase()) ||
+          apiName.toLowerCase().includes(t.name.toLowerCase()) ||
+          apiName.toLowerCase().includes(t.city?.toLowerCase() ?? '____'),
+      );
+
     let updated = 0;
 
     for (const apiEvent of events) {
-      const dbEvent = dbEvents.find(
+      let dbEvent = dbEvents.find(
         (e) =>
           e.homeTeam.name.toLowerCase().includes(apiEvent.home_team.toLowerCase()) ||
-          e.awayTeam.name.toLowerCase().includes(apiEvent.away_team.toLowerCase()),
+          apiEvent.home_team.toLowerCase().includes(e.homeTeam.name.toLowerCase()) ||
+          e.awayTeam.name.toLowerCase().includes(apiEvent.away_team.toLowerCase()) ||
+          apiEvent.away_team.toLowerCase().includes(e.awayTeam.name.toLowerCase()),
       );
+
+      // If no matching DB event, create one from Odds API data
+      if (!dbEvent && nbaSport) {
+        const homeTeam = findTeam(apiEvent.home_team);
+        const awayTeam = findTeam(apiEvent.away_team);
+        if (homeTeam && awayTeam) {
+          try {
+            const created = await this.prisma.event.create({
+              data: {
+                sportId: nbaSport.id,
+                homeTeamId: homeTeam.id,
+                awayTeamId: awayTeam.id,
+                startTime: new Date(apiEvent.commence_time),
+                status: 'SCHEDULED',
+                season: String(new Date().getFullYear() - (new Date().getMonth() < 8 ? 1 : 0)),
+              },
+              include: { homeTeam: true, awayTeam: true },
+            });
+            dbEvents.push(created);
+            dbEvent = created;
+            this.logger.log(`Created new event: ${apiEvent.away_team} @ ${apiEvent.home_team}`);
+          } catch (e) {
+            this.logger.warn(`Could not create event for ${apiEvent.away_team} @ ${apiEvent.home_team}: ${e.message}`);
+          }
+        } else {
+          this.logger.warn(`Team not found in DB — home: "${apiEvent.home_team}", away: "${apiEvent.away_team}"`);
+        }
+      }
+
       if (!dbEvent) continue;
 
       for (const bookmaker of apiEvent.bookmakers) {
