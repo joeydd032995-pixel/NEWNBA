@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-  * { @apply border-border; }
   body {
     @apply bg-dark-950 text-slate-100 font-sans antialiased;
     background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
