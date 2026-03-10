@@ -56,6 +56,10 @@ services:
       JWT_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_IN: 7d
       FRONTEND_URL: http://localhost:5173
+      ODDS_API_KEY: ${ODDS_API_KEY:-}
+      ODDS_API_BASE_URL: ${ODDS_API_BASE_URL:-https://api.the-odds-api.com/v4}
+      THROTTLE_TTL: ${THROTTLE_TTL:-60}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-100}
     ports:
       - "3000:3000"
     volumes:

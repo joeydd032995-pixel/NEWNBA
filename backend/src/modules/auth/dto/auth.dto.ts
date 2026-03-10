@@ -31,9 +31,3 @@ export class LoginDto {
   @IsString()
   password: string;
 }
-
-export class RefreshTokenDto {
-  @ApiProperty()
-  @IsString()
-  refreshToken: string;
-}

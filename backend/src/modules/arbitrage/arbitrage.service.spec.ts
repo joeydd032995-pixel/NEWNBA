@@ -8,7 +8,8 @@ describe('ArbitrageService', () => {
     // ArbitrageService only needs PrismaService for DB calls;
     // findArbitrage() is pure logic so we pass a minimal stub.
     const prismaStub = {} as any;
-    service = new ArbitrageService(prismaStub, new AnalyticsService());
+    const cacheStub = { get: async () => null, set: async () => {}, del: async () => {} } as any;
+    service = new ArbitrageService(prismaStub, new AnalyticsService(), cacheStub);
   });
 
   // ---------------------------------------------------------------

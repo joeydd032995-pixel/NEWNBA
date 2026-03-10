@@ -1,4 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 
@@ -27,6 +29,7 @@ export class ArbitrageService {
   constructor(
     private prisma: PrismaService,
     private analyticsService: AnalyticsService,
+    @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
   /**
@@ -139,6 +142,7 @@ export class ArbitrageService {
       }
     }
 
+    await this.cache.del('arb:feed:{}').catch(() => null);
     return opportunities;
   }
 
@@ -147,7 +151,11 @@ export class ArbitrageService {
     minProfit?: number;
     limit?: number;
   } = {}) {
-    return this.prisma.arbitrageOpportunity.findMany({
+    const cacheKey = `arb:feed:${JSON.stringify(filters)}`;
+    const cached = await this.cache.get<any[]>(cacheKey);
+    if (cached) return cached;
+
+    const results = await this.prisma.arbitrageOpportunity.findMany({
       where: {
         isActive: true,
         profitPct: { gte: (filters.minProfit ?? 0) / 100 },
@@ -160,5 +168,8 @@ export class ArbitrageService {
       orderBy: { profitPct: 'desc' },
       take: filters.limit ?? 50,
     });
+
+    await this.cache.set(cacheKey, results, 30); // 30s TTL
+    return results;
   }
 }
