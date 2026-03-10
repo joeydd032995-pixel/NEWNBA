@@ -103,6 +103,12 @@ export const alertsApi = {
   toggle: (id: string) => api.patch(`/alerts/${id}/toggle`),
 }
 
+// Player Props
+export const playerPropsApi = {
+  getFeed: (params?: any) => api.get('/player-props/feed', { params }),
+  getPlayers: () => api.get('/player-props/players'),
+}
+
 // A/B Testing
 export const abTestApi = {
   getAll: () => api.get('/analytics/ab-tests'),

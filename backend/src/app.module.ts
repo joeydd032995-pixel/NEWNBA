@@ -11,6 +11,7 @@ import { SportsModule } from './modules/sports/sports.module';
 import { JobsModule } from './services/background-jobs/jobs.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { BetslipModule } from './modules/betslip/betslip.module';
+import { PlayerPropsModule } from './modules/player-props/player-props.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { BetslipModule } from './modules/betslip/betslip.module';
     JobsModule,
     AlertsModule,
     BetslipModule,
+    PlayerPropsModule,
   ],
 })
 export class AppModule {}
