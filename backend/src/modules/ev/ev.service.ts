@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 
@@ -9,6 +11,7 @@ export class EVService {
   constructor(
     private prisma: PrismaService,
     private analyticsService: AnalyticsService,
+    @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
   async calculateEVForMarket(marketId: string, trueProbs?: Record<string, number>) {
@@ -83,6 +86,10 @@ export class EVService {
     marketType?: string;
     limit?: number;
   } = {}) {
+    const cacheKey = `ev:feed:${JSON.stringify(filters)}`;
+    const cached = await this.cache.get<any[]>(cacheKey);
+    if (cached) return cached;
+
     const evMetrics = await this.prisma.eVMetrics.findMany({
       where: {
         ev: { gte: filters.minEV ?? 0 },
@@ -104,6 +111,7 @@ export class EVService {
       take: filters.limit ?? 50,
     });
 
+    await this.cache.set(cacheKey, evMetrics, 30); // 30s TTL
     return evMetrics;
   }
 
@@ -123,6 +131,8 @@ export class EVService {
       }
     }
 
+    // Invalidate feed cache so next request reflects fresh data
+    await this.cache.del('ev:feed:{}').catch(() => null);
     return results;
   }
 }

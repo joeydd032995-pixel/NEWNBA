@@ -76,6 +76,7 @@ model Team {
   awayEvents   Event[]  @relation("AwayTeam")
 
   @@unique([sportId, abbreviation])
+  @@index([sportId])
   @@map("teams")
 }
 
@@ -95,6 +96,7 @@ model Player {
   team         Team?    @relation(fields: [teamId], references: [id])
   statLines    StatLine[]
 
+  @@index([teamId])
   @@map("players")
 }
 
@@ -133,6 +135,8 @@ model StatLine {
   player         Player   @relation(fields: [playerId], references: [id])
   event          Event    @relation(fields: [eventId], references: [id])
 
+  @@index([playerId])
+  @@index([eventId])
   @@map("stat_lines")
 }
 
@@ -164,6 +168,9 @@ model Event {
   evMetrics      EVMetrics[]
   arbitrageOpps  ArbitrageOpportunity[]
 
+  @@index([sportId])
+  @@index([status])
+  @@index([startTime])
   @@map("events")
 }
 
@@ -204,6 +211,8 @@ model Market {
   evMetrics    EVMetrics[]
   arbOpps      ArbitrageOpportunity[]
 
+  @@index([eventId])
+  @@index([sportId])
   @@map("markets")
 }
 
@@ -232,6 +241,8 @@ model MarketOdds {
   book        Book     @relation(fields: [bookId], references: [id])
   oddsHistory OddsHistory[]
 
+  @@index([marketId])
+  @@index([bookId])
   @@map("market_odds")
 }
 
@@ -244,6 +255,8 @@ model OddsHistory {
 
   marketOdds   MarketOdds @relation(fields: [marketOddsId], references: [id])
 
+  @@index([marketOddsId])
+  @@index([recordedAt])
   @@map("odds_history")
 }
 
@@ -267,6 +280,9 @@ model EVMetrics {
   market          Market   @relation(fields: [marketId], references: [id])
   event           Event    @relation(fields: [eventId], references: [id])
 
+  @@index([marketId])
+  @@index([eventId])
+  @@index([calculatedAt])
   @@map("ev_metrics")
 }
 
@@ -285,6 +301,9 @@ model ArbitrageOpportunity {
   market       Market   @relation(fields: [marketId], references: [id])
   event        Event    @relation(fields: [eventId], references: [id])
 
+  @@index([marketId])
+  @@index([eventId])
+  @@index([isActive])
   @@map("arbitrage_opportunities")
 }
 
@@ -309,6 +328,7 @@ model CustomModel {
   abTestVariantA    ABTest[]          @relation("VariantA")
   abTestVariantB    ABTest[]          @relation("VariantB")
 
+  @@index([userId])
   @@map("custom_models")
 }
 
@@ -330,6 +350,9 @@ model ModelPrediction {
   model        CustomModel @relation(fields: [modelId], references: [id])
   user         User        @relation(fields: [userId], references: [id])
 
+  @@index([modelId])
+  @@index([userId])
+  @@index([eventId])
   @@map("model_predictions")
 }
 
@@ -352,6 +375,7 @@ model ModelPerformance {
 
   model        CustomModel @relation(fields: [modelId], references: [id])
 
+  @@index([modelId])
   @@map("model_performance")
 }
 
@@ -372,6 +396,7 @@ model EnsembleModel {
   user         User               @relation(fields: [userId], references: [id])
   components   EnsembleComponent[]
 
+  @@index([userId])
   @@map("ensemble_models")
 }
 
@@ -393,6 +418,8 @@ model EnsembleComponent {
   ensembleModel   EnsembleModel @relation(fields: [ensembleModelId], references: [id])
   model           CustomModel   @relation(fields: [modelId], references: [id])
 
+  @@index([ensembleModelId])
+  @@index([modelId])
   @@map("ensemble_components")
 }
 
@@ -421,6 +448,7 @@ model OptimizationRun {
   user             User                   @relation(fields: [userId], references: [id])
   candidates       OptimizationCandidate[]
 
+  @@index([userId])
   @@map("optimization_runs")
 }
 
@@ -446,6 +474,7 @@ model OptimizationCandidate {
 
   optimizationRun  OptimizationRun @relation(fields: [optimizationRunId], references: [id])
 
+  @@index([optimizationRunId])
   @@map("optimization_candidates")
 }
 
@@ -476,6 +505,7 @@ model ABTest {
   variantB        CustomModel    @relation("VariantB", fields: [variantBId], references: [id])
   results         ABTestResult[]
 
+  @@index([userId])
   @@map("ab_tests")
 }
 
@@ -498,6 +528,7 @@ model ABTestResult {
 
   abTest       ABTest   @relation(fields: [abTestId], references: [id])
 
+  @@index([abTestId])
   @@map("ab_test_results")
 }
 
@@ -515,6 +546,7 @@ model SavedFilter {
 
   user        User     @relation(fields: [userId], references: [id])
 
+  @@index([userId])
   @@map("saved_filters")
 }
 
@@ -531,6 +563,7 @@ model Alert {
 
   user         User        @relation(fields: [userId], references: [id])
 
+  @@index([userId])
   @@map("alerts")
 }
 
@@ -555,6 +588,7 @@ model BetSlip {
   user         User         @relation(fields: [userId], references: [id])
   items        BetSlipItem[]
 
+  @@index([userId])
   @@map("bet_slips")
 }
 
@@ -580,5 +614,6 @@ model BetSlipItem {
 
   betSlip     BetSlip  @relation(fields: [betSlipId], references: [id])
 
+  @@index([betSlipId])
   @@map("bet_slip_items")
 }

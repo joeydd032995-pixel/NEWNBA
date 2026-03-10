@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Put, Delete, Body, Param, Query,
-  UseGuards, Request, HttpCode, HttpStatus,
+  UseGuards, Request, HttpCode, HttpStatus, Logger, NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -16,6 +16,8 @@ import { ABTestingService } from './ab-testing.service';
 @UseGuards(JwtAuthGuard)
 @Controller('analytics')
 export class AnalyticsController {
+  private readonly logger = new Logger(AnalyticsController.name);
+
   constructor(
     private analyticsService: AnalyticsService,
     private customModelService: CustomModelService,
@@ -179,8 +181,10 @@ export class AnalyticsController {
   @Post('optimization/:id/start')
   async startOptimization(@Param('id') id: string, @Request() req) {
     const run = await this.optimizationService.getOptimizationRun(id);
-    if (!run) throw new Error(`Optimization run ${id} not found`);
-    this.optimizationService.runGeneticAlgorithm(id, run.config as unknown as GAConfig).catch(console.error);
+    if (!run) throw new NotFoundException(`Optimization run ${id} not found`);
+    this.optimizationService.runGeneticAlgorithm(id, run.config as unknown as GAConfig).catch((err) =>
+      this.logger.error(`GA optimization failed for run ${id}: ${err.message}`),
+    );
     return { message: 'Optimization started', runId: id };
   }
 
