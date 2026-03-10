@@ -93,7 +93,7 @@ export class EVService {
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
     const evMetrics = await this.prisma.eVMetrics.findMany({
       where: {
-        createdAt: { gte: twoHoursAgo },
+        calculatedAt: { gte: twoHoursAgo },
         ev: { gte: filters.minEV ?? 0 },
         ...(filters.sport && {
           market: { sport: { slug: filters.sport } },
