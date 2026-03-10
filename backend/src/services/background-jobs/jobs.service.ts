@@ -291,6 +291,10 @@ export class JobsService implements OnModuleInit {
     await this.syncPlayerPropsOdds(events, bookBySlug, dbEvents);
   }
 
+  // Valid player-prop market keys accepted by the Odds API v4
+  private static readonly PROP_MARKETS =
+    'player_points,player_rebounds,player_assists,player_threes,player_blocks,player_steals';
+
   private async syncPlayerPropsOdds(
     events: Awaited<ReturnType<typeof this.oddsApi.getOdds>>,
     bookBySlug: Map<string, any>,
@@ -308,7 +312,16 @@ export class JobsService implements OnModuleInit {
       );
       if (!dbEvent) continue;
 
-      const eventWithProps = await this.oddsApi.getEventOdds('basketball_nba', apiEvent.id, 'player_props');
+      let eventWithProps: Awaited<ReturnType<typeof this.oddsApi.getEventOdds>>;
+      try {
+        eventWithProps = await this.oddsApi.getEventOdds('basketball_nba', apiEvent.id, JobsService.PROP_MARKETS);
+      } catch (e) {
+        // 429 re-thrown by getEventOdds — stop processing to avoid further rate-limit hits
+        this.logger.warn('Rate limited during player props sync — aborting remaining events');
+        break;
+      }
+      // Small delay between per-event calls to stay within rate limits
+      await new Promise((r) => setTimeout(r, 300));
       if (!eventWithProps) continue;
 
       for (const bookmaker of eventWithProps.bookmakers) {

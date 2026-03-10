@@ -109,7 +109,7 @@ export class OddsApiService {
   async getEventOdds(
     sportKey: string,
     eventId: string,
-    markets = 'h2h,spreads,totals,player_props',
+    markets = 'h2h,spreads,totals',
     regions = 'us',
   ): Promise<OddsApiEvent | null> {
     this.assertEnabled();
@@ -120,7 +120,16 @@ export class OddsApiService {
       );
       return data[0] ?? null;
     } catch (e) {
-      this.logger.warn(`Failed to fetch event odds for ${eventId}: ${e.message}`);
+      const status = e?.response?.status;
+      if (status === 422) {
+        // 422 = event doesn't support these markets (normal for many events)
+        this.logger.debug(`Event ${eventId} has no available markets for: ${markets}`);
+      } else if (status === 429) {
+        this.logger.warn(`Rate limited fetching event odds for ${eventId} — backing off`);
+        throw e; // re-throw so caller can stop the loop
+      } else {
+        this.logger.warn(`Failed to fetch event odds for ${eventId}: ${e.message}`);
+      }
       return null;
     }
   }
