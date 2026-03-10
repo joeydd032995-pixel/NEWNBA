@@ -83,6 +83,7 @@ model Team {
 model Player {
   id           String   @id @default(uuid())
   teamId       String?
+  bdlId        Int?     @unique
   name         String
   position     String?
   jerseyNumber String?
@@ -98,6 +99,7 @@ model Player {
   propMarkets  Market[]
 
   @@index([teamId])
+  @@index([bdlId])
   @@map("players")
 }
 
