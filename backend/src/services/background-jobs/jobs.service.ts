@@ -163,7 +163,8 @@ export class JobsService implements OnModuleInit {
   // ─── Private helpers ──────────────────────────────────────────
 
   private async fetchAndPersistLiveOdds() {
-    const events = await this.oddsApi.getOdds('basketball_nba');
+    // Fetch h2h, spreads, and totals for all events
+    const events = await this.oddsApi.getOdds('basketball_nba', 'h2h,spreads,totals');
     if (!events.length) return;
 
     // Resolve our DB books by slug
@@ -285,6 +286,116 @@ export class JobsService implements OnModuleInit {
     }
 
     this.logger.log(`Live odds sync: ${updated} odds updated from ${events.length} API events`);
+
+    // Sync player props per event (requires separate per-event API call)
+    await this.syncPlayerPropsOdds(events, bookBySlug, dbEvents);
+  }
+
+  private async syncPlayerPropsOdds(
+    events: Awaited<ReturnType<typeof this.oddsApi.getOdds>>,
+    bookBySlug: Map<string, any>,
+    dbEvents: any[],
+  ) {
+    let propUpdated = 0;
+
+    for (const apiEvent of events) {
+      const dbEvent = dbEvents.find(
+        (e) =>
+          e.homeTeam.name.toLowerCase().includes(apiEvent.home_team.toLowerCase()) ||
+          apiEvent.home_team.toLowerCase().includes(e.homeTeam.name.toLowerCase()) ||
+          e.awayTeam.name.toLowerCase().includes(apiEvent.away_team.toLowerCase()) ||
+          apiEvent.away_team.toLowerCase().includes(e.awayTeam.name.toLowerCase()),
+      );
+      if (!dbEvent) continue;
+
+      const eventWithProps = await this.oddsApi.getEventOdds('basketball_nba', apiEvent.id, 'player_props');
+      if (!eventWithProps) continue;
+
+      for (const bookmaker of eventWithProps.bookmakers) {
+        const book = bookBySlug.get(bookmaker.key);
+        if (!book) continue;
+
+        for (const market of bookmaker.markets) {
+          if (market.key !== 'player_props') continue;
+
+          for (const outcome of market.outcomes) {
+            // outcome.description holds the player name for player props
+            const playerName = (outcome as any).description as string | undefined;
+            if (!playerName) continue;
+
+            const player = await this.prisma.player.findFirst({
+              where: {
+                name: { equals: playerName, mode: 'insensitive' },
+                isActive: true,
+              },
+            });
+            if (!player) continue;
+
+            // Determine stat type from outcome.name (e.g. "player_points", "player_rebounds")
+            const statTypeMap: Record<string, string> = {
+              player_points: 'POINTS',
+              player_rebounds: 'REBOUNDS',
+              player_assists: 'ASSISTS',
+              player_threes: 'THREES',
+              player_blocks: 'BLOCKS',
+              player_steals: 'STEALS',
+            };
+            const propStatType = statTypeMap[outcome.name as string];
+            if (!propStatType) continue;
+
+            // Find or create player prop market
+            let dbMarket = await this.prisma.market.findFirst({
+              where: {
+                eventId: dbEvent.id,
+                marketType: 'PLAYER_PROP',
+                playerId: player.id,
+                propStatType: propStatType as any,
+              },
+            });
+            if (!dbMarket) {
+              dbMarket = await this.prisma.market.create({
+                data: {
+                  eventId: dbEvent.id,
+                  sportId: dbEvent.sportId,
+                  marketType: 'PLAYER_PROP',
+                  playerId: player.id,
+                  propStatType: propStatType as any,
+                  description: `${playerName} ${propStatType}`,
+                },
+              });
+            }
+
+            // over/under direction comes from the bet name
+            const direction = (outcome as any).name?.toLowerCase?.().includes('over') ? 'over' : 'under';
+            const line = outcome.point ?? null;
+
+            const existing = await this.prisma.marketOdds.findFirst({
+              where: { marketId: dbMarket.id, bookId: book.id, outcome: direction },
+            });
+
+            if (existing) {
+              if (existing.odds !== outcome.price) {
+                await this.prisma.oddsHistory.create({
+                  data: { marketOddsId: existing.id, odds: existing.odds, line: existing.line },
+                });
+                await this.prisma.marketOdds.update({
+                  where: { id: existing.id },
+                  data: { odds: outcome.price, line },
+                });
+                propUpdated++;
+              }
+            } else {
+              await this.prisma.marketOdds.create({
+                data: { marketId: dbMarket.id, bookId: book.id, outcome: direction, odds: outcome.price, line },
+              });
+              propUpdated++;
+            }
+          }
+        }
+      }
+    }
+
+    if (propUpdated > 0) this.logger.log(`Player props sync: ${propUpdated} prop odds updated`);
   }
 
   /**
@@ -534,9 +645,9 @@ export class JobsService implements OnModuleInit {
   }
 
   private async simulateOddsMovement() {
+    // Fetch all open market odds (no cap) so player props are included
     const marketOdds = await this.prisma.marketOdds.findMany({
       where: { isOpen: true },
-      take: 100,
     });
 
     let moved = 0;

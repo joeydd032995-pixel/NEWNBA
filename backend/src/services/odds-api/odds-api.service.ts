@@ -87,6 +87,23 @@ export class OddsApiService {
   }
 
   /**
+   * List upcoming events for a sport (without odds).
+   */
+  async getSportEvents(sportKey: string): Promise<Array<{ id: string; home_team: string; away_team: string; commence_time: string }>> {
+    this.assertEnabled();
+    try {
+      const { data } = await this.http.get<Array<{ id: string; home_team: string; away_team: string; commence_time: string }>>(
+        `/sports/${sportKey}/events`,
+        { params: { apiKey: this.apiKey } },
+      );
+      return data;
+    } catch (e) {
+      this.logger.warn(`Failed to fetch events for ${sportKey}: ${e.message}`);
+      return [];
+    }
+  }
+
+  /**
    * Fetch odds for a specific event.
    */
   async getEventOdds(

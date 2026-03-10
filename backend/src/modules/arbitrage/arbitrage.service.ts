@@ -142,7 +142,8 @@ export class ArbitrageService {
       }
     }
 
-    await this.cache.del('arb:feed:{}').catch(() => null);
+    // Invalidate all arb feed cache variants so next request reflects fresh data
+    await this.cache.reset().catch(() => null);
     return opportunities;
   }
 
