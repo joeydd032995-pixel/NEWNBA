@@ -88,13 +88,15 @@ export class EVService {
   } = {}) {
     const cacheKey = `ev:feed:${JSON.stringify(filters)}`;
     const cached = await this.cache.get<any[]>(cacheKey);
-    if (cached) return cached;
+    // Only use cache if it has items — an empty cache result is stale since the
+    // background scan may have just populated the DB
+    if (cached?.length) return cached;
 
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
     const evMetrics = await this.prisma.eVMetrics.findMany({
       where: {
         calculatedAt: { gte: twoHoursAgo },
-        ev: { gte: filters.minEV ?? 0 },
+        evPct: { gte: filters.minEV ?? 0 },
         ...(filters.sport && {
           market: { sport: { slug: filters.sport } },
         }),
