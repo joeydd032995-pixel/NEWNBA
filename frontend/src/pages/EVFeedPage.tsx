@@ -12,13 +12,6 @@ function EVBadge({ evPct }: { evPct: number }) {
   return <span className="badge-neutral">{pct}% EV</span>
 }
 
-// Demo data for when API returns empty
-const DEMO_EV = [
-  { id: '1', outcome: 'Home ML', bookOdds: -115, trueProb: 0.56, impliedProb: 0.535, evPct: 0.085, kellyFraction: 0.042, market: { event: { homeTeam: { name: 'Boston Celtics', abbreviation: 'BOS' }, awayTeam: { name: 'New York Knicks', abbreviation: 'NYK' }, startTime: new Date(Date.now() + 3600000).toISOString() }, marketType: 'MONEYLINE' } },
-  { id: '2', outcome: 'Away +4.5', bookOdds: -108, trueProb: 0.52, impliedProb: 0.519, evPct: 0.032, kellyFraction: 0.012, market: { event: { homeTeam: { name: 'LA Lakers', abbreviation: 'LAL' }, awayTeam: { name: 'Golden State Warriors', abbreviation: 'GSW' }, startTime: new Date(Date.now() + 7200000).toISOString() }, marketType: 'SPREAD' } },
-  { id: '3', outcome: 'Over 224.5', bookOdds: -110, trueProb: 0.545, impliedProb: 0.524, evPct: 0.041, kellyFraction: 0.022, market: { event: { homeTeam: { name: 'Milwaukee Bucks', abbreviation: 'MIL' }, awayTeam: { name: 'Philadelphia 76ers', abbreviation: 'PHI' }, startTime: new Date(Date.now() + 10800000).toISOString() }, marketType: 'TOTAL' } },
-  { id: '4', outcome: 'Home -3', bookOdds: -105, trueProb: 0.535, impliedProb: 0.512, evPct: 0.046, kellyFraction: 0.025, market: { event: { homeTeam: { name: 'Denver Nuggets', abbreviation: 'DEN' }, awayTeam: { name: 'Dallas Mavericks', abbreviation: 'DAL' }, startTime: new Date(Date.now() + 14400000).toISOString() }, marketType: 'SPREAD' } },
-]
 
 export default function EVFeedPage() {
   const [minEV, setMinEV] = useState(0)
@@ -26,9 +19,10 @@ export default function EVFeedPage() {
   const qc = useQueryClient()
   const { addItem } = useBetSlipStore()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['ev-feed', { minEV, sport }],
     queryFn: () => evApi.getFeed({ minEV, sport }),
+    refetchInterval: 30_000, // auto-refresh every 30s to pick up new scan results
   })
 
   const scanMutation = useMutation({
@@ -40,7 +34,7 @@ export default function EVFeedPage() {
     onError: () => toast.error('Scan failed'),
   })
 
-  const evItems = data?.data?.length ? data.data : DEMO_EV
+  const evItems: any[] = data?.data ?? []
 
   return (
     <div className="space-y-4">
@@ -104,6 +98,10 @@ export default function EVFeedPage() {
                   ))}
                 </tr>
               ))
+            ) : isError ? (
+              <tr><td colSpan={8} className="py-12 text-center text-slate-500">Failed to load EV feed — check backend connection</td></tr>
+            ) : evItems.length === 0 ? (
+              <tr><td colSpan={8} className="py-12 text-center text-slate-500">No positive EV opportunities found — click "Scan Markets" to update</td></tr>
             ) : evItems.map((item: any) => (
               <tr key={item.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
                 <td className="py-3 px-4">
