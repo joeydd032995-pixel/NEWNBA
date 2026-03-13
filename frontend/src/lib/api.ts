@@ -107,6 +107,7 @@ export const alertsApi = {
 export const playerPropsApi = {
   getFeed: (params?: any) => api.get('/player-props/feed', { params }),
   getPlayers: () => api.get('/player-props/players'),
+  getAnalyzerData: (marketId: string) => api.get(`/player-props/${marketId}/analyzer`),
 }
 
 // A/B Testing

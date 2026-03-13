@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, TrendingUp, ChevronDown } from 'lucide-react'
+import { RefreshCw, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react'
 import { playerPropsApi, sportsApi } from '../lib/api'
 import { useBetSlipStore } from '../stores/betslip'
 import toast from 'react-hot-toast'
@@ -34,6 +34,122 @@ function evColor(evPct: number) {
   return 'bg-slate-700/40 text-slate-400 border-slate-600/30'
 }
 
+function statBlockColors(pct: number) {
+  if (pct >= 70) return 'bg-green-900/70 border-green-600/50 text-green-300'
+  if (pct >= 56) return 'bg-green-900/40 border-green-800/50 text-green-400'
+  if (pct >= 45) return 'bg-slate-700/50 border-slate-600/50 text-slate-300'
+  if (pct >= 30) return 'bg-red-900/40 border-red-800/50 text-red-400'
+  return 'bg-red-900/70 border-red-600/50 text-red-300'
+}
+
+function defRankColors(rank: number, total: number) {
+  const pct = rank / (total || 30)
+  if (pct <= 0.17) return 'bg-red-900/80 border-red-500/60 text-red-200'
+  if (pct <= 0.33) return 'bg-red-900/60 border-red-700/50 text-red-300'
+  if (pct <= 0.50) return 'bg-red-900/30 border-red-800/50 text-red-400'
+  if (pct <= 0.67) return 'bg-green-900/30 border-green-800/50 text-green-400'
+  if (pct <= 0.83) return 'bg-green-900/60 border-green-700/50 text-green-300'
+  return 'bg-green-900/80 border-green-500/60 text-green-200'
+}
+
+function AnalyzerBlock({ label, value, sublabel, colorClass }: {
+  label: string
+  value: string
+  sublabel?: string
+  colorClass: string
+}) {
+  return (
+    <div className={`flex flex-col items-center justify-center rounded-lg border px-3 py-2 min-w-[90px] ${colorClass}`}>
+      <p className="text-[10px] font-medium uppercase tracking-wide opacity-70 mb-1">{label}</p>
+      <p className="text-lg font-bold leading-tight">{value}</p>
+      {sublabel && <p className="text-[10px] opacity-60 mt-0.5">{sublabel}</p>}
+    </div>
+  )
+}
+
+function AnalyzerRow({ marketId, row }: { marketId: string; row: any }) {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    playerPropsApi.getAnalyzerData(marketId)
+      .then(res => setData(res.data))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false))
+  }, [marketId])
+
+  if (loading) return (
+    <tr>
+      <td colSpan={11} className="px-4 py-3 bg-slate-900/60 border-b border-slate-800">
+        <div className="text-xs text-slate-500 animate-pulse">Loading analyzer…</div>
+      </td>
+    </tr>
+  )
+
+  if (!data) return (
+    <tr>
+      <td colSpan={11} className="px-4 py-3 bg-slate-900/60 border-b border-slate-800">
+        <div className="text-xs text-slate-500">No analyzer data available.</div>
+      </td>
+    </tr>
+  )
+
+  const direction = row.bestEV.outcome as 'over' | 'under'
+  const l5Rate  = direction === 'over' ? row.hitRate.l5  : row.hitRate.l5Under
+  const l15Rate = direction === 'over' ? row.hitRate.l15 : row.hitRate.l15Under
+
+  return (
+    <tr>
+      <td colSpan={11} className="px-4 py-3 bg-slate-900/60 border-b border-slate-800">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold mr-1">Analyzer</span>
+
+          <AnalyzerBlock
+            label="Opp Defense"
+            value={`#${data.defRank}`}
+            sublabel={`${data.defAvgAllowed} avg · Lg ${data.leagueAvg}`}
+            colorClass={defRankColors(data.defRank, data.defRankTotal)}
+          />
+
+          <AnalyzerBlock
+            label={`${direction.toUpperCase()} L5`}
+            value={`${l5Rate}%`}
+            colorClass={statBlockColors(l5Rate)}
+          />
+
+          <AnalyzerBlock
+            label={`${direction.toUpperCase()} L15`}
+            value={`${l15Rate}%`}
+            colorClass={statBlockColors(l15Rate)}
+          />
+
+          <AnalyzerBlock
+            label="Season"
+            value={data.seasonHitRate !== null ? `${data.seasonHitRate}%` : 'N/A'}
+            sublabel={data.seasonGames > 0 ? `${data.seasonGames}g` : undefined}
+            colorClass={
+              data.seasonHitRate !== null
+                ? statBlockColors(data.seasonHitRate)
+                : 'bg-slate-700/50 border-slate-600/50 text-slate-400'
+            }
+          />
+
+          <AnalyzerBlock
+            label="H2H"
+            value={data.h2hHitRate !== null ? `${data.h2hHitRate}%` : 'N/A'}
+            sublabel={data.h2hGames > 0 ? `${data.h2hGames}g` : undefined}
+            colorClass={
+              data.h2hHitRate !== null
+                ? statBlockColors(data.h2hHitRate)
+                : 'bg-slate-700/50 border-slate-600/50 text-slate-400'
+            }
+          />
+        </div>
+      </td>
+    </tr>
+  )
+}
+
 export default function PlayerPropsPage() {
   const { addItem } = useBetSlipStore()
 
@@ -52,6 +168,9 @@ export default function PlayerPropsPage() {
   const [games, setGames]       = useState<any[]>([])
   const [loading, setLoading]   = useState(false)
 
+  // Analyzer expand state
+  const [expandedRow, setExpandedRow] = useState<string | null>(null)
+
   const fetchGames = useCallback(async () => {
     try {
       const { data } = await sportsApi.getEvents('nba', { status: 'SCHEDULED' })
@@ -67,6 +186,7 @@ export default function PlayerPropsPage() {
       if (gameId)   params.gameId   = gameId
       const { data } = await playerPropsApi.getFeed(params)
       setProps(Array.isArray(data) ? data : [])
+      setExpandedRow(null)
     } catch (e: any) {
       toast.error('Failed to load player props')
       setProps([])
@@ -78,7 +198,8 @@ export default function PlayerPropsPage() {
   useEffect(() => { fetchGames() }, [fetchGames])
   useEffect(() => { fetchProps() }, [fetchProps])
 
-  const handleAddToSlip = (row: any, outcome: any) => {
+  const handleAddToSlip = (e: React.MouseEvent, row: any, outcome: any) => {
+    e.stopPropagation()
     addItem({
       id: `${row.marketId}-${outcome.outcome}-${outcome.bookSlug}`,
       outcome: `${row.player.name} ${outcome.outcome.toUpperCase()} ${row.line} ${row.statType}`,
@@ -89,6 +210,10 @@ export default function PlayerPropsPage() {
     toast.success('Added to bet slip')
   }
 
+  const toggleAnalyzer = (key: string) => {
+    setExpandedRow(prev => prev === key ? null : key)
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -97,7 +222,7 @@ export default function PlayerPropsPage() {
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
             <TrendingUp size={20} className="text-primary-400" /> Player Props
           </h1>
-          <p className="text-slate-400 text-sm">EV-driven prop analysis with historical hit rates</p>
+          <p className="text-slate-400 text-sm">EV-driven prop analysis with historical hit rates · click a row to analyze</p>
         </div>
         <button onClick={fetchProps} disabled={loading} className="btn-secondary flex items-center gap-2">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -219,7 +344,7 @@ export default function PlayerPropsPage() {
       </div>
 
       {/* Results count */}
-      <p className="text-xs text-slate-500">{props.length} props found · sorted by EV%</p>
+      <p className="text-xs text-slate-500">{props.length} props found · sorted by EV% · click row to open bet analyzer</p>
 
       {/* Table */}
       <div className="card p-0 overflow-x-auto">
@@ -248,82 +373,101 @@ export default function PlayerPropsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              {props.map((row) => (
-                <tr key={`${row.marketId}-${row.bestEV.outcome}`} className="hover:bg-slate-800/30 transition-colors">
-                  {/* Player */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-primary-600/20 flex items-center justify-center text-primary-400 text-xs font-bold shrink-0">
-                        {row.player.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-white text-xs leading-tight">{row.player.name}</p>
-                        <p className="text-slate-500 text-xs">{row.player.team} · {row.player.position}</p>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Matchup */}
-                  <td className="px-3 py-3 text-slate-400 text-xs whitespace-nowrap">
-                    {row.event.away} @ {row.event.home}
-                  </td>
-
-                  {/* Stat type */}
-                  <td className="px-3 py-3 text-center">
-                    <span className="text-xs font-medium text-primary-300 bg-primary-600/10 px-2 py-0.5 rounded">
-                      {row.statType}
-                    </span>
-                  </td>
-
-                  {/* Line */}
-                  <td className="px-3 py-3 text-center text-white font-medium">{row.line}</td>
-
-                  {/* Over/Under */}
-                  <td className="px-3 py-3 text-center">
-                    <span className={`text-xs font-semibold uppercase ${
-                      row.bestEV.outcome === 'over' ? 'text-green-400' : 'text-red-400'
-                    }`}>
-                      {row.bestEV.outcome}
-                    </span>
-                  </td>
-
-                  {/* Best odds */}
-                  <td className="px-3 py-3 text-center">
-                    <span className={`font-mono font-medium ${row.bestEV.odds > 0 ? 'text-green-400' : 'text-slate-300'}`}>
-                      {row.bestEV.odds > 0 ? '+' : ''}{row.bestEV.odds}
-                    </span>
-                    <p className="text-xs text-slate-600">{row.bestEV.bookName}</p>
-                  </td>
-
-                  {/* Hit rates */}
-                  <td className="px-3 py-3 text-center">
-                    <span className={`font-semibold ${hitRateColor(row.hitRate.l5)}`}>{row.hitRate.l5}%</span>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <span className={`font-semibold ${hitRateColor(row.hitRate.l10)}`}>{row.hitRate.l10}%</span>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <span className={`font-semibold ${hitRateColor(row.hitRate.l20)}`}>{row.hitRate.l20}%</span>
-                  </td>
-
-                  {/* EV badge */}
-                  <td className="px-3 py-3 text-center">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${evColor(row.bestEV.evPct)}`}>
-                      {row.bestEV.evPct > 0 ? '+' : ''}{(row.bestEV.evPct * 100).toFixed(1)}%
-                    </span>
-                  </td>
-
-                  {/* Add to slip */}
-                  <td className="px-3 py-3 text-center">
-                    <button
-                      onClick={() => handleAddToSlip(row, row.bestEV)}
-                      className="w-6 h-6 rounded-full bg-primary-600/20 text-primary-400 hover:bg-primary-600/40 flex items-center justify-center text-sm font-bold transition-colors"
+              {props.map((row) => {
+                const rowKey = `${row.marketId}-${row.bestEV.outcome}`
+                const isExpanded = expandedRow === rowKey
+                return (
+                  <>
+                    <tr
+                      key={rowKey}
+                      onClick={() => toggleAnalyzer(rowKey)}
+                      className={`hover:bg-slate-800/30 transition-colors cursor-pointer ${isExpanded ? 'bg-slate-800/20' : ''}`}
                     >
-                      +
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                      {/* Player */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-primary-600/20 flex items-center justify-center text-primary-400 text-xs font-bold shrink-0">
+                            {row.player.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-white text-xs leading-tight">{row.player.name}</p>
+                            <p className="text-slate-500 text-xs">{row.player.team} · {row.player.position}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Matchup */}
+                      <td className="px-3 py-3 text-slate-400 text-xs whitespace-nowrap">
+                        {row.event.away} @ {row.event.home}
+                      </td>
+
+                      {/* Stat type */}
+                      <td className="px-3 py-3 text-center">
+                        <span className="text-xs font-medium text-primary-300 bg-primary-600/10 px-2 py-0.5 rounded">
+                          {row.statType}
+                        </span>
+                      </td>
+
+                      {/* Line */}
+                      <td className="px-3 py-3 text-center text-white font-medium">{row.line}</td>
+
+                      {/* Over/Under */}
+                      <td className="px-3 py-3 text-center">
+                        <span className={`text-xs font-semibold uppercase ${
+                          row.bestEV.outcome === 'over' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {row.bestEV.outcome}
+                        </span>
+                      </td>
+
+                      {/* Best odds */}
+                      <td className="px-3 py-3 text-center">
+                        <span className={`font-mono font-medium ${row.bestEV.odds > 0 ? 'text-green-400' : 'text-slate-300'}`}>
+                          {row.bestEV.odds > 0 ? '+' : ''}{row.bestEV.odds}
+                        </span>
+                        <p className="text-xs text-slate-600">{row.bestEV.bookName}</p>
+                      </td>
+
+                      {/* Hit rates */}
+                      <td className="px-3 py-3 text-center">
+                        <span className={`font-semibold ${hitRateColor(row.hitRate.l5)}`}>{row.hitRate.l5}%</span>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className={`font-semibold ${hitRateColor(row.hitRate.l10)}`}>{row.hitRate.l10}%</span>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className={`font-semibold ${hitRateColor(row.hitRate.l20)}`}>{row.hitRate.l20}%</span>
+                      </td>
+
+                      {/* EV badge */}
+                      <td className="px-3 py-3 text-center">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${evColor(row.bestEV.evPct)}`}>
+                          {row.bestEV.evPct > 0 ? '+' : ''}{(row.bestEV.evPct * 100).toFixed(1)}%
+                        </span>
+                      </td>
+
+                      {/* Add to slip */}
+                      <td className="px-3 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={(e) => handleAddToSlip(e, row, row.bestEV)}
+                            className="w-6 h-6 rounded-full bg-primary-600/20 text-primary-400 hover:bg-primary-600/40 flex items-center justify-center text-sm font-bold transition-colors"
+                          >
+                            +
+                          </button>
+                          {isExpanded
+                            ? <ChevronUp size={12} className="text-slate-500" />
+                            : <ChevronDown size={12} className="text-slate-600" />
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <AnalyzerRow key={`${rowKey}-analyzer`} marketId={row.marketId} row={row} />
+                    )}
+                  </>
+                )
+              })}
             </tbody>
           </table>
         )}

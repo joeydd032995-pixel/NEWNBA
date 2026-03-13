@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PropStatType } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -41,5 +41,10 @@ export class PlayerPropsController {
   @Get('players')
   getPlayersWithProps() {
     return this.playerPropsService.getPlayersWithProps();
+  }
+
+  @Get(':marketId/analyzer')
+  getAnalyzerData(@Param('marketId') marketId: string) {
+    return this.playerPropsService.getAnalyzerData(marketId);
   }
 }
