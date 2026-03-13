@@ -59,6 +59,7 @@ export const analyticsApi = {
   calcTrueShooting: (data: any) => api.post('/analytics/formulas/true-shooting', data),
   calcPythagorean: (data: any) => api.post('/analytics/formulas/pythagorean', data),
   getLeaderboard: () => api.get('/analytics/leaderboard'),
+  getPerformanceDashboard: (days?: number) => api.get('/analytics/performance/dashboard', { params: days ? { days } : undefined }),
   getPerformance: (modelId: string) => api.get(`/analytics/performance/${modelId}`),
   getPerformanceHistory: (modelId: string) => api.get(`/analytics/performance/${modelId}/history`),
 }
@@ -110,6 +111,52 @@ export const playerPropsApi = {
   getAnalyzerData: (marketId: string) => api.get(`/player-props/${marketId}/analyzer`),
   getCheatSheet: (playerId: string, statType: string, line: number) =>
     api.get(`/player-props/players/${playerId}/cheat-sheet`, { params: { statType, line } }),
+}
+
+// Parlay Builder & SGP
+export const parlayApi = {
+  getEventMarkets: (eventId: string) => api.get(`/parlay/event/${eventId}/markets`),
+  suggestLegs: (eventId: string, maxLegs = 5) =>
+    api.get(`/parlay/sgp/suggest/${eventId}`, { params: { maxLegs } }),
+  analyzeSGP: (eventId: string, legs: Array<{ marketId: string; outcome: string }>) =>
+    api.post('/parlay/sgp/analyze', { eventId, legs }),
+  analyzeParlay: (legs: Array<{ marketId: string; outcome: string }>) =>
+    api.post('/parlay/standard', { legs }),
+}
+
+// Live Betting
+export const liveApi = {
+  getGames: () => api.get('/live/games'),
+  getLineMovements: (threshold?: number) =>
+    api.get('/live/line-movements', { params: threshold ? { threshold } : undefined }),
+}
+
+// Expert Picks
+export const expertPicksApi = {
+  getAll: (params?: any) => api.get('/expert-picks', { params }),
+  create: (data: any) => api.post('/expert-picks', data),
+  getConsensus: (marketId: string) => api.get(`/expert-picks/${marketId}/consensus`),
+  getContrarian: () => api.get('/expert-picks/contrarian'),
+  resolve: (id: string, result: 'WIN' | 'LOSS' | 'PUSH') =>
+    api.patch(`/expert-picks/${id}/result`, { result }),
+}
+
+// Notifications
+export const notificationsApi = {
+  getAll: (unreadOnly = false) => api.get('/notifications', { params: unreadOnly ? { unread: 'true' } : undefined }),
+  getCount: () => api.get('/notifications/count'),
+  markRead: (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.post('/notifications/read-all'),
+  evaluate: () => api.post('/notifications/evaluate'),
+}
+
+// Bankroll
+export const bankrollApi = {
+  getPortfolio: (params: { bankroll: number; kellyFraction: number; minEV?: number; sport?: string }) =>
+    api.get('/bankroll/portfolio', { params }),
+  getStats: () => api.get('/bankroll/stats'),
+  calculate: (data: { bankroll: number; odds: number; trueProb: number; fraction: number }) =>
+    api.post('/bankroll/calculate', data),
 }
 
 // A/B Testing

@@ -2,17 +2,22 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   BarChart3, TrendingUp, ArrowLeftRight, Sliders, Activity,
   FlaskConical, GitBranch, TestTube2, Calculator, Bell,
-  ShoppingCart, LogOut, ChevronRight, Menu, X, Dumbbell, UserCheck
+  ShoppingCart, LogOut, ChevronRight, Menu, X, Dumbbell, UserCheck, Users, Radio, Layers, Wallet
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuthStore } from '../stores/auth'
 import { useBetSlipStore } from '../stores/betslip'
+import NotificationCenter from './NotificationCenter'
 import toast from 'react-hot-toast'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: BarChart3 },
   { to: '/ev-feed', label: 'EV Feed', icon: TrendingUp },
+  { to: '/live', label: 'Live Betting', icon: Radio },
+  { to: '/parlay', label: 'Parlay Builder', icon: Layers },
+  { to: '/bankroll', label: 'Bankroll', icon: Wallet },
   { to: '/player-props', label: 'Player Props', icon: UserCheck },
+  { to: '/expert-picks', label: 'Expert Picks', icon: Users },
   { to: '/arbitrage', label: 'Arbitrage', icon: ArrowLeftRight },
   { to: '/models', label: 'Custom Models', icon: Sliders },
   { to: '/performance', label: 'Performance', icon: Activity },
@@ -104,6 +109,7 @@ export default function Layout({ children }: LayoutProps) {
         <header className="h-14 bg-dark-900 border-b border-slate-800 flex items-center justify-between px-4 shrink-0">
           <div />
           <div className="flex items-center gap-3">
+            <NotificationCenter />
             <button
               onClick={toggleBetSlip}
               className="relative flex items-center gap-2 px-3 py-1.5 bg-primary-600/20 border border-primary-500/30 text-primary-400 rounded-lg text-sm hover:bg-primary-600/30 transition-colors"

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { TrendingUp, RefreshCw, Plus, Filter } from 'lucide-react'
+import { TrendingUp, RefreshCw, Plus, Filter, Users } from 'lucide-react'
 import { evApi } from '../lib/api'
 import { useBetSlipStore } from '../stores/betslip'
 import toast from 'react-hot-toast'
@@ -12,17 +12,34 @@ function EVBadge({ evPct }: { evPct: number }) {
   return <span className="badge-neutral">{pct}% EV</span>
 }
 
+function PublicBadge({ pctBets, pctMoney }: { pctBets: number; pctMoney: number }) {
+  const betColor =
+    pctBets >= 60 ? 'text-red-400'
+    : pctBets <= 40 ? 'text-green-400'
+    : 'text-slate-400'
+  const moneyColor =
+    pctMoney >= 60 ? 'text-red-400'
+    : pctMoney <= 40 ? 'text-green-400'
+    : 'text-slate-400'
+  return (
+    <div className="text-xs text-right leading-tight">
+      <div className={`font-semibold ${betColor}`}>{pctBets.toFixed(0)}% <span className="text-slate-500 font-normal">bets</span></div>
+      <div className={`font-semibold ${moneyColor}`}>{pctMoney.toFixed(0)}% <span className="text-slate-500 font-normal">$</span></div>
+    </div>
+  )
+}
 
 export default function EVFeedPage() {
   const [minEV, setMinEV] = useState(0)
   const [sport, setSport] = useState('nba')
+  const [contrarian, setContrarian] = useState(false)
   const qc = useQueryClient()
   const { addItem } = useBetSlipStore()
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['ev-feed', { minEV, sport }],
     queryFn: () => evApi.getFeed({ minEV, sport }),
-    refetchInterval: 30_000, // auto-refresh every 30s to pick up new scan results
+    refetchInterval: 30_000,
   })
 
   const scanMutation = useMutation({
@@ -34,7 +51,14 @@ export default function EVFeedPage() {
     onError: () => toast.error('Scan failed'),
   })
 
-  const evItems: any[] = data?.data ?? []
+  let evItems: any[] = data?.data ?? []
+
+  // Contrarian filter: public ≤40% bets on this outcome (fading public)
+  if (contrarian) {
+    evItems = evItems.filter(
+      (item: any) => item.publicSplit && item.publicSplit.pctBets <= 40,
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -43,7 +67,7 @@ export default function EVFeedPage() {
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
             <TrendingUp size={20} className="text-green-400" /> EV Feed
           </h1>
-          <p className="text-slate-400 text-sm">Expected value betting opportunities</p>
+          <p className="text-slate-400 text-sm">Expected value betting opportunities with public money flow</p>
         </div>
         <button onClick={() => scanMutation.mutate()} disabled={scanMutation.isPending} className="btn-primary flex items-center gap-2">
           <RefreshCw size={15} className={scanMutation.isPending ? 'animate-spin' : ''} />
@@ -52,7 +76,7 @@ export default function EVFeedPage() {
       </div>
 
       {/* Filters */}
-      <div className="card flex items-center gap-4">
+      <div className="card flex flex-wrap items-center gap-4">
         <Filter size={15} className="text-slate-400" />
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-400">Min EV:</span>
@@ -71,7 +95,25 @@ export default function EVFeedPage() {
             <option value="nfl">NFL</option>
           </select>
         </div>
+        {/* Contrarian toggle */}
+        <button
+          onClick={() => setContrarian(v => !v)}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            contrarian
+              ? 'bg-green-900/40 border-green-600/50 text-green-300'
+              : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'
+          }`}
+        >
+          <Users size={12} />
+          Fade Public ({'\u2264'}40% bets)
+        </button>
         <span className="text-sm text-slate-500 ml-auto">{evItems.length} opportunities</span>
+      </div>
+
+      {/* Public % legend */}
+      <div className="flex items-center gap-4 text-xs text-slate-500 px-1">
+        <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-green-500" />Public ≤40% = Contrarian (sharp)</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-red-500" />Public ≥60% = Heavy public side</span>
       </div>
 
       {/* EV Table */}
@@ -85,6 +127,7 @@ export default function EVFeedPage() {
               <th className="text-right py-3 px-4">Odds</th>
               <th className="text-right py-3 px-4">True Prob</th>
               <th className="text-right py-3 px-4">EV</th>
+              <th className="text-right py-3 px-4">Public %</th>
               <th className="text-right py-3 px-4">Kelly</th>
               <th className="py-3 px-4"></th>
             </tr>
@@ -93,26 +136,46 @@ export default function EVFeedPage() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="border-b border-slate-800">
-                  {Array.from({ length: 7 }).map((_, j) => (
+                  {Array.from({ length: 8 }).map((_, j) => (
                     <td key={j} className="py-3 px-4"><div className="h-4 bg-slate-800 rounded animate-pulse" /></td>
                   ))}
                 </tr>
               ))
             ) : isError ? (
-              <tr><td colSpan={8} className="py-12 text-center text-slate-500">Failed to load EV feed — check backend connection</td></tr>
+              <tr><td colSpan={9} className="py-12 text-center text-slate-500">Failed to load EV feed — check backend connection</td></tr>
             ) : evItems.length === 0 ? (
-              <tr><td colSpan={8} className="py-12 text-center text-slate-500">No positive EV opportunities found — click "Scan Markets" to update</td></tr>
+              <tr>
+                <td colSpan={9} className="py-12 text-center text-slate-500">
+                  {contrarian
+                    ? 'No contrarian opportunities found (no markets with public ≤40% + positive EV)'
+                    : 'No positive EV opportunities found — click "Scan Markets" to update'}
+                </td>
+              </tr>
             ) : evItems.map((item: any) => (
               <tr key={item.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
                 <td className="py-3 px-4">
                   <p className="font-medium text-white">{item.market?.event?.homeTeam?.abbreviation ?? 'HM'} vs {item.market?.event?.awayTeam?.abbreviation ?? 'AW'}</p>
-                  <p className="text-xs text-slate-500">{item.market?.event?.startTime ? new Date(item.market.event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</p>
+                  <p className="text-xs text-slate-500">
+                    {item.market?.event?.startTime
+                      ? new Date(item.market.event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : ''}
+                  </p>
                 </td>
                 <td className="py-3 px-4 text-slate-400">{item.market?.marketType ?? 'ML'}</td>
                 <td className="py-3 px-4 text-white font-medium">{item.outcome}</td>
                 <td className="py-3 px-4 text-right font-mono">{item.bookOdds > 0 ? '+' : ''}{item.bookOdds}</td>
                 <td className="py-3 px-4 text-right text-slate-300">{((item.trueProb ?? 0.5) * 100).toFixed(1)}%</td>
                 <td className="py-3 px-4 text-right"><EVBadge evPct={item.evPct ?? 0.05} /></td>
+                <td className="py-3 px-4 text-right">
+                  {item.publicSplit ? (
+                    <PublicBadge
+                      pctBets={item.publicSplit.pctBets}
+                      pctMoney={item.publicSplit.pctMoney}
+                    />
+                  ) : (
+                    <span className="text-slate-600 text-xs">—</span>
+                  )}
+                </td>
                 <td className="py-3 px-4 text-right text-slate-400">{((item.kellyFraction ?? 0.02) * 100).toFixed(1)}%</td>
                 <td className="py-3 px-4">
                   <button

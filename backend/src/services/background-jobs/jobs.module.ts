@@ -9,9 +9,10 @@ import { OddsApiModule } from '../odds-api/odds-api.module';
 import { NbaDataModule } from '../nba-data/nba-data.module';
 import { BallDontLieModule } from '../balldontlie/balldontlie.module';
 import { DataIngestionModule } from '../../modules/data-ingestion/data-ingestion.module';
+import { NotificationsModule } from '../../modules/notifications/notifications.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), EVModule, ArbitrageModule, PrismaModule, OddsApiModule, NbaDataModule, BallDontLieModule, DataIngestionModule],
+  imports: [ScheduleModule.forRoot(), EVModule, ArbitrageModule, PrismaModule, OddsApiModule, NbaDataModule, BallDontLieModule, DataIngestionModule, NotificationsModule],
   controllers: [JobsController],
   providers: [JobsService],
 })

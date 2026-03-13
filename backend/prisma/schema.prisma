@@ -28,6 +28,7 @@ model User {
   abTests           ABTest[]
   savedFilters      SavedFilter[]
   alerts            Alert[]
+  notifications     Notification[]
   betSlips          BetSlip[]
   modelPredictions  ModelPrediction[]
 
@@ -220,6 +221,7 @@ model Market {
   evMetrics    EVMetrics[]
   arbOpps      ArbitrageOpportunity[]
   publicBettingSplits PublicBettingSplit[]
+  expertPicks  ExpertPick[]
 
   @@index([eventId])
   @@index([sportId])
@@ -587,7 +589,8 @@ model Alert {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  user         User        @relation(fields: [userId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  notifications Notification[]
 
   @@index([userId])
   @@map("alerts")
@@ -598,7 +601,28 @@ enum AlertType {
   ARBITRAGE
   LINE_MOVEMENT
   INJURY
+  CONTRARIAN
   CUSTOM
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  alertId   String?
+  type      String
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  alert     Alert?   @relation(fields: [alertId], references: [id])
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
 }
 
 model BetSlip {
@@ -730,4 +754,28 @@ model PublicBettingSplit {
   @@index([marketId])
   @@index([snappedAt])
   @@map("public_betting_splits")
+}
+
+// ============================================================
+// EXPERT PICKS
+// ============================================================
+model ExpertPick {
+  id          String    @id @default(uuid())
+  expertName  String
+  source      String    @default("manual")
+  marketId    String
+  outcome     String
+  odds        Int?
+  confidence  Int       @default(3)  // 1–5 stars
+  reasoning   String?
+  result      String?   // "WIN" | "LOSS" | "PUSH" | null = pending
+  pickedAt    DateTime  @default(now())
+  resolvedAt  DateTime?
+
+  market      Market    @relation(fields: [marketId], references: [id])
+
+  @@index([marketId])
+  @@index([expertName])
+  @@index([pickedAt])
+  @@map("expert_picks")
 }

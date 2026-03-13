@@ -147,6 +147,11 @@ export class AnalyticsController {
     return this.performanceService.getLeaderboard(safeLimit);
   }
 
+  @Get('performance/dashboard')
+  getPerformanceDashboard(@Query('days') days?: string) {
+    return this.performanceService.getDashboard(Number(days ?? 90));
+  }
+
   // ============================================================
   // GENETIC ALGORITHM OPTIMIZATION
   // ============================================================
