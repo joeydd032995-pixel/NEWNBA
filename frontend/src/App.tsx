@@ -21,8 +21,7 @@ import ParlayBuilderPage from './pages/ParlayBuilderPage'
 import BankrollPage from './pages/BankrollPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore()
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  // Auth bypass: allow access without login while backend is unavailable
   return <Layout>{children}</Layout>
 }
 
@@ -35,9 +34,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { loadProfile } = useAuthStore()
 
-  useEffect(() => {
-    loadProfile()
-  }, [loadProfile])
+  // Skip profile load — backend is unavailable
+  // useEffect(() => {
+  //   loadProfile()
+  // }, [loadProfile])
 
   return (
     <BrowserRouter>
