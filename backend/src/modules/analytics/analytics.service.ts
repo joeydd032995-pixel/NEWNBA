@@ -214,7 +214,8 @@ export class AnalyticsService {
 
   /**
    * Offensive Four Factors:
-   * 0.40×eFG% + 0.25×TOV% + 0.20×ORB% + 0.15×FTR
+   * 0.40×eFG% + 0.25×(1-TOV%) + 0.20×ORB% + 0.15×FTR
+   * TOV% is inverted because lower turnovers are better for offense.
    */
   calcFourFactorsOffense(efgPct: number, tovPct: number, orbPct: number, ftr: number): number {
     return 0.40 * efgPct + 0.25 * (1 - tovPct) + 0.20 * orbPct + 0.15 * ftr;

@@ -9,6 +9,7 @@ responses for 5 minutes to keep calls minimal when the NestJS backend polls repe
 
 import time
 import logging
+import requests as _requests
 from datetime import datetime, timedelta
 from typing import Optional, Any
 
@@ -330,3 +331,75 @@ def get_player_info(nba_id: int):
     except Exception as e:
         logger.error(f"Error fetching player info for {nba_id}: {e}")
         raise HTTPException(status_code=503, detail=f"nba_api error: {str(e)}")
+
+
+# ── Injuries via ESPN unofficial API ──────────────────────────────────────────
+@app.get("/injuries")
+def get_injuries():
+    """Fetch NBA injury reports from ESPN unofficial API."""
+    try:
+        resp = _requests.get(
+            "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/injuries",
+            timeout=10,
+            headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0"},
+        )
+        resp.raise_for_status()
+        raw = resp.json()
+    except Exception as e:
+        return {"injuries": [], "error": str(e)}
+
+    injuries = []
+    for team_block in raw.get("injuries", []):
+        team_abbr = team_block.get("team", {}).get("abbreviation", "")
+        for item in team_block.get("injuries", []):
+            athlete = item.get("athlete", {})
+            details = item.get("details") or {}
+            injuries.append({
+                "player_name": athlete.get("displayName", ""),
+                "espn_id": str(athlete.get("id", "")),
+                "team_abbr": team_abbr,
+                "status": item.get("status", "Questionable"),
+                "description": details.get("detail") or item.get("shortComment", ""),
+                "return_eta": details.get("returnDate", ""),
+                "source": "espn",
+                "reported_at": details.get("returnDate") or None,
+            })
+    return {"injuries": injuries}
+
+
+# ── News via ESPN unofficial API ───────────────────────────────────────────────
+@app.get("/news")
+def get_news():
+    """Fetch NBA news from ESPN unofficial API."""
+    try:
+        resp = _requests.get(
+            "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/news",
+            timeout=10,
+            params={"limit": 50},
+            headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0"},
+        )
+        resp.raise_for_status()
+        raw = resp.json()
+    except Exception as e:
+        return {"items": [], "error": str(e)}
+
+    items = []
+    for article in raw.get("articles", []):
+        player_name = None
+        team_abbr = None
+        for category in article.get("categories", []):
+            if category.get("type") == "athlete":
+                player_name = category.get("athlete", {}).get("displayName")
+            if category.get("type") == "team":
+                team_abbr = category.get("team", {}).get("abbreviation")
+        items.append({
+            "id": str(article.get("id", "")),
+            "headline": article.get("headline", ""),
+            "summary": article.get("description", ""),
+            "url": article.get("links", {}).get("web", {}).get("href", ""),
+            "source": "espn",
+            "player_name": player_name,
+            "team_abbr": team_abbr,
+            "published_at": article.get("published", ""),
+        })
+    return {"items": items}

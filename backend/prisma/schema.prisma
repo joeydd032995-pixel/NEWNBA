@@ -28,6 +28,7 @@ model User {
   abTests           ABTest[]
   savedFilters      SavedFilter[]
   alerts            Alert[]
+  notifications     Notification[]
   betSlips          BetSlip[]
   modelPredictions  ModelPrediction[]
 
@@ -74,6 +75,7 @@ model Team {
   players      Player[]
   homeEvents   Event[]  @relation("HomeTeam")
   awayEvents   Event[]  @relation("AwayTeam")
+  newsItems    NewsItem[]
 
   @@unique([sportId, abbreviation])
   @@index([sportId])
@@ -97,6 +99,8 @@ model Player {
   team         Team?    @relation(fields: [teamId], references: [id])
   statLines    StatLine[]
   propMarkets  Market[]
+  injuryReports InjuryReport[]
+  newsItems    NewsItem[]
 
   @@index([teamId])
   @@index([bdlId])
@@ -216,6 +220,8 @@ model Market {
   marketOdds   MarketOdds[]
   evMetrics    EVMetrics[]
   arbOpps      ArbitrageOpportunity[]
+  publicBettingSplits PublicBettingSplit[]
+  expertPicks  ExpertPick[]
 
   @@index([eventId])
   @@index([sportId])
@@ -261,6 +267,7 @@ model MarketOdds {
   market      Market   @relation(fields: [marketId], references: [id])
   book        Book     @relation(fields: [bookId], references: [id])
   oddsHistory OddsHistory[]
+  oddsSnapshots OddsSnapshot[]
 
   @@index([marketId])
   @@index([bookId])
@@ -582,7 +589,8 @@ model Alert {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  user         User        @relation(fields: [userId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  notifications Notification[]
 
   @@index([userId])
   @@map("alerts")
@@ -593,7 +601,28 @@ enum AlertType {
   ARBITRAGE
   LINE_MOVEMENT
   INJURY
+  CONTRARIAN
   CUSTOM
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  alertId   String?
+  type      String
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  alert     Alert?   @relation(fields: [alertId], references: [id])
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
 }
 
 model BetSlip {
@@ -637,4 +666,116 @@ model BetSlipItem {
 
   @@index([betSlipId])
   @@map("bet_slip_items")
+}
+
+// ============================================================
+// DATA INGESTION — Phase 1
+// ============================================================
+
+model OddsSnapshot {
+  id           String     @id @default(uuid())
+  marketOddsId String
+  odds         Float
+  line         Float?
+  bookSlug     String
+  outcome      String
+  snappedAt    DateTime   @default(now())
+
+  marketOdds   MarketOdds @relation(fields: [marketOddsId], references: [id])
+
+  @@unique([marketOddsId, snappedAt])
+  @@index([marketOddsId])
+  @@index([snappedAt])
+  @@map("odds_snapshots")
+}
+
+enum InjuryStatus {
+  OUT
+  DOUBTFUL
+  QUESTIONABLE
+  PROBABLE
+  GTD
+  ACTIVE
+}
+
+model InjuryReport {
+  id           String       @id @default(uuid())
+  playerId     String
+  status       InjuryStatus
+  description  String?
+  returnEta    String?
+  source       String?      @default("espn")
+  reportedAt   DateTime
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  player       Player       @relation(fields: [playerId], references: [id])
+
+  @@unique([playerId, reportedAt])
+  @@index([playerId])
+  @@index([status])
+  @@index([reportedAt])
+  @@map("injury_reports")
+}
+
+model NewsItem {
+  id          String   @id @default(uuid())
+  externalId  String   @unique
+  headline    String
+  summary     String?
+  url         String?
+  source      String?  @default("espn")
+  playerId    String?
+  teamId      String?
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+
+  player      Player?  @relation(fields: [playerId], references: [id])
+  team        Team?    @relation(fields: [teamId], references: [id])
+
+  @@index([playerId])
+  @@index([teamId])
+  @@index([publishedAt])
+  @@map("news_items")
+}
+
+model PublicBettingSplit {
+  id        String   @id @default(uuid())
+  marketId  String
+  outcome   String
+  pctBets   Float    @default(0)
+  pctMoney  Float    @default(0)
+  source    String?  @default("actionnetwork")
+  snappedAt DateTime @default(now())
+
+  market    Market   @relation(fields: [marketId], references: [id])
+
+  @@unique([marketId, outcome, snappedAt])
+  @@index([marketId])
+  @@index([snappedAt])
+  @@map("public_betting_splits")
+}
+
+// ============================================================
+// EXPERT PICKS
+// ============================================================
+model ExpertPick {
+  id          String    @id @default(uuid())
+  expertName  String
+  source      String    @default("manual")
+  marketId    String
+  outcome     String
+  odds        Int?
+  confidence  Int       @default(3)  // 1–5 stars
+  reasoning   String?
+  result      String?   // "WIN" | "LOSS" | "PUSH" | null = pending
+  pickedAt    DateTime  @default(now())
+  resolvedAt  DateTime?
+
+  market      Market    @relation(fields: [marketId], references: [id])
+
+  @@index([marketId])
+  @@index([expertName])
+  @@index([pickedAt])
+  @@map("expert_picks")
 }

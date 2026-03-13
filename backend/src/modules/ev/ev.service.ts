@@ -115,8 +115,22 @@ export class EVService {
       take: filters.limit ?? 50,
     });
 
-    await this.cache.set(cacheKey, evMetrics, 30); // 30s TTL
-    return evMetrics;
+    // Enrich each metric with latest public betting split for that market/outcome
+    const enriched = await Promise.all(
+      evMetrics.map(async (m) => {
+        const publicSplit = await this.prisma.publicBettingSplit
+          .findFirst({
+            where: { marketId: m.marketId, outcome: m.outcome },
+            orderBy: { snappedAt: 'desc' },
+            select: { pctBets: true, pctMoney: true },
+          })
+          .catch(() => null);
+        return { ...m, publicSplit };
+      }),
+    );
+
+    await this.cache.set(cacheKey, enriched, 30); // 30s TTL
+    return enriched;
   }
 
   async scanAllMarkets() {

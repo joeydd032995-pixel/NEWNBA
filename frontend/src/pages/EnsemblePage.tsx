@@ -60,11 +60,15 @@ function CreateEnsembleModal({ onClose, models }: any) {
   const createMutation = useMutation({
     mutationFn: (data: any) => ensembleApi.create(data),
     onSuccess: () => { toast.success('Ensemble created!'); qc.invalidateQueries({ queryKey: ['ensembles'] }); onClose() },
+    onError: () => toast.error('Failed to create ensemble'),
   })
 
   const addComponent = () => {
     if (models?.length) {
-      setComponents(c => [...c, { modelId: models[0].id, weight: 1 / (c.length + 1) }])
+      setComponents(c => {
+        const n = c.length + 1
+        return [...c.map(item => ({ ...item, weight: 1 / n })), { modelId: models[0].id, weight: 1 / n }]
+      })
     }
   }
 
@@ -146,11 +150,13 @@ export default function EnsemblePage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => ensembleApi.remove(id),
     onSuccess: () => { toast.success('Ensemble deleted'); qc.invalidateQueries({ queryKey: ['ensembles'] }) },
+    onError: () => toast.error('Failed to delete ensemble'),
   })
 
   const optimizeMutation = useMutation({
     mutationFn: (id: string) => ensembleApi.optimizeWeights(id),
     onSuccess: () => { toast.success('Weights optimized!'); qc.invalidateQueries({ queryKey: ['ensembles'] }) },
+    onError: () => toast.error('Failed to optimize weights'),
   })
 
   const ensembleItems = ensembles?.data ?? []

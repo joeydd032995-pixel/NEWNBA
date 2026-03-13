@@ -12,6 +12,12 @@ import { JobsModule } from './services/background-jobs/jobs.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { BetslipModule } from './modules/betslip/betslip.module';
 import { PlayerPropsModule } from './modules/player-props/player-props.module';
+import { DataIngestionModule } from './modules/data-ingestion/data-ingestion.module';
+import { ExpertPicksModule } from './modules/expert-picks/expert-picks.module';
+import { LiveModule } from './modules/live/live.module';
+import { ParlayModule } from './modules/parlay/parlay.module';
+import { BankrollModule } from './modules/bankroll/bankroll.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -38,6 +44,12 @@ import { PlayerPropsModule } from './modules/player-props/player-props.module';
     AlertsModule,
     BetslipModule,
     PlayerPropsModule,
+    DataIngestionModule,
+    ExpertPicksModule,
+    LiveModule,
+    ParlayModule,
+    BankrollModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

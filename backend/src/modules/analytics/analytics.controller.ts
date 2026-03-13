@@ -127,8 +127,8 @@ export class AnalyticsController {
   }
 
   @Put('performance/resolve/:predictionId')
-  resolvePrediction(@Param('predictionId') id: string, @Body() body: { actualResult: boolean }) {
-    return this.performanceService.resolvePrediction(id, body.actualResult);
+  resolvePrediction(@Param('predictionId') id: string, @Request() req, @Body() body: { actualResult: boolean }) {
+    return this.performanceService.resolvePrediction(id, body.actualResult, req.user.id);
   }
 
   @Get('performance/:modelId')
@@ -143,7 +143,13 @@ export class AnalyticsController {
 
   @Get('leaderboard')
   getLeaderboard(@Query('limit') limit?: number) {
-    return this.performanceService.getLeaderboard(limit);
+    const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
+    return this.performanceService.getLeaderboard(safeLimit);
+  }
+
+  @Get('performance/dashboard')
+  getPerformanceDashboard(@Query('days') days?: string) {
+    return this.performanceService.getDashboard(Number(days ?? 90));
   }
 
   // ============================================================
@@ -174,13 +180,13 @@ export class AnalyticsController {
   }
 
   @Get('optimization/:id')
-  getOptimizationRun(@Param('id') id: string) {
-    return this.optimizationService.getOptimizationRun(id);
+  getOptimizationRun(@Param('id') id: string, @Request() req) {
+    return this.optimizationService.getOptimizationRun(id, req.user.id);
   }
 
   @Post('optimization/:id/start')
   async startOptimization(@Param('id') id: string, @Request() req) {
-    const run = await this.optimizationService.getOptimizationRun(id);
+    const run = await this.optimizationService.getOptimizationRun(id, req.user.id);
     if (!run) throw new NotFoundException(`Optimization run ${id} not found`);
     this.optimizationService.runGeneticAlgorithm(id, run.config as unknown as GAConfig).catch((err) =>
       this.logger.error(`GA optimization failed for run ${id}: ${err.message}`),
@@ -213,8 +219,8 @@ export class AnalyticsController {
   }
 
   @Get('ensemble/:id')
-  getEnsemble(@Param('id') id: string) {
-    return this.ensembleService.findOne(id);
+  getEnsemble(@Param('id') id: string, @Request() req) {
+    return this.ensembleService.findOne(id, req.user.id);
   }
 
   @Put('ensemble/:id')
@@ -228,8 +234,8 @@ export class AnalyticsController {
   }
 
   @Post('ensemble/:id/optimize-weights')
-  optimizeEnsembleWeights(@Param('id') id: string) {
-    return this.ensembleService.optimizeWeights(id);
+  optimizeEnsembleWeights(@Param('id') id: string, @Request() req) {
+    return this.ensembleService.optimizeWeights(id, req.user.id);
   }
 
   // ============================================================

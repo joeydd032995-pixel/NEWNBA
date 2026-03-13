@@ -56,8 +56,12 @@ export default function FormulasPage() {
   const [evResult, setEvResult] = useState<any>(null)
 
   const calcEV = async () => {
-    const res = await analyticsApi.calcEV(evCalc)
-    setEvResult(res.data)
+    try {
+      const res = await analyticsApi.calcEV(evCalc)
+      setEvResult(res.data)
+    } catch {
+      toast.error('EV calculation failed')
+    }
   }
 
   return (
