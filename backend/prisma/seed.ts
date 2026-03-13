@@ -3,50 +3,66 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+function elapsed(start: number): string {
+  return `${((Date.now() - start) / 1000).toFixed(2)}s`;
+}
+
+async function seedStep<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const start = Date.now();
+  try {
+    const result = await fn();
+    console.log(`✅ ${label} (${elapsed(start)})`);
+    return result;
+  } catch (err) {
+    console.error(`❌ ${label} FAILED after ${elapsed(start)}:`, err instanceof Error ? err.message : err);
+    throw err;
+  }
+}
+
 async function main() {
-  console.log('🌱 Seeding database...');
+  const seedStart = Date.now();
+  console.log(`🌱 Seeding database... (${new Date().toISOString()})`);
 
   // Sports
-  const sports = await Promise.all([
+  const sports = await seedStep('Sports seeded', () => Promise.all([
     prisma.sport.upsert({ where: { slug: 'nba' }, update: {}, create: { name: 'NBA', slug: 'nba' } }),
     prisma.sport.upsert({ where: { slug: 'nfl' }, update: {}, create: { name: 'NFL', slug: 'nfl' } }),
     prisma.sport.upsert({ where: { slug: 'mlb' }, update: {}, create: { name: 'MLB', slug: 'mlb' } }),
     prisma.sport.upsert({ where: { slug: 'nhl' }, update: {}, create: { name: 'NHL', slug: 'nhl' } }),
     prisma.sport.upsert({ where: { slug: 'ncaaf' }, update: {}, create: { name: 'NCAAF', slug: 'ncaaf' } }),
     prisma.sport.upsert({ where: { slug: 'ncaab' }, update: {}, create: { name: 'NCAAB', slug: 'ncaab' } }),
-  ]);
+  ]));
   const nba = sports[0];
-  console.log('✅ Sports seeded');
 
   // Sportsbooks
-  const books = await Promise.all([
+  const books = await seedStep('Books seeded', () => Promise.all([
     prisma.book.upsert({ where: { slug: 'draftkings' }, update: {}, create: { name: 'DraftKings', slug: 'draftkings' } }),
     prisma.book.upsert({ where: { slug: 'fanduel' }, update: {}, create: { name: 'FanDuel', slug: 'fanduel' } }),
     prisma.book.upsert({ where: { slug: 'betmgm' }, update: {}, create: { name: 'BetMGM', slug: 'betmgm' } }),
     prisma.book.upsert({ where: { slug: 'caesars' }, update: {}, create: { name: 'Caesars', slug: 'caesars' } }),
-  ]);
-  console.log('✅ Books seeded');
+  ]));
 
   // Test users — create early so login works even if later seed steps fail
-  const hash = await bcrypt.hash('Password123!', 10);
-  await Promise.all([
-    prisma.user.upsert({
-      where: { email: 'free@test.com' },
-      update: {},
-      create: { email: 'free@test.com', password: hash, firstName: 'Free', lastName: 'User', planType: PlanType.FREE },
-    }),
-    prisma.user.upsert({
-      where: { email: 'pro@test.com' },
-      update: {},
-      create: { email: 'pro@test.com', password: hash, firstName: 'Pro', lastName: 'User', planType: PlanType.PRO },
-    }),
-    prisma.user.upsert({
-      where: { email: 'premium@test.com' },
-      update: {},
-      create: { email: 'premium@test.com', password: hash, firstName: 'Premium', lastName: 'User', planType: PlanType.PREMIUM },
-    }),
-  ]);
-  console.log('✅ Users seeded');
+  await seedStep('Users seeded', async () => {
+    const hash = await bcrypt.hash('Password123!', 10);
+    return Promise.all([
+      prisma.user.upsert({
+        where: { email: 'free@test.com' },
+        update: {},
+        create: { email: 'free@test.com', password: hash, firstName: 'Free', lastName: 'User', planType: PlanType.FREE },
+      }),
+      prisma.user.upsert({
+        where: { email: 'pro@test.com' },
+        update: {},
+        create: { email: 'pro@test.com', password: hash, firstName: 'Pro', lastName: 'User', planType: PlanType.PRO },
+      }),
+      prisma.user.upsert({
+        where: { email: 'premium@test.com' },
+        update: {},
+        create: { email: 'premium@test.com', password: hash, firstName: 'Premium', lastName: 'User', planType: PlanType.PREMIUM },
+      }),
+    ]);
+  });
 
   // NBA Teams
   const teamsData = [
@@ -83,15 +99,16 @@ async function main() {
   ];
 
   const teams: Record<string, any> = {};
-  for (const t of teamsData) {
-    const team = await prisma.team.upsert({
-      where: { sportId_abbreviation: { sportId: nba.id, abbreviation: t.abbreviation } },
-      update: {},
-      create: { ...t, sportId: nba.id },
-    });
-    teams[t.abbreviation] = team;
-  }
-  console.log('✅ Teams seeded');
+  await seedStep(`Teams seeded (${teamsData.length} teams)`, async () => {
+    for (const t of teamsData) {
+      const team = await prisma.team.upsert({
+        where: { sportId_abbreviation: { sportId: nba.id, abbreviation: t.abbreviation } },
+        update: {},
+        create: { ...t, sportId: nba.id },
+      });
+      teams[t.abbreviation] = team;
+    }
+  });
 
   // Players
   const playersData = [
@@ -117,15 +134,16 @@ async function main() {
     { teamAbbr: 'CLE', name: 'Donovan Mitchell', position: 'SG', jerseyNumber: '45', age: 28 },
   ];
 
-  for (const p of playersData) {
-    const team = teams[p.teamAbbr];
-    if (team) {
-      await prisma.player.create({
-        data: { teamId: team.id, name: p.name, position: p.position, jerseyNumber: p.jerseyNumber, age: p.age },
-      }).catch(() => null); // skip duplicates on re-seed
+  await seedStep(`Players seeded (${playersData.length} players)`, async () => {
+    for (const p of playersData) {
+      const team = teams[p.teamAbbr];
+      if (team) {
+        await prisma.player.create({
+          data: { teamId: team.id, name: p.name, position: p.position, jerseyNumber: p.jerseyNumber, age: p.age },
+        }).catch(() => null); // skip duplicates on re-seed
+      }
     }
-  }
-  console.log('✅ Players seeded');
+  });
 
   // Events
   const now = new Date();
@@ -143,60 +161,61 @@ async function main() {
     { homeAbbr: 'SAC', awayAbbr: 'POR', startTime: dayAfter, season: '2024-25' },
   ];
 
-  for (const e of eventsData) {
-    const homeTeam = teams[e.homeAbbr];
-    const awayTeam = teams[e.awayAbbr];
-    if (homeTeam && awayTeam) {
-      const event = await prisma.event.create({
-        data: {
-          sportId: nba.id,
-          homeTeamId: homeTeam.id,
-          awayTeamId: awayTeam.id,
-          startTime: e.startTime,
-          season: e.season,
-          status: 'SCHEDULED',
-        },
-      });
-
-      // Create markets for each event
-      const market = await prisma.market.create({
-        data: { eventId: event.id, sportId: nba.id, marketType: 'MONEYLINE' },
-      });
-
-      const spreadMarket = await prisma.market.create({
-        data: { eventId: event.id, sportId: nba.id, marketType: 'SPREAD' },
-      });
-
-      const totalMarket = await prisma.market.create({
-        data: { eventId: event.id, sportId: nba.id, marketType: 'TOTAL' },
-      });
-
-      // Create odds for each book
-      const oddsVariations = [
-        { odds: -110 + Math.random() * 20 - 10, line: -3.5 + Math.random() * 2 - 1 },
-        { odds: -115 + Math.random() * 15 - 7, line: -4.0 + Math.random() * 2 - 1 },
-        { odds: -105 + Math.random() * 20 - 10, line: -3.0 + Math.random() * 2 - 1 },
-        { odds: -112 + Math.random() * 18 - 9, line: -3.5 + Math.random() * 2 - 1 },
-      ];
-
-      for (let i = 0; i < books.length; i++) {
-        const book = books[i];
-        const variation = oddsVariations[i];
-
-        await prisma.marketOdds.createMany({
-          data: [
-            { marketId: market.id, bookId: book.id, outcome: 'home', odds: -150 + Math.random() * 60 - 30 },
-            { marketId: market.id, bookId: book.id, outcome: 'away', odds: 130 + Math.random() * 40 - 20 },
-            { marketId: spreadMarket.id, bookId: book.id, outcome: 'home', odds: -110, line: variation.line },
-            { marketId: spreadMarket.id, bookId: book.id, outcome: 'away', odds: -110, line: -variation.line },
-            { marketId: totalMarket.id, bookId: book.id, outcome: 'over', odds: -110, line: 220 + Math.random() * 20 - 10 },
-            { marketId: totalMarket.id, bookId: book.id, outcome: 'under', odds: -110, line: 220 + Math.random() * 20 - 10 },
-          ],
+  await seedStep(`Events & markets seeded (${eventsData.length} events)`, async () => {
+    for (const e of eventsData) {
+      const homeTeam = teams[e.homeAbbr];
+      const awayTeam = teams[e.awayAbbr];
+      if (homeTeam && awayTeam) {
+        const event = await prisma.event.create({
+          data: {
+            sportId: nba.id,
+            homeTeamId: homeTeam.id,
+            awayTeamId: awayTeam.id,
+            startTime: e.startTime,
+            season: e.season,
+            status: 'SCHEDULED',
+          },
         });
+
+        // Create markets for each event
+        const market = await prisma.market.create({
+          data: { eventId: event.id, sportId: nba.id, marketType: 'MONEYLINE' },
+        });
+
+        const spreadMarket = await prisma.market.create({
+          data: { eventId: event.id, sportId: nba.id, marketType: 'SPREAD' },
+        });
+
+        const totalMarket = await prisma.market.create({
+          data: { eventId: event.id, sportId: nba.id, marketType: 'TOTAL' },
+        });
+
+        // Create odds for each book
+        const oddsVariations = [
+          { odds: -110 + Math.random() * 20 - 10, line: -3.5 + Math.random() * 2 - 1 },
+          { odds: -115 + Math.random() * 15 - 7, line: -4.0 + Math.random() * 2 - 1 },
+          { odds: -105 + Math.random() * 20 - 10, line: -3.0 + Math.random() * 2 - 1 },
+          { odds: -112 + Math.random() * 18 - 9, line: -3.5 + Math.random() * 2 - 1 },
+        ];
+
+        for (let i = 0; i < books.length; i++) {
+          const book = books[i];
+          const variation = oddsVariations[i];
+
+          await prisma.marketOdds.createMany({
+            data: [
+              { marketId: market.id, bookId: book.id, outcome: 'home', odds: -150 + Math.random() * 60 - 30 },
+              { marketId: market.id, bookId: book.id, outcome: 'away', odds: 130 + Math.random() * 40 - 20 },
+              { marketId: spreadMarket.id, bookId: book.id, outcome: 'home', odds: -110, line: variation.line },
+              { marketId: spreadMarket.id, bookId: book.id, outcome: 'away', odds: -110, line: -variation.line },
+              { marketId: totalMarket.id, bookId: book.id, outcome: 'over', odds: -110, line: 220 + Math.random() * 20 - 10 },
+              { marketId: totalMarket.id, bookId: book.id, outcome: 'under', odds: -110, line: 220 + Math.random() * 20 - 10 },
+            ],
+          });
+        }
       }
     }
-  }
-  console.log('✅ Events & markets seeded');
+  });
 
   // ─── Historical events + StatLines ───────────────────────────────────────
   // Player stat profiles: [avg, stddev] per stat
@@ -241,67 +260,69 @@ async function main() {
   // Create 20 historical events (past 60 days)
   const teamList = Object.values(teams);
   const historicalEvents: any[] = [];
-  for (let i = 0; i < 20; i++) {
-    const daysAgo = 3 + i * 3; // every 3 days going back
-    const gameDate = new Date(now.getTime() - daysAgo * 86400000);
-    const homeIdx = i % teamList.length;
-    const awayIdx = (i + 5) % teamList.length;
-    if (homeIdx === awayIdx) continue;
-    const evt = await prisma.event.create({
-      data: {
-        sportId: nba.id,
-        homeTeamId: teamList[homeIdx].id,
-        awayTeamId: teamList[awayIdx].id,
-        startTime: gameDate,
-        season: '2024-25',
-        status: 'FINAL',
-        homeScore: Math.floor(Math.random() * 25 + 100),
-        awayScore: Math.floor(Math.random() * 25 + 100),
-      },
-    });
-    historicalEvents.push(evt);
-  }
-  console.log(`✅ ${historicalEvents.length} historical events seeded`);
+  await seedStep('Historical events seeded', async () => {
+    for (let i = 0; i < 20; i++) {
+      const daysAgo = 3 + i * 3; // every 3 days going back
+      const gameDate = new Date(now.getTime() - daysAgo * 86400000);
+      const homeIdx = i % teamList.length;
+      const awayIdx = (i + 5) % teamList.length;
+      if (homeIdx === awayIdx) continue;
+      const evt = await prisma.event.create({
+        data: {
+          sportId: nba.id,
+          homeTeamId: teamList[homeIdx].id,
+          awayTeamId: teamList[awayIdx].id,
+          startTime: gameDate,
+          season: '2024-25',
+          status: 'FINAL',
+          homeScore: Math.floor(Math.random() * 25 + 100),
+          awayScore: Math.floor(Math.random() * 25 + 100),
+        },
+      });
+      historicalEvents.push(evt);
+    }
+    return historicalEvents;
+  });
 
   // Seed StatLines for each player across historical events
-  for (const player of allPlayers) {
-    const profile = playerProfiles[player.name];
-    if (!profile) continue;
-    // Give each player stats in ~15 of the 20 historical games
-    const gameSubset = historicalEvents.slice(0, 17);
-    for (const evt of gameSubset) {
-      const pts  = gauss(profile.pts[0],  profile.pts[1]);
-      const reb  = gauss(profile.reb[0],  profile.reb[1]);
-      const ast  = gauss(profile.ast[0],  profile.ast[1]);
-      const stl  = gauss(profile.stl[0],  profile.stl[1]);
-      const blk  = gauss(profile.blk[0],  profile.blk[1]);
-      const fg3m = gauss(profile.fg3m[0], profile.fg3m[1]);
-      const min  = gauss(profile.min[0],  profile.min[1]);
-      const fgm  = gauss(profile.fgm[0],  profile.fgm[1]);
-      const fga  = Math.max(fgm + 2, gauss(profile.fga[0], profile.fga[1]));
-      const ftm  = gauss(profile.ftm[0],  profile.ftm[1]);
-      const fta  = Math.max(ftm, gauss(profile.fta[0], profile.fta[1]));
-      await prisma.statLine.create({
-        data: {
-          playerId: player.id,
-          eventId: evt.id,
-          season: '2024-25',
-          gameDate: evt.startTime,
-          points: pts, rebounds: reb, assists: ast, steals: stl, blocks: blk,
-          turnovers: gauss(2, 1), minutes: min,
-          fgm, fga, fgPct: fga > 0 ? fgm / fga : 0,
-          fg3m, fg3a: Math.max(fg3m, gauss(profile.fg3m[0] * 2.5, 1.5)),
-          fg3Pct: fg3m > 0 ? Math.random() * 0.15 + 0.33 : 0,
-          ftm, fta, ftPct: fta > 0 ? ftm / fta : 0,
-          plusMinus: gauss(0, 10), usgPct: gauss(0.25, 0.05),
-          tsPct: fga > 0 ? pts / (2 * (fga + 0.475 * fta)) : 0,
-          efgPct: fga > 0 ? (fgm + 0.5 * fg3m) / fga : 0,
-          bpm: gauss(profile.pts[0] / 10, 2),
-        },
-      }).catch(() => null); // skip dupes on re-seed
+  const profiledPlayers = allPlayers.filter(p => playerProfiles[p.name]);
+  await seedStep(`Historical stat lines seeded (${profiledPlayers.length} players × ${Math.min(17, historicalEvents.length)} games)`, async () => {
+    for (const player of profiledPlayers) {
+      const profile = playerProfiles[player.name];
+      const gameSubset = historicalEvents.slice(0, 17);
+      for (const evt of gameSubset) {
+        const pts  = gauss(profile.pts[0],  profile.pts[1]);
+        const reb  = gauss(profile.reb[0],  profile.reb[1]);
+        const ast  = gauss(profile.ast[0],  profile.ast[1]);
+        const stl  = gauss(profile.stl[0],  profile.stl[1]);
+        const blk  = gauss(profile.blk[0],  profile.blk[1]);
+        const fg3m = gauss(profile.fg3m[0], profile.fg3m[1]);
+        const min  = gauss(profile.min[0],  profile.min[1]);
+        const fgm  = gauss(profile.fgm[0],  profile.fgm[1]);
+        const fga  = Math.max(fgm + 2, gauss(profile.fga[0], profile.fga[1]));
+        const ftm  = gauss(profile.ftm[0],  profile.ftm[1]);
+        const fta  = Math.max(ftm, gauss(profile.fta[0], profile.fta[1]));
+        await prisma.statLine.create({
+          data: {
+            playerId: player.id,
+            eventId: evt.id,
+            season: '2024-25',
+            gameDate: evt.startTime,
+            points: pts, rebounds: reb, assists: ast, steals: stl, blocks: blk,
+            turnovers: gauss(2, 1), minutes: min,
+            fgm, fga, fgPct: fga > 0 ? fgm / fga : 0,
+            fg3m, fg3a: Math.max(fg3m, gauss(profile.fg3m[0] * 2.5, 1.5)),
+            fg3Pct: fg3m > 0 ? Math.random() * 0.15 + 0.33 : 0,
+            ftm, fta, ftPct: fta > 0 ? ftm / fta : 0,
+            plusMinus: gauss(0, 10), usgPct: gauss(0.25, 0.05),
+            tsPct: fga > 0 ? pts / (2 * (fga + 0.475 * fta)) : 0,
+            efgPct: fga > 0 ? (fgm + 0.5 * fg3m) / fga : 0,
+            bpm: gauss(profile.pts[0] / 10, 2),
+          },
+        }).catch(() => null); // skip dupes on re-seed
+      }
     }
-  }
-  console.log('✅ Historical stat lines seeded');
+  });
 
   // ─── Player Prop Markets for upcoming events ──────────────────────────────
   const propConfigs: Array<{ stat: PropStatType; label: string; getLine: (p: string) => number }> = [
@@ -333,51 +354,53 @@ async function main() {
   });
 
   let propCount = 0;
-  for (const upEvt of upcomingEvents) {
-    const eventPlayers = [
-      ...upEvt.homeTeam.players,
-      ...upEvt.awayTeam.players,
-    ].filter(p => playerProfiles[p.name]);
+  await seedStep(`Player prop markets seeded (${upcomingEvents.length} events)`, async () => {
+    for (const upEvt of upcomingEvents) {
+      const eventPlayers = [
+        ...upEvt.homeTeam.players,
+        ...upEvt.awayTeam.players,
+      ].filter(p => playerProfiles[p.name]);
 
-    for (const player of eventPlayers) {
-      // Create all markets for this player in parallel
-      const marketsWithCfg = await Promise.all(
-        propConfigs.map(async (cfg) => {
-          const line = cfg.getLine(player.name);
-          const market = await prisma.market.create({
-            data: {
-              eventId: upEvt.id,
-              sportId: nba.id,
-              marketType: 'PLAYER_PROP',
-              playerId: player.id,
-              propStatType: cfg.stat,
-              description: `${player.name} ${cfg.label} O/U ${line}`,
-            },
-          });
-          return { market, line };
-        })
-      );
+      for (const player of eventPlayers) {
+        // Create all markets for this player in parallel
+        const marketsWithCfg = await Promise.all(
+          propConfigs.map(async (cfg) => {
+            const line = cfg.getLine(player.name);
+            const market = await prisma.market.create({
+              data: {
+                eventId: upEvt.id,
+                sportId: nba.id,
+                marketType: 'PLAYER_PROP',
+                playerId: player.id,
+                propStatType: cfg.stat,
+                description: `${player.name} ${cfg.label} O/U ${line}`,
+              },
+            });
+            return { market, line };
+          })
+        );
 
-      // Batch all odds for this player's markets in one createMany
-      const oddsData: Array<{ marketId: string; bookId: string; outcome: string; odds: number; line: number }> = [];
-      for (const { market, line } of marketsWithCfg) {
-        const baseOver  = -115 + Math.floor(Math.random() * 21) - 10;
-        const baseUnder = -115 + Math.floor(Math.random() * 21) - 10;
-        for (const book of books) {
-          const bookVar = Math.floor(Math.random() * 11) - 5;
-          oddsData.push(
-            { marketId: market.id, bookId: book.id, outcome: 'over',  odds: baseOver  + bookVar, line },
-            { marketId: market.id, bookId: book.id, outcome: 'under', odds: baseUnder + bookVar, line },
-          );
+        // Batch all odds for this player's markets in one createMany
+        const oddsData: Array<{ marketId: string; bookId: string; outcome: string; odds: number; line: number }> = [];
+        for (const { market, line } of marketsWithCfg) {
+          const baseOver  = -115 + Math.floor(Math.random() * 21) - 10;
+          const baseUnder = -115 + Math.floor(Math.random() * 21) - 10;
+          for (const book of books) {
+            const bookVar = Math.floor(Math.random() * 11) - 5;
+            oddsData.push(
+              { marketId: market.id, bookId: book.id, outcome: 'over',  odds: baseOver  + bookVar, line },
+              { marketId: market.id, bookId: book.id, outcome: 'under', odds: baseUnder + bookVar, line },
+            );
+          }
         }
+        await prisma.marketOdds.createMany({ data: oddsData });
+        propCount += marketsWithCfg.length;
       }
-      await prisma.marketOdds.createMany({ data: oddsData });
-      propCount += marketsWithCfg.length;
     }
-  }
-  console.log(`✅ ${propCount} player prop markets seeded`);
+    console.log(`  → ${propCount} prop markets created`);
+  });
 
-  console.log('🎉 Seeding complete!');
+  console.log(`🎉 Seeding complete! Total time: ${elapsed(seedStart)}`);
 }
 
 main()
