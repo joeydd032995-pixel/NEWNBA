@@ -110,7 +110,8 @@ export class PerformanceTrackingService {
       maxDrawdown,
     };
 
-    // Upsert performance record
+    // Upsert performance record: delete existing entry for same model+period, then insert fresh
+    await this.prisma.modelPerformance.deleteMany({ where: { modelId, period } });
     await this.prisma.modelPerformance.create({ data: perf });
 
     return perf;

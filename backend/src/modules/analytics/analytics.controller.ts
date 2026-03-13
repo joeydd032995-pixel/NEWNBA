@@ -143,7 +143,8 @@ export class AnalyticsController {
 
   @Get('leaderboard')
   getLeaderboard(@Query('limit') limit?: number) {
-    return this.performanceService.getLeaderboard(limit);
+    const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
+    return this.performanceService.getLeaderboard(safeLimit);
   }
 
   // ============================================================
