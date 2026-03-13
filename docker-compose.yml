@@ -87,7 +87,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
-    command: sh -c "npx prisma db push --accept-data-loss && npm run db:seed && npm run start:dev"
+    command: sh -c "npx prisma db push --accept-data-loss && npm run db:seed || true && npm run start:dev"
 
   frontend:
     build:
@@ -98,8 +98,6 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-    environment:
-      VITE_API_URL: http://localhost:3000/api
     ports:
       - "5173:5173"
     volumes:
