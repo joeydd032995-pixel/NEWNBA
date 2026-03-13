@@ -263,13 +263,11 @@ export default function ParlayBuilderPage() {
   const sendToBetSlip = () => {
     if (!analysis) return
     addItem({
-      id: `parlay-${Date.now()}`,
       eventId: selectedEvent,
       marketId: '',
       eventName: `${mode === 'sgp' ? 'SGP' : 'Parlay'} — ${legs.length} legs`,
       outcome: legs.map(l => l.label).join(' / '),
       odds: analysis.parlayOddsAmerican,
-      stake: 10,
       ev: analysis.corrEVPct ?? analysis.evPct,
     })
     toast.success('Parlay added to bet slip!')
@@ -532,7 +530,7 @@ export default function ParlayBuilderPage() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-2">
                         <span className="text-slate-400">{(leg.trueProb * 100).toFixed(0)}%</span>
-                        {evBadge(leg.ev?.evPct * 100 ?? 0)}
+                        {evBadge((leg.ev?.evPct ?? 0) * 100)}
                       </div>
                     </div>
                   ))}
