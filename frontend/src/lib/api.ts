@@ -112,6 +112,17 @@ export const playerPropsApi = {
     api.get(`/player-props/players/${playerId}/cheat-sheet`, { params: { statType, line } }),
 }
 
+// Parlay Builder & SGP
+export const parlayApi = {
+  getEventMarkets: (eventId: string) => api.get(`/parlay/event/${eventId}/markets`),
+  suggestLegs: (eventId: string, maxLegs = 5) =>
+    api.get(`/parlay/sgp/suggest/${eventId}`, { params: { maxLegs } }),
+  analyzeSGP: (eventId: string, legs: Array<{ marketId: string; outcome: string }>) =>
+    api.post('/parlay/sgp/analyze', { eventId, legs }),
+  analyzeParlay: (legs: Array<{ marketId: string; outcome: string }>) =>
+    api.post('/parlay/standard', { legs }),
+}
+
 // Live Betting
 export const liveApi = {
   getGames: () => api.get('/live/games'),

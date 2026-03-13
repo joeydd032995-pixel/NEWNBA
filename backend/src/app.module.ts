@@ -15,6 +15,7 @@ import { PlayerPropsModule } from './modules/player-props/player-props.module';
 import { DataIngestionModule } from './modules/data-ingestion/data-ingestion.module';
 import { ExpertPicksModule } from './modules/expert-picks/expert-picks.module';
 import { LiveModule } from './modules/live/live.module';
+import { ParlayModule } from './modules/parlay/parlay.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { LiveModule } from './modules/live/live.module';
     DataIngestionModule,
     ExpertPicksModule,
     LiveModule,
+    ParlayModule,
   ],
 })
 export class AppModule {}
