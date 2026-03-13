@@ -59,6 +59,7 @@ export const analyticsApi = {
   calcTrueShooting: (data: any) => api.post('/analytics/formulas/true-shooting', data),
   calcPythagorean: (data: any) => api.post('/analytics/formulas/pythagorean', data),
   getLeaderboard: () => api.get('/analytics/leaderboard'),
+  getPerformanceDashboard: (days?: number) => api.get('/analytics/performance/dashboard', { params: days ? { days } : undefined }),
   getPerformance: (modelId: string) => api.get(`/analytics/performance/${modelId}`),
   getPerformanceHistory: (modelId: string) => api.get(`/analytics/performance/${modelId}/history`),
 }
