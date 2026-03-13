@@ -20,6 +20,7 @@ import { PrismaModule } from '../prisma/prisma.module';
   exports: [
     DataIngestionService,
     InjuryIngestService,
+    NewsIngestService,
     NormalizationService,
     PublicBettingService,
   ],
