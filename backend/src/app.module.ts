@@ -16,6 +16,7 @@ import { DataIngestionModule } from './modules/data-ingestion/data-ingestion.mod
 import { ExpertPicksModule } from './modules/expert-picks/expert-picks.module';
 import { LiveModule } from './modules/live/live.module';
 import { ParlayModule } from './modules/parlay/parlay.module';
+import { BankrollModule } from './modules/bankroll/bankroll.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { ParlayModule } from './modules/parlay/parlay.module';
     ExpertPicksModule,
     LiveModule,
     ParlayModule,
+    BankrollModule,
   ],
 })
 export class AppModule {}

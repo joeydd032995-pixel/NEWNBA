@@ -140,6 +140,15 @@ export const expertPicksApi = {
     api.patch(`/expert-picks/${id}/result`, { result }),
 }
 
+// Bankroll
+export const bankrollApi = {
+  getPortfolio: (params: { bankroll: number; kellyFraction: number; minEV?: number; sport?: string }) =>
+    api.get('/bankroll/portfolio', { params }),
+  getStats: () => api.get('/bankroll/stats'),
+  calculate: (data: { bankroll: number; odds: number; trueProb: number; fraction: number }) =>
+    api.post('/bankroll/calculate', data),
+}
+
 // A/B Testing
 export const abTestApi = {
   getAll: () => api.get('/analytics/ab-tests'),

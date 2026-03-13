@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   BarChart3, TrendingUp, ArrowLeftRight, Sliders, Activity,
   FlaskConical, GitBranch, TestTube2, Calculator, Bell,
-  ShoppingCart, LogOut, ChevronRight, Menu, X, Dumbbell, UserCheck, Users, Radio, Layers
+  ShoppingCart, LogOut, ChevronRight, Menu, X, Dumbbell, UserCheck, Users, Radio, Layers, Wallet
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuthStore } from '../stores/auth'
@@ -14,6 +14,7 @@ const navItems = [
   { to: '/ev-feed', label: 'EV Feed', icon: TrendingUp },
   { to: '/live', label: 'Live Betting', icon: Radio },
   { to: '/parlay', label: 'Parlay Builder', icon: Layers },
+  { to: '/bankroll', label: 'Bankroll', icon: Wallet },
   { to: '/player-props', label: 'Player Props', icon: UserCheck },
   { to: '/expert-picks', label: 'Expert Picks', icon: Users },
   { to: '/arbitrage', label: 'Arbitrage', icon: ArrowLeftRight },
