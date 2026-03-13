@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
+import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -11,7 +10,6 @@ export class NewsIngestService {
 
   constructor(
     private prisma: PrismaService,
-    private http: HttpService,
     private config: ConfigService,
   ) {
     this.nbaSidecarUrl = this.config.get<string>('NBA_DATA_URL', 'http://nba-data:8000');
@@ -20,12 +18,8 @@ export class NewsIngestService {
   async syncNews(): Promise<number> {
     let inserted = 0;
     try {
-      const resp = await firstValueFrom(
-        this.http.get<{ items: any[] }>(`${this.nbaSidecarUrl}/news`, {
-          timeout: 15000,
-        } as any),
-      );
-      const items = (resp as any).data?.items ?? [];
+      const resp = await axios.get<{ items: any[] }>(`${this.nbaSidecarUrl}/news`, { timeout: 15000 });
+      const items = resp.data?.items ?? [];
 
       for (const item of items) {
         const externalId: string = item.id ?? item.link ?? '';

@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
+import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 
 const ACTION_NETWORK_URL = 'https://api.actionnetwork.com/web/v1/scoreboard/nba';
@@ -15,21 +14,17 @@ export class PublicBettingService {
 
   constructor(
     private prisma: PrismaService,
-    private http: HttpService,
   ) {}
 
   async syncPublicBetting(): Promise<number> {
     let upserted = 0;
     try {
-      const resp = await firstValueFrom(
-        this.http.get<any>(ACTION_NETWORK_URL, {
-          headers: AN_HEADERS,
-          params: { periods: 'event' },
-          timeout: 10000,
-        } as any),
-      );
-      const data = (resp as any).data;
-      const games = data?.games ?? [];
+      const resp = await axios.get<any>(ACTION_NETWORK_URL, {
+        headers: AN_HEADERS,
+        params: { periods: 'event' },
+        timeout: 10000,
+      });
+      const games = resp.data?.games ?? [];
       for (const game of games) {
         const homeTeamName: string = game.teams?.home?.full_name ?? '';
         const awayTeamName: string = game.teams?.away?.full_name ?? '';

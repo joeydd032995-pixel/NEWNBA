@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
+import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { NormalizationService } from './normalization.service';
 import { InjuryStatus } from '@prisma/client';
@@ -13,7 +12,6 @@ export class InjuryIngestService {
 
   constructor(
     private prisma: PrismaService,
-    private http: HttpService,
     private config: ConfigService,
     private norm: NormalizationService,
   ) {
@@ -23,12 +21,8 @@ export class InjuryIngestService {
   async syncInjuries(): Promise<number> {
     let upserted = 0;
     try {
-      const resp = await firstValueFrom(
-        this.http.get<{ injuries: any[] }>(`${this.nbaSidecarUrl}/injuries`, {
-          timeout: 15000,
-        } as any),
-      );
-      const injuries = (resp as any).data?.injuries ?? [];
+      const resp = await axios.get<{ injuries: any[] }>(`${this.nbaSidecarUrl}/injuries`, { timeout: 15000 });
+      const injuries = resp.data?.injuries ?? [];
 
       for (const item of injuries) {
         const playerName: string = item.player_name ?? '';
