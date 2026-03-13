@@ -52,8 +52,8 @@ export class EnsembleService {
     if (totalWeight === 0) return 0.5;
     const voteFraction = weightedVotes / totalWeight;
 
-    // Convert vote fraction back to probability
-    return 0.4 + voteFraction * 0.2; // Compress to [0.4, 0.6]
+    // Return the weighted vote fraction directly as probability [0, 1]
+    return voteFraction;
   }
 
   /**
