@@ -16,7 +16,14 @@ export default function SignupPage() {
       toast.success('Account created!')
       navigate('/')
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Signup failed')
+      const msg = err.response?.data?.message
+      if (msg) {
+        toast.error(msg)
+      } else if (err.request && !err.response) {
+        toast.error('Cannot reach the server. Please check that the backend is running.')
+      } else {
+        toast.error('Signup failed. Please try again.')
+      }
     }
   }
 

@@ -18,7 +18,14 @@ export default function LoginPage() {
       toast.success('Welcome back!')
       navigate('/')
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Login failed')
+      const msg = err.response?.data?.message
+      if (msg) {
+        toast.error(msg)
+      } else if (err.request && !err.response) {
+        toast.error('Cannot reach the server. Please check that the backend is running.')
+      } else {
+        toast.error('Login failed. Please try again.')
+      }
     }
   }
 

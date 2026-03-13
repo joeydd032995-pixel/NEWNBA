@@ -27,6 +27,27 @@ async function main() {
   ]);
   console.log('✅ Books seeded');
 
+  // Test users — create early so login works even if later seed steps fail
+  const hash = await bcrypt.hash('Password123!', 10);
+  await Promise.all([
+    prisma.user.upsert({
+      where: { email: 'free@test.com' },
+      update: {},
+      create: { email: 'free@test.com', password: hash, firstName: 'Free', lastName: 'User', planType: PlanType.FREE },
+    }),
+    prisma.user.upsert({
+      where: { email: 'pro@test.com' },
+      update: {},
+      create: { email: 'pro@test.com', password: hash, firstName: 'Pro', lastName: 'User', planType: PlanType.PRO },
+    }),
+    prisma.user.upsert({
+      where: { email: 'premium@test.com' },
+      update: {},
+      create: { email: 'premium@test.com', password: hash, firstName: 'Premium', lastName: 'User', planType: PlanType.PREMIUM },
+    }),
+  ]);
+  console.log('✅ Users seeded');
+
   // NBA Teams
   const teamsData = [
     { name: 'Boston Celtics', abbreviation: 'BOS', city: 'Boston', conference: 'East', division: 'Atlantic' },
@@ -101,7 +122,7 @@ async function main() {
     if (team) {
       await prisma.player.create({
         data: { teamId: team.id, name: p.name, position: p.position, jerseyNumber: p.jerseyNumber, age: p.age },
-      });
+      }).catch(() => null); // skip duplicates on re-seed
     }
   }
   console.log('✅ Players seeded');
@@ -176,27 +197,6 @@ async function main() {
     }
   }
   console.log('✅ Events & markets seeded');
-
-  // Test users
-  const hash = await bcrypt.hash('Password123!', 10);
-  await Promise.all([
-    prisma.user.upsert({
-      where: { email: 'free@test.com' },
-      update: {},
-      create: { email: 'free@test.com', password: hash, firstName: 'Free', lastName: 'User', planType: PlanType.FREE },
-    }),
-    prisma.user.upsert({
-      where: { email: 'pro@test.com' },
-      update: {},
-      create: { email: 'pro@test.com', password: hash, firstName: 'Pro', lastName: 'User', planType: PlanType.PRO },
-    }),
-    prisma.user.upsert({
-      where: { email: 'premium@test.com' },
-      update: {},
-      create: { email: 'premium@test.com', password: hash, firstName: 'Premium', lastName: 'User', planType: PlanType.PREMIUM },
-    }),
-  ]);
-  console.log('✅ Users seeded');
 
   // ─── Historical events + StatLines ───────────────────────────────────────
   // Player stat profiles: [avg, stddev] per stat
