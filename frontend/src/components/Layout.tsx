@@ -7,6 +7,7 @@ import {
 import { useState } from 'react'
 import { useAuthStore } from '../stores/auth'
 import { useBetSlipStore } from '../stores/betslip'
+import NotificationCenter from './NotificationCenter'
 import toast from 'react-hot-toast'
 
 const navItems = [
@@ -108,6 +109,7 @@ export default function Layout({ children }: LayoutProps) {
         <header className="h-14 bg-dark-900 border-b border-slate-800 flex items-center justify-between px-4 shrink-0">
           <div />
           <div className="flex items-center gap-3">
+            <NotificationCenter />
             <button
               onClick={toggleBetSlip}
               className="relative flex items-center gap-2 px-3 py-1.5 bg-primary-600/20 border border-primary-500/30 text-primary-400 rounded-lg text-sm hover:bg-primary-600/30 transition-colors"

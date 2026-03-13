@@ -1,21 +1,22 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X } from 'lucide-react'
+import { Bell, Plus, Trash2, ToggleLeft, ToggleRight, X, TrendingUp, Zap, Activity, AlertTriangle, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { alertsApi } from '../lib/api'
+import { alertsApi, notificationsApi } from '../lib/api'
 
 const ALERT_TYPES = [
-  { value: 'EV_THRESHOLD', label: 'EV Threshold' },
-  { value: 'ARBITRAGE', label: 'Arbitrage Detected' },
-  { value: 'LINE_MOVEMENT', label: 'Line Movement' },
-  { value: 'INJURY', label: 'Injury Report' },
-  { value: 'CUSTOM', label: 'Custom' },
+  { value: 'EV_THRESHOLD',  label: 'EV Threshold',       icon: TrendingUp,   color: 'text-green-400',  desc: 'Notify when EV% exceeds threshold' },
+  { value: 'ARBITRAGE',     label: 'Arbitrage Detected',  icon: Zap,          color: 'text-blue-400',   desc: 'Notify on guaranteed-profit opportunities' },
+  { value: 'LINE_MOVEMENT', label: 'Line Movement',       icon: Activity,     color: 'text-yellow-400', desc: 'Notify on significant odds shifts' },
+  { value: 'INJURY',        label: 'Injury Report',       icon: AlertTriangle,color: 'text-red-400',    desc: 'Notify on player OUT/DOUBTFUL reports' },
+  { value: 'CONTRARIAN',    label: 'Contrarian Signal',   icon: Users,        color: 'text-purple-400', desc: 'Notify when experts fade public betting' },
+  { value: 'CUSTOM',        label: 'Custom',              icon: Bell,         color: 'text-slate-400',  desc: 'General purpose alert' },
 ]
 
 export default function AlertsPage() {
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ name: '', type: 'EV_THRESHOLD', minEV: 5, minProfit: 1 })
+  const [form, setForm] = useState({ name: '', type: 'EV_THRESHOLD', minEV: 5, minProfit: 1, threshold: 3 })
 
   const { data, isLoading } = useQuery({ queryKey: ['alerts'], queryFn: () => alertsApi.getAll().then(r => r.data) })
   const alerts: any[] = Array.isArray(data) ? data : []
@@ -48,14 +49,24 @@ export default function AlertsPage() {
     mutationFn: () => alertsApi.create({
       name: form.name,
       type: form.type,
-      conditions: { minEV: form.minEV, minProfit: form.minProfit },
+      conditions: {
+        minEV: form.minEV,
+        minProfit: form.minProfit,
+        threshold: form.threshold,
+      },
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['alerts'] })
       setShowCreate(false)
-      setForm({ name: '', type: 'EV_THRESHOLD', minEV: 5, minProfit: 1 })
+      setForm({ name: '', type: 'EV_THRESHOLD', minEV: 5, minProfit: 1, threshold: 3 })
       toast.success('Alert created!')
     },
+  })
+
+  const evalMut = useMutation({
+    mutationFn: () => notificationsApi.evaluate(),
+    onSuccess: (res) => toast.success(res.data.message),
+    onError: () => toast.error('Evaluation failed'),
   })
 
   return (
@@ -67,9 +78,18 @@ export default function AlertsPage() {
           </h1>
           <p className="text-slate-400 text-sm">Get notified on betting opportunities</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-2">
-          <Plus size={15} /> New Alert
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => evalMut.mutate()}
+            disabled={evalMut.isPending}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Activity size={14} /> {evalMut.isPending ? 'Evaluating…' : 'Check Now'}
+          </button>
+          <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-2">
+            <Plus size={15} /> New Alert
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -79,37 +99,43 @@ export default function AlertsPage() {
           {alerts.length === 0 && (
             <p className="text-slate-500 text-sm">No alerts yet. Create one to get started.</p>
           )}
-          {alerts.map((alert: any) => (
-            <div key={alert.id} className={`card flex items-center gap-4 ${!alert.isActive ? 'opacity-60' : ''}`}>
-              <button
-                onClick={() => toggleMut.mutate(alert.id)}
-                className={alert.isActive ? 'text-green-400' : 'text-slate-500'}
-              >
-                {alert.isActive ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
-              </button>
-              <div className="flex-1">
-                <p className="font-medium text-white">{alert.name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
-                    {alert.type.replace('_', ' ')}
-                  </span>
-                  {alert.lastTriggered ? (
-                    <span className="text-xs text-slate-500">
-                      Last: {new Date(alert.lastTriggered).toLocaleTimeString()}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-slate-600">Never triggered</span>
-                  )}
+          {alerts.map((alert: any) => {
+            const typeMeta = ALERT_TYPES.find(t => t.value === alert.type) ?? ALERT_TYPES[ALERT_TYPES.length - 1]
+            const TypeIcon = typeMeta.icon
+            return (
+              <div key={alert.id} className={`card flex items-center gap-4 ${!alert.isActive ? 'opacity-60' : ''}`}>
+                <button
+                  onClick={() => toggleMut.mutate(alert.id)}
+                  className={alert.isActive ? 'text-green-400' : 'text-slate-500'}
+                >
+                  {alert.isActive ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                </button>
+                <div className={`shrink-0 ${typeMeta.color}`}>
+                  <TypeIcon size={16} />
                 </div>
+                <div className="flex-1">
+                  <p className="font-medium text-white">{alert.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-800 ${typeMeta.color}`}>
+                      {typeMeta.label}
+                    </span>
+                    <span className="text-xs text-slate-500">{typeMeta.desc}</span>
+                    {alert.lastTriggered && (
+                      <span className="text-xs text-slate-600 ml-auto">
+                        Last fired: {new Date(alert.lastTriggered).toLocaleTimeString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => removeMut.mutate(alert.id)}
+                  className="text-slate-500 hover:text-red-400"
+                >
+                  <Trash2 size={15} />
+                </button>
               </div>
-              <button
-                onClick={() => removeMut.mutate(alert.id)}
-                className="text-slate-500 hover:text-red-400"
-              >
-                <Trash2 size={15} />
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -170,6 +196,26 @@ export default function AlertsPage() {
                     className="input-field"
                   />
                 </div>
+              )}
+              {form.type === 'LINE_MOVEMENT' && (
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Minimum Move (% implied prob shift)</label>
+                  <input
+                    type="number"
+                    value={form.threshold}
+                    min={1}
+                    max={20}
+                    step={0.5}
+                    onChange={e => setForm(f => ({ ...f, threshold: Number(e.target.value) }))}
+                    className="input-field"
+                  />
+                </div>
+              )}
+              {form.type === 'INJURY' && (
+                <p className="text-xs text-slate-500 italic">Fires when a player is listed OUT or DOUBTFUL within the last 30 minutes.</p>
+              )}
+              {form.type === 'CONTRARIAN' && (
+                <p className="text-xs text-slate-500 italic">Fires when ≥60% of experts back an outcome but ≤40% of public bets agree — a high-value fade signal.</p>
               )}
             </div>
             <div className="p-4 border-t border-slate-800 flex gap-3">

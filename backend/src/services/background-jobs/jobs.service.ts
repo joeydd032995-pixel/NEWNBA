@@ -11,6 +11,7 @@ import { DataIngestionService } from '../../modules/data-ingestion/data-ingestio
 import { InjuryIngestService } from '../../modules/data-ingestion/injury-ingest.service';
 import { NewsIngestService } from '../../modules/data-ingestion/news-ingest.service';
 import { PublicBettingService } from '../../modules/data-ingestion/public-betting.service';
+import { NotificationsService } from '../../modules/notifications/notifications.service';
 
 // Map Odds API market key → our MarketType enum
 const MARKET_KEY_MAP: Record<string, MarketType> = {
@@ -32,6 +33,7 @@ export class JobsService implements OnModuleInit {
   private isInjuryRunning = false;
   private isNewsRunning = false;
   private isPublicBettingRunning = false;
+  private isAlertEvalRunning = false;
 
   constructor(
     private evService: EVService,
@@ -44,6 +46,7 @@ export class JobsService implements OnModuleInit {
     private injuryIngest: InjuryIngestService,
     private newsIngest: NewsIngestService,
     private publicBetting: PublicBettingService,
+    private notifications: NotificationsService,
   ) {}
 
   onModuleInit() {
@@ -742,6 +745,21 @@ export class JobsService implements OnModuleInit {
       this.logger.error('Public betting sync failed:', e.message);
     } finally {
       this.isPublicBettingRunning = false;
+    }
+  }
+
+  /** Every 5 minutes: evaluate all active alert rules and fire notifications */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async evaluateAlertsJob() {
+    if (this.isAlertEvalRunning) return;
+    this.isAlertEvalRunning = true;
+    try {
+      const fired = await this.notifications.evaluateAllAlerts();
+      if (fired > 0) this.logger.log(`Alert evaluation: ${fired} notification(s) fired`);
+    } catch (e) {
+      this.logger.error('Alert evaluation job failed:', e.message);
+    } finally {
+      this.isAlertEvalRunning = false;
     }
   }
 

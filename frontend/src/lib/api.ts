@@ -140,6 +140,15 @@ export const expertPicksApi = {
     api.patch(`/expert-picks/${id}/result`, { result }),
 }
 
+// Notifications
+export const notificationsApi = {
+  getAll: (unreadOnly = false) => api.get('/notifications', { params: unreadOnly ? { unread: 'true' } : undefined }),
+  getCount: () => api.get('/notifications/count'),
+  markRead: (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.post('/notifications/read-all'),
+  evaluate: () => api.post('/notifications/evaluate'),
+}
+
 // Bankroll
 export const bankrollApi = {
   getPortfolio: (params: { bankroll: number; kellyFraction: number; minEV?: number; sport?: string }) =>
