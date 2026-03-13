@@ -222,6 +222,7 @@ model Market {
   arbOpps      ArbitrageOpportunity[]
   publicBettingSplits PublicBettingSplit[]
   expertPicks  ExpertPick[]
+  betSlipItems BetSlipItem[]
 
   @@index([eventId])
   @@index([sportId])
@@ -663,8 +664,10 @@ model BetSlipItem {
   createdAt   DateTime @default(now())
 
   betSlip     BetSlip  @relation(fields: [betSlipId], references: [id])
+  market      Market?  @relation(fields: [marketId], references: [id])
 
   @@index([betSlipId])
+  @@index([marketId])
   @@map("bet_slip_items")
 }
 

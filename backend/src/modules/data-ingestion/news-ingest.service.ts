@@ -20,12 +20,12 @@ export class NewsIngestService {
   async syncNews(): Promise<number> {
     let inserted = 0;
     try {
-      const { data } = await firstValueFrom(
+      const resp = await firstValueFrom(
         this.http.get<{ items: any[] }>(`${this.nbaSidecarUrl}/news`, {
           timeout: 15000,
         } as any),
       );
-      const items = data?.items ?? [];
+      const items = (resp as any).data?.items ?? [];
 
       for (const item of items) {
         const externalId: string = item.id ?? item.link ?? '';

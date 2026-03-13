@@ -297,7 +297,7 @@ export class ParlayService {
     const corrEV  = corrProb  * parlayPayout - 1;
 
     // Summary of correlation pairs
-    const correlationPairs = [];
+    const correlationPairs: Array<{ legA: number; legB: number; correlation: number; label: string; impact: string }> = [];
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
         const r = corrMatrix[i][j];
