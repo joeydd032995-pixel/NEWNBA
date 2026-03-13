@@ -160,18 +160,22 @@ export default function ABTestingPage() {
   const createMutation = useMutation({
     mutationFn: (data: any) => abTestApi.create(data),
     onSuccess: () => { toast.success('A/B test created!'); qc.invalidateQueries({ queryKey: ['ab-tests'] }); setShowCreate(false) },
+    onError: () => toast.error('Failed to create A/B test'),
   })
   const startMutation = useMutation({
     mutationFn: (id: string) => abTestApi.start(id),
     onSuccess: () => { toast.success('Test started'); qc.invalidateQueries({ queryKey: ['ab-tests'] }) },
+    onError: () => toast.error('Failed to start test'),
   })
   const stopMutation = useMutation({
     mutationFn: (id: string) => abTestApi.stop(id),
     onSuccess: () => { toast.success('Test paused'); qc.invalidateQueries({ queryKey: ['ab-tests'] }) },
+    onError: () => toast.error('Failed to pause test'),
   })
   const deleteMutation = useMutation({
     mutationFn: (id: string) => abTestApi.remove(id),
     onSuccess: () => { toast.success('Test deleted'); qc.invalidateQueries({ queryKey: ['ab-tests'] }) },
+    onError: () => toast.error('Failed to delete test'),
   })
 
   const testItems = tests?.data ?? []

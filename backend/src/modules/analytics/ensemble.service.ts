@@ -169,9 +169,9 @@ export class EnsembleService {
     });
   }
 
-  async findOne(id: string) {
-    const ensemble = await this.prisma.ensembleModel.findUnique({
-      where: { id },
+  async findOne(id: string, userId?: string) {
+    const ensemble = await this.prisma.ensembleModel.findFirst({
+      where: userId ? { id, userId } : { id },
       include: {
         components: {
           include: { model: true },
@@ -246,8 +246,8 @@ export class EnsembleService {
   /**
    * Auto-optimize ensemble weights using performance data
    */
-  async optimizeWeights(ensembleId: string) {
-    const ensemble = await this.findOne(ensembleId);
+  async optimizeWeights(ensembleId: string, userId: string) {
+    const ensemble = await this.findOne(ensembleId, userId);
 
     // Simple weight optimization: equal weights as baseline, then adjust by performance
     const equalWeight = 1 / Math.max(ensemble.components.length, 1);

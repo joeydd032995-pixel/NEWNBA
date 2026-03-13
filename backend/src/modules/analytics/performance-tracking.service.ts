@@ -35,7 +35,9 @@ export class PerformanceTrackingService {
     });
   }
 
-  async resolvePrediction(predictionId: string, actualResult: boolean) {
+  async resolvePrediction(predictionId: string, actualResult: boolean, userId: string) {
+    const prediction = await this.prisma.modelPrediction.findFirst({ where: { id: predictionId, userId } });
+    if (!prediction) throw new Error('Prediction not found');
     return this.prisma.modelPrediction.update({
       where: { id: predictionId },
       data: { actualResult, isResolved: true, resolvedAt: new Date() },
