@@ -45,8 +45,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 20s
+      retries: 5
+      start_period: 60s
 
   backend:
     build:
@@ -59,8 +59,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      nba-data:
         condition: service_healthy
     environment:
       NODE_ENV: development
