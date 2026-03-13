@@ -7,6 +7,10 @@ import { OddsApiService } from '../odds-api/odds-api.service';
 import { NbaDataService } from '../nba-data/nba-data.service';
 import { BallDontLieService } from '../balldontlie/balldontlie.service';
 import { MarketType } from '@prisma/client';
+import { DataIngestionService } from '../../modules/data-ingestion/data-ingestion.service';
+import { InjuryIngestService } from '../../modules/data-ingestion/injury-ingest.service';
+import { NewsIngestService } from '../../modules/data-ingestion/news-ingest.service';
+import { PublicBettingService } from '../../modules/data-ingestion/public-betting.service';
 
 // Map Odds API market key → our MarketType enum
 const MARKET_KEY_MAP: Record<string, MarketType> = {
@@ -24,6 +28,10 @@ export class JobsService implements OnModuleInit {
   private isOddsSyncRunning = false;
   private isNbaSyncRunning = false;
   private isBdlSyncRunning = false;
+  private isSnapshotRunning = false;
+  private isInjuryRunning = false;
+  private isNewsRunning = false;
+  private isPublicBettingRunning = false;
 
   constructor(
     private evService: EVService,
@@ -32,6 +40,10 @@ export class JobsService implements OnModuleInit {
     private oddsApi: OddsApiService,
     private nbaData: NbaDataService,
     private bdl: BallDontLieService,
+    private dataIngestion: DataIngestionService,
+    private injuryIngest: InjuryIngestService,
+    private newsIngest: NewsIngestService,
+    private publicBetting: PublicBettingService,
   ) {}
 
   onModuleInit() {
@@ -655,6 +667,82 @@ export class JobsService implements OnModuleInit {
     }
 
     this.logger.log(`NBA stat sync complete: ${synced} new stat lines synced, ${skipped} players not in DB`);
+  }
+
+  // ─── Phase 1: Data Ingestion Jobs ────────────────────────────
+
+  /** Every 15 minutes: snapshot all open odds into OddsSnapshot table */
+  @Cron('*/15 * * * *')
+  async snapshotOddsJob() {
+    if (this.isSnapshotRunning) return;
+    this.isSnapshotRunning = true;
+    try {
+      const count = await this.dataIngestion.snapshotOdds();
+      if (count > 0) this.logger.debug(`Odds snapshot: ${count} entries recorded`);
+    } catch (e) {
+      this.logger.error('Odds snapshot job failed:', e.message);
+    } finally {
+      this.isSnapshotRunning = false;
+    }
+  }
+
+  /** Every 5 minutes: detect significant line movements (>=3% implied prob shift) */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async detectLineMovementsJob() {
+    try {
+      const moves = await this.dataIngestion.detectLineMovements(3);
+      if (moves.length > 0) {
+        this.logger.log(`Line movement alert: ${moves.length} significant move(s) detected`);
+        // Phase 4 hook: trigger WebSocket/email alerts here
+      }
+    } catch (e) {
+      this.logger.error('Line movement detection failed:', e.message);
+    }
+  }
+
+  /** Every 30 minutes: sync injury reports from ESPN via Python sidecar */
+  @Cron('*/30 * * * *')
+  async syncInjuriesJob() {
+    if (this.isInjuryRunning) return;
+    this.isInjuryRunning = true;
+    try {
+      const count = await this.injuryIngest.syncInjuries();
+      if (count > 0) this.logger.log(`Injury sync: ${count} reports updated`);
+    } catch (e) {
+      this.logger.error('Injury sync job failed:', e.message);
+    } finally {
+      this.isInjuryRunning = false;
+    }
+  }
+
+  /** Every hour: sync NBA news from ESPN via Python sidecar */
+  @Cron(CronExpression.EVERY_HOUR)
+  async syncNewsJob() {
+    if (this.isNewsRunning) return;
+    this.isNewsRunning = true;
+    try {
+      const count = await this.newsIngest.syncNews();
+      if (count > 0) this.logger.log(`News sync: ${count} new items`);
+    } catch (e) {
+      this.logger.error('News sync job failed:', e.message);
+    } finally {
+      this.isNewsRunning = false;
+    }
+  }
+
+  /** Every 30 minutes: sync public betting splits from Action Network */
+  @Cron('*/30 * * * *')
+  async syncPublicBettingJob() {
+    if (this.isPublicBettingRunning) return;
+    this.isPublicBettingRunning = true;
+    try {
+      const count = await this.publicBetting.syncPublicBetting();
+      this.logger.debug(`Public betting sync: ${count} splits updated`);
+    } catch (e) {
+      this.logger.error('Public betting sync failed:', e.message);
+    } finally {
+      this.isPublicBettingRunning = false;
+    }
   }
 
   private async simulateOddsMovement() {
