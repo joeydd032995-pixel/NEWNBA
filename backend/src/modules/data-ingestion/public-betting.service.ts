@@ -21,14 +21,14 @@ export class PublicBettingService {
   async syncPublicBetting(): Promise<number> {
     let upserted = 0;
     try {
-      const { data } = await firstValueFrom(
+      const resp = await firstValueFrom(
         this.http.get<any>(ACTION_NETWORK_URL, {
           headers: AN_HEADERS,
           params: { periods: 'event' },
           timeout: 10000,
         } as any),
       );
-
+      const data = (resp as any).data;
       const games = data?.games ?? [];
       for (const game of games) {
         const homeTeamName: string = game.teams?.home?.full_name ?? '';

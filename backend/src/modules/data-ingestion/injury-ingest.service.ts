@@ -23,12 +23,12 @@ export class InjuryIngestService {
   async syncInjuries(): Promise<number> {
     let upserted = 0;
     try {
-      const { data } = await firstValueFrom(
+      const resp = await firstValueFrom(
         this.http.get<{ injuries: any[] }>(`${this.nbaSidecarUrl}/injuries`, {
           timeout: 15000,
         } as any),
       );
-      const injuries = data?.injuries ?? [];
+      const injuries = (resp as any).data?.injuries ?? [];
 
       for (const item of injuries) {
         const playerName: string = item.player_name ?? '';

@@ -33,7 +33,7 @@ export class LiveService {
       take: 15,
     });
 
-    const result = [];
+    const result: any[] = [];
 
     for (const event of events) {
       const homeScore = event.homeScore ?? 0;
@@ -46,7 +46,7 @@ export class LiveService {
       const favoredTeam = diff > 4 ? 'home' : diff < -4 ? 'away' : 'even';
 
       // Market + line movement enrichment
-      const markets = [];
+      const markets: any[] = [];
       for (const market of event.markets) {
         const lineMovements = await this.getMarketMoves(
           market.marketOdds.map((o) => o.id),
