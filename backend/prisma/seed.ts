@@ -340,35 +340,39 @@ async function main() {
     ].filter(p => playerProfiles[p.name]);
 
     for (const player of eventPlayers) {
-      for (const cfg of propConfigs) {
-        const line = cfg.getLine(player.name);
+      // Create all markets for this player in parallel
+      const marketsWithCfg = await Promise.all(
+        propConfigs.map(async (cfg) => {
+          const line = cfg.getLine(player.name);
+          const market = await prisma.market.create({
+            data: {
+              eventId: upEvt.id,
+              sportId: nba.id,
+              marketType: 'PLAYER_PROP',
+              playerId: player.id,
+              propStatType: cfg.stat,
+              description: `${player.name} ${cfg.label} O/U ${line}`,
+            },
+          });
+          return { market, line };
+        })
+      );
 
-        // Create the PLAYER_PROP market
-        const market = await prisma.market.create({
-          data: {
-            eventId: upEvt.id,
-            sportId: nba.id,
-            marketType: 'PLAYER_PROP',
-            playerId: player.id,
-            propStatType: cfg.stat,
-            description: `${player.name} ${cfg.label} O/U ${line}`,
-          },
-        });
-
-        // Seed odds: over and under for each book with slight variation
-        const baseOver  = -115 + Math.floor(Math.random() * 21) - 10; // -125 to -105
+      // Batch all odds for this player's markets in one createMany
+      const oddsData: Array<{ marketId: string; bookId: string; outcome: string; odds: number; line: number }> = [];
+      for (const { market, line } of marketsWithCfg) {
+        const baseOver  = -115 + Math.floor(Math.random() * 21) - 10;
         const baseUnder = -115 + Math.floor(Math.random() * 21) - 10;
         for (const book of books) {
-          const bookVar = Math.floor(Math.random() * 11) - 5; // ±5
-          await prisma.marketOdds.createMany({
-            data: [
-              { marketId: market.id, bookId: book.id, outcome: 'over',  odds: baseOver  + bookVar, line },
-              { marketId: market.id, bookId: book.id, outcome: 'under', odds: baseUnder + bookVar, line },
-            ],
-          });
+          const bookVar = Math.floor(Math.random() * 11) - 5;
+          oddsData.push(
+            { marketId: market.id, bookId: book.id, outcome: 'over',  odds: baseOver  + bookVar, line },
+            { marketId: market.id, bookId: book.id, outcome: 'under', odds: baseUnder + bookVar, line },
+          );
         }
-        propCount++;
       }
+      await prisma.marketOdds.createMany({ data: oddsData });
+      propCount += marketsWithCfg.length;
     }
   }
   console.log(`✅ ${propCount} player prop markets seeded`);
