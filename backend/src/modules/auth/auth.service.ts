@@ -79,13 +79,20 @@ export class AuthService {
 
   private async generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+    if (!jwtSecret || !refreshSecret) {
+      throw new Error(
+        'JWT_SECRET and JWT_REFRESH_SECRET must be configured. Check your .env or environment variables.',
+      );
+    }
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('JWT_SECRET'),
+        secret: jwtSecret,
         expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m'),
       }),
       this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        secret: refreshSecret,
         expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
       }),
     ]);
