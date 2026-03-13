@@ -12,6 +12,7 @@ import { JobsModule } from './services/background-jobs/jobs.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { BetslipModule } from './modules/betslip/betslip.module';
 import { PlayerPropsModule } from './modules/player-props/player-props.module';
+import { DataIngestionModule } from './modules/data-ingestion/data-ingestion.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { PlayerPropsModule } from './modules/player-props/player-props.module';
     AlertsModule,
     BetslipModule,
     PlayerPropsModule,
+    DataIngestionModule,
   ],
 })
 export class AppModule {}
