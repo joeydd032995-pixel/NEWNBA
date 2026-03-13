@@ -49,6 +49,8 @@ export class OddsApiService {
     this.apiKey = this.config.get<string>('ODDS_API_KEY');
     this.baseUrl = this.config.get<string>('ODDS_API_BASE_URL', 'https://api.the-odds-api.com/v4');
     this.http = axios.create({ baseURL: this.baseUrl, timeout: 10000 });
+    const masked = this.apiKey ? `${this.apiKey.slice(0, 4)}...${this.apiKey.slice(-4)}` : 'NOT SET';
+    this.logger.log(`OddsApiService initialized: key=${masked}, baseUrl=${this.baseUrl}`);
   }
 
   get isEnabled(): boolean {
@@ -75,15 +77,28 @@ export class OddsApiService {
     regions = 'us',
   ): Promise<OddsApiEvent[]> {
     this.assertEnabled();
-    const { data } = await this.http.get<OddsApiEvent[]>(`/sports/${sportKey}/odds`, {
-      params: {
-        apiKey: this.apiKey,
-        regions,
-        markets,
-        oddsFormat: 'american',
-      },
-    });
-    return data;
+    try {
+      const { data } = await this.http.get<OddsApiEvent[]>(`/sports/${sportKey}/odds`, {
+        params: {
+          apiKey: this.apiKey,
+          regions,
+          markets,
+          oddsFormat: 'american',
+        },
+      });
+      return data;
+    } catch (e) {
+      const status = e?.response?.status;
+      const body = e?.response?.data;
+      if (status === 401) {
+        this.logger.error(`Odds API returned 401 (Unauthorized) — ODDS_API_KEY is likely invalid or expired. Response: ${JSON.stringify(body)}`);
+      } else if (status === 429) {
+        this.logger.warn(`Odds API rate limit hit (429). Remaining requests: ${e?.response?.headers?.['x-requests-remaining'] ?? 'unknown'}`);
+      } else {
+        this.logger.error(`Odds API request failed [${status ?? 'no status'}]: ${e.message}`, body ? JSON.stringify(body) : '');
+      }
+      throw e;
+    }
   }
 
   /**

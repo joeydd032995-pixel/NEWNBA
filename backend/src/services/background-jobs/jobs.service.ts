@@ -128,7 +128,11 @@ export class JobsService implements OnModuleInit {
         await this.simulateOddsMovement();
       }
     } catch (e) {
-      this.logger.error('Odds sync failed:', e.message);
+      const status = e?.response?.status;
+      this.logger.error(`Odds sync failed [${status ?? 'no HTTP status'}]: ${e.message}`);
+      if (status === 401) {
+        this.logger.warn('Odds sync disabled until restart — check ODDS_API_KEY env var');
+      }
     } finally {
       this.isOddsSyncRunning = false;
     }
