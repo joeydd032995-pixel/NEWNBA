@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   BarChart3, TrendingUp, ArrowLeftRight, Sliders, Activity,
   FlaskConical, GitBranch, TestTube2, Calculator, Bell,
-  ShoppingCart, LogOut, ChevronRight, Menu, X, Dumbbell, UserCheck, Users
+  ShoppingCart, LogOut, ChevronRight, Menu, X, Dumbbell, UserCheck, Users, Radio
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuthStore } from '../stores/auth'
@@ -12,6 +12,7 @@ import toast from 'react-hot-toast'
 const navItems = [
   { to: '/', label: 'Dashboard', icon: BarChart3 },
   { to: '/ev-feed', label: 'EV Feed', icon: TrendingUp },
+  { to: '/live', label: 'Live Betting', icon: Radio },
   { to: '/player-props', label: 'Player Props', icon: UserCheck },
   { to: '/expert-picks', label: 'Expert Picks', icon: Users },
   { to: '/arbitrage', label: 'Arbitrage', icon: ArrowLeftRight },

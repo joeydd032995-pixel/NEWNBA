@@ -112,6 +112,13 @@ export const playerPropsApi = {
     api.get(`/player-props/players/${playerId}/cheat-sheet`, { params: { statType, line } }),
 }
 
+// Live Betting
+export const liveApi = {
+  getGames: () => api.get('/live/games'),
+  getLineMovements: (threshold?: number) =>
+    api.get('/live/line-movements', { params: threshold ? { threshold } : undefined }),
+}
+
 // Expert Picks
 export const expertPicksApi = {
   getAll: (params?: any) => api.get('/expert-picks', { params }),
