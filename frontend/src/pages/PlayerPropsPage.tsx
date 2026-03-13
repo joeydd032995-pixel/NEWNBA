@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react'
+import { RefreshCw, TrendingUp, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react'
 import { playerPropsApi, sportsApi } from '../lib/api'
 import { useBetSlipStore } from '../stores/betslip'
 import toast from 'react-hot-toast'
+import { PlayerCheatSheetDrawer } from '../components/PlayerCheatSheetDrawer'
 
 const STAT_TYPES = [
   { value: '', label: 'ALL' },
@@ -170,6 +171,11 @@ export default function PlayerPropsPage() {
 
   // Analyzer expand state
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
+
+  // Cheat sheet drawer
+  const [cheatSheet, setCheatSheet] = useState<{
+    playerId: string; playerName: string; statType: string; line: number
+  } | null>(null)
 
   const fetchGames = useCallback(async () => {
     try {
@@ -390,7 +396,24 @@ export default function PlayerPropsPage() {
                             {row.player.name.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-medium text-white text-xs leading-tight">{row.player.name}</p>
+                            <div className="flex items-center gap-1">
+                              <p className="font-medium text-white text-xs leading-tight">{row.player.name}</p>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setCheatSheet({
+                                    playerId: row.player.id,
+                                    playerName: row.player.name,
+                                    statType: row.statType,
+                                    line: row.line,
+                                  })
+                                }}
+                                title="Open Cheat Sheet"
+                                className="text-slate-600 hover:text-primary-400 transition-colors"
+                              >
+                                <BarChart2 size={11} />
+                              </button>
+                            </div>
                             <p className="text-slate-500 text-xs">{row.player.team} · {row.player.position}</p>
                           </div>
                         </div>
@@ -472,6 +495,18 @@ export default function PlayerPropsPage() {
           </table>
         )}
       </div>
+
+      {/* Cheat Sheet Drawer */}
+      {cheatSheet && (
+        <PlayerCheatSheetDrawer
+          isOpen={!!cheatSheet}
+          onClose={() => setCheatSheet(null)}
+          playerId={cheatSheet.playerId}
+          playerName={cheatSheet.playerName}
+          statType={cheatSheet.statType}
+          line={cheatSheet.line}
+        />
+      )}
     </div>
   )
 }

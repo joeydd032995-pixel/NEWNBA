@@ -11,7 +11,7 @@ export class PlayerPropsService {
   ) {}
 
   /** Map a PropStatType to the computed numeric value from a StatLine */
-  private computeStatValue(statLine: any, statType: PropStatType): number {
+  computeStatValue(statLine: any, statType: PropStatType): number {
     switch (statType) {
       case PropStatType.POINTS:   return statLine.points;
       case PropStatType.REBOUNDS: return statLine.rebounds;
@@ -194,6 +194,169 @@ export class PlayerPropsService {
     // Sort by best EV descending
     results.sort((a, b) => b.bestEV.evPct - a.bestEV.evPct);
     return results.slice(0, limit);
+  }
+
+  // ─── Phase 2: Player Cheat Sheet ─────────────────────────────────────────
+
+  async getCheatSheet(playerId: string, statType: PropStatType, line: number) {
+    const player = await this.prisma.player.findUnique({
+      where: { id: playerId },
+      include: { team: true },
+    });
+    if (!player) return null;
+
+    // Last 20 stat lines with event team info
+    const statLines = await this.prisma.statLine.findMany({
+      where: { playerId },
+      orderBy: { gameDate: 'desc' },
+      take: 20,
+      include: {
+        event: {
+          include: {
+            homeTeam: { select: { id: true, abbreviation: true } },
+            awayTeam: { select: { id: true, abbreviation: true } },
+          },
+        },
+      },
+    });
+
+    const defTiers = await this.computeDefenseTiersForStatType(statType);
+
+    // Build per-game trend; statLines[0] = most recent, statLines[i+1] = earlier
+    const trend = statLines.map((sl, i) => {
+      const statValue = this.computeStatValue(sl, statType);
+      const isHome = sl.event.homeTeamId === player.teamId;
+      const opponentTeam = isHome ? sl.event.awayTeam : sl.event.homeTeam;
+      const opponentAbbr = opponentTeam?.abbreviation ?? '?';
+      const opponentTeamId = isHome ? sl.event.awayTeamId : sl.event.homeTeamId;
+
+      // B2B: this game's date minus the previous (earlier) game's date <= 1.5 days
+      let isB2B = false;
+      if (i < statLines.length - 1) {
+        const diffMs =
+          new Date(sl.gameDate).getTime() -
+          new Date(statLines[i + 1].gameDate).getTime();
+        isB2B = diffMs / (1000 * 60 * 60 * 24) <= 1.5;
+      }
+
+      const gameDate =
+        sl.gameDate instanceof Date
+          ? sl.gameDate.toISOString().split('T')[0]
+          : String(sl.gameDate).split('T')[0];
+
+      return {
+        gameDate,
+        matchup: `${isHome ? 'vs' : '@'} ${opponentAbbr}`,
+        isHome,
+        isB2B,
+        statValue,
+        hitOver: statValue > line,
+        opponentTeamAbbr: opponentAbbr,
+        defRankTier: defTiers[opponentTeamId ?? ''] ?? 'medium',
+      };
+    });
+
+    const splitCalc = (games: typeof trend) => {
+      const hits = games.filter((g) => g.hitOver).length;
+      return {
+        hits,
+        total: games.length,
+        rate: games.length > 0 ? Math.round((hits / games.length) * 100) : null,
+      };
+    };
+
+    const splits = {
+      home:      splitCalc(trend.filter((g) => g.isHome)),
+      away:      splitCalc(trend.filter((g) => !g.isHome)),
+      b2b:       splitCalc(trend.filter((g) => g.isB2B)),
+      rest:      splitCalc(trend.filter((g) => !g.isB2B)),
+      vsEasyDef: splitCalc(trend.filter((g) => g.defRankTier === 'easy')),
+      vsMedDef:  splitCalc(trend.filter((g) => g.defRankTier === 'medium')),
+      vsHardDef: splitCalc(trend.filter((g) => g.defRankTier === 'hard')),
+    };
+
+    const seasonAvg =
+      trend.length > 0
+        ? Math.round(
+            (trend.reduce((s, g) => s + g.statValue, 0) / trend.length) * 10,
+          ) / 10
+        : 0;
+
+    // Latest injury report
+    const injury = await this.prisma.injuryReport
+      .findFirst({ where: { playerId }, orderBy: { reportedAt: 'desc' } })
+      .catch(() => null);
+
+    // Recent news
+    const news = await this.prisma.newsItem
+      .findMany({
+        where: { playerId },
+        orderBy: { publishedAt: 'desc' },
+        take: 3,
+      })
+      .catch(() => []);
+
+    return {
+      player: {
+        id: player.id,
+        name: player.name,
+        position: player.position ?? '',
+        team: player.team?.abbreviation ?? '',
+        teamName: player.team?.name ?? '',
+      },
+      injury,
+      news,
+      trend,
+      splits,
+      seasonAvg,
+      line,
+      statType,
+    };
+  }
+
+  private async computeDefenseTiersForStatType(
+    statType: PropStatType,
+  ): Promise<Record<string, 'easy' | 'medium' | 'hard'>> {
+    const allTeams = await this.prisma.team.findMany({
+      where: { sport: { slug: 'nba' }, isActive: true },
+      select: { id: true },
+    });
+
+    const teamAvgs: Array<{ teamId: string; avg: number }> = [];
+    for (const team of allTeams) {
+      const oppStats = await this.prisma.statLine.findMany({
+        where: {
+          event: { OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }] },
+          player: { teamId: { not: team.id } },
+        },
+        select: {
+          points: true,
+          rebounds: true,
+          assists: true,
+          steals: true,
+          blocks: true,
+          fg3m: true,
+          minutes: true,
+        },
+        take: 200,
+      });
+      if (oppStats.length === 0) continue;
+      const avg =
+        oppStats.reduce((s, sl) => s + this.computeStatValue(sl, statType), 0) /
+        oppStats.length;
+      teamAvgs.push({ teamId: team.id, avg });
+    }
+
+    // Ascending: lowest avg = hardest defense
+    teamAvgs.sort((a, b) => a.avg - b.avg);
+    const n = teamAvgs.length;
+    const result: Record<string, 'easy' | 'medium' | 'hard'> = {};
+    teamAvgs.forEach(({ teamId }, i) => {
+      if (i < Math.floor(n / 3)) result[teamId] = 'hard';
+      else if (i < Math.floor((2 * n) / 3)) result[teamId] = 'medium';
+      else result[teamId] = 'easy';
+    });
+    return result;
   }
 
   async getPlayersWithProps() {

@@ -43,6 +43,15 @@ export class PlayerPropsController {
     return this.playerPropsService.getPlayersWithProps();
   }
 
+  @Get('players/:playerId/cheat-sheet')
+  getCheatSheet(
+    @Param('playerId') playerId: string,
+    @Query('statType') statType: PropStatType,
+    @Query('line') line: string,
+  ) {
+    return this.playerPropsService.getCheatSheet(playerId, statType, Number(line));
+  }
+
   @Get(':marketId/analyzer')
   getAnalyzerData(@Param('marketId') marketId: string) {
     return this.playerPropsService.getAnalyzerData(marketId);
