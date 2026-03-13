@@ -112,6 +112,16 @@ export const playerPropsApi = {
     api.get(`/player-props/players/${playerId}/cheat-sheet`, { params: { statType, line } }),
 }
 
+// Expert Picks
+export const expertPicksApi = {
+  getAll: (params?: any) => api.get('/expert-picks', { params }),
+  create: (data: any) => api.post('/expert-picks', data),
+  getConsensus: (marketId: string) => api.get(`/expert-picks/${marketId}/consensus`),
+  getContrarian: () => api.get('/expert-picks/contrarian'),
+  resolve: (id: string, result: 'WIN' | 'LOSS' | 'PUSH') =>
+    api.patch(`/expert-picks/${id}/result`, { result }),
+}
+
 // A/B Testing
 export const abTestApi = {
   getAll: () => api.get('/analytics/ab-tests'),

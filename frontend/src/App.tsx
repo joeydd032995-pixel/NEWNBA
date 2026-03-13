@@ -15,6 +15,7 @@ import EnsemblePage from './pages/EnsemblePage'
 import ABTestingPage from './pages/ABTestingPage'
 import AlertsPage from './pages/AlertsPage'
 import PlayerPropsPage from './pages/PlayerPropsPage'
+import ExpertPicksPage from './pages/ExpertPicksPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/ab-testing" element={<ProtectedRoute><ABTestingPage /></ProtectedRoute>} />
         <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
         <Route path="/player-props" element={<ProtectedRoute><PlayerPropsPage /></ProtectedRoute>} />
+        <Route path="/expert-picks" element={<ProtectedRoute><ExpertPicksPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -220,6 +220,7 @@ model Market {
   evMetrics    EVMetrics[]
   arbOpps      ArbitrageOpportunity[]
   publicBettingSplits PublicBettingSplit[]
+  expertPicks  ExpertPick[]
 
   @@index([eventId])
   @@index([sportId])
@@ -730,4 +731,28 @@ model PublicBettingSplit {
   @@index([marketId])
   @@index([snappedAt])
   @@map("public_betting_splits")
+}
+
+// ============================================================
+// EXPERT PICKS
+// ============================================================
+model ExpertPick {
+  id          String    @id @default(uuid())
+  expertName  String
+  source      String    @default("manual")
+  marketId    String
+  outcome     String
+  odds        Int?
+  confidence  Int       @default(3)  // 1–5 stars
+  reasoning   String?
+  result      String?   // "WIN" | "LOSS" | "PUSH" | null = pending
+  pickedAt    DateTime  @default(now())
+  resolvedAt  DateTime?
+
+  market      Market    @relation(fields: [marketId], references: [id])
+
+  @@index([marketId])
+  @@index([expertName])
+  @@index([pickedAt])
+  @@map("expert_picks")
 }
