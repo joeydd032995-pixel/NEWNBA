@@ -45,9 +45,9 @@ async function main() {
   // Test users — create early so login works even if later seed steps fail
   await seedStep('Users seeded', async () => {
     const [hashAdmin, hashPro, hashUser] = await Promise.all([
-      bcrypt.hash('admin123', 10),
-      bcrypt.hash('pro123', 10),
-      bcrypt.hash('user123', 10),
+      bcrypt.hash('admin123', 12),
+      bcrypt.hash('pro123', 12),
+      bcrypt.hash('user123', 12),
     ]);
     return Promise.all([
       prisma.user.upsert({

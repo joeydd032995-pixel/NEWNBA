@@ -78,7 +78,7 @@ else
   echo "  API Docs:  http://localhost:3000/api/docs"
   echo ""
   echo "Demo accounts:"
-  echo "  free@test.com    | Password123!"
-  echo "  pro@test.com     | Password123!"
-  echo "  premium@test.com | Password123!"
+  echo "  admin@newnba.com | admin123  (PREMIUM)"
+  echo "  pro@newnba.com   | pro123    (PRO)"
+  echo "  user@newnba.com  | user123   (FREE)"
 fi
