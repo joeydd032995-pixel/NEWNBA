@@ -188,7 +188,7 @@ export class JobsService implements OnModuleInit {
 
     // Resolve our DB books by slug
     const books = await this.prisma.book.findMany({ where: { isActive: true } });
-    const bookBySlug = new Map(books.map((b) => [b.slug, b]));
+    const bookBySlug = new Map<string, any>(books.map((b) => [b.slug, b]));
 
     // Resolve our DB events by external API id (stored in the name field as fallback)
     // We match on commence_time + teams

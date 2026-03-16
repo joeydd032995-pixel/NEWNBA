@@ -44,22 +44,26 @@ async function main() {
 
   // Test users — create early so login works even if later seed steps fail
   await seedStep('Users seeded', async () => {
-    const hash = await bcrypt.hash('Password123!', 10);
+    const [hashAdmin, hashPro, hashUser] = await Promise.all([
+      bcrypt.hash('admin123', 10),
+      bcrypt.hash('pro123', 10),
+      bcrypt.hash('user123', 10),
+    ]);
     return Promise.all([
       prisma.user.upsert({
-        where: { email: 'free@test.com' },
+        where: { email: 'admin@newnba.com' },
         update: {},
-        create: { email: 'free@test.com', password: hash, firstName: 'Free', lastName: 'User', planType: PlanType.FREE },
+        create: { email: 'admin@newnba.com', password: hashAdmin, firstName: 'Admin', lastName: 'User', planType: PlanType.PREMIUM },
       }),
       prisma.user.upsert({
-        where: { email: 'pro@test.com' },
+        where: { email: 'pro@newnba.com' },
         update: {},
-        create: { email: 'pro@test.com', password: hash, firstName: 'Pro', lastName: 'User', planType: PlanType.PRO },
+        create: { email: 'pro@newnba.com', password: hashPro, firstName: 'Pro', lastName: 'User', planType: PlanType.PRO },
       }),
       prisma.user.upsert({
-        where: { email: 'premium@test.com' },
+        where: { email: 'user@newnba.com' },
         update: {},
-        create: { email: 'premium@test.com', password: hash, firstName: 'Premium', lastName: 'User', planType: PlanType.PREMIUM },
+        create: { email: 'user@newnba.com', password: hashUser, firstName: 'Free', lastName: 'User', planType: PlanType.FREE },
       }),
     ]);
   });
