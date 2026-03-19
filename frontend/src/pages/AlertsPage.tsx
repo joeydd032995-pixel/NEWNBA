@@ -6,7 +6,7 @@ import { alertsApi, notificationsApi } from '../lib/api'
 
 const ALERT_TYPES = [
   { value: 'EV_THRESHOLD',  label: 'EV Threshold',       icon: TrendingUp,   color: 'text-green-400',  desc: 'Notify when EV% exceeds threshold' },
-  { value: 'ARBITRAGE',     label: 'Arbitrage Detected',  icon: Zap,          color: 'text-blue-400',   desc: 'Notify on guaranteed-profit opportunities' },
+  { value: 'ARBITRAGE',     label: 'Arbitrage Detected',  icon: Zap,          color: 'text-neon-blue-400',   desc: 'Notify on guaranteed-profit opportunities' },
   { value: 'LINE_MOVEMENT', label: 'Line Movement',       icon: Activity,     color: 'text-yellow-400', desc: 'Notify on significant odds shifts' },
   { value: 'INJURY',        label: 'Injury Report',       icon: AlertTriangle,color: 'text-red-400',    desc: 'Notify on player OUT/DOUBTFUL reports' },
   { value: 'CONTRARIAN',    label: 'Contrarian Signal',   icon: Users,        color: 'text-purple-400', desc: 'Notify when experts fade public betting' },
@@ -141,8 +141,8 @@ export default function AlertsPage() {
 
       {showCreate && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-900 border border-slate-700 rounded-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+          <div className="bg-dark-900 border border-dark-600 rounded-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-dark-600">
               <h3 className="font-semibold text-white">Create Alert</h3>
               <button onClick={() => setShowCreate(false)} className="text-slate-500 hover:text-white">
                 <X size={18} />
@@ -218,7 +218,7 @@ export default function AlertsPage() {
                 <p className="text-xs text-slate-500 italic">Fires when ≥60% of experts back an outcome but ≤40% of public bets agree — a high-value fade signal.</p>
               )}
             </div>
-            <div className="p-4 border-t border-slate-800 flex gap-3">
+            <div className="p-4 border-t border-dark-600 flex gap-3">
               <button onClick={() => setShowCreate(false)} className="btn-secondary flex-1">Cancel</button>
               <button
                 onClick={() => createMut.mutate()}

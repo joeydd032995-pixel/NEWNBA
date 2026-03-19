@@ -47,7 +47,7 @@ function OverviewTab({ data }: { data: any }) {
           color={s.roi >= 0 ? 'text-green-400' : 'text-red-400'}
           sub={`${s.totalBets} resolved bets`} />
         <StatCard label="Win Rate" value={fmtPct(s.winRate)} icon={Target}
-          color="text-blue-400" sub="Break-even: ~52.4%" />
+          color="text-neon-blue-400" sub="Break-even: ~52.4%" />
         <StatCard label="Sharpe Ratio" value={s.sharpe.toFixed(2)} icon={Activity}
           color={s.sharpe >= 1 ? 'text-green-400' : s.sharpe >= 0 ? 'text-yellow-400' : 'text-red-400'}
           sub="Risk-adjusted return" />
@@ -77,15 +77,15 @@ function OverviewTab({ data }: { data: any }) {
         </h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} interval="preserveStartEnd" />
-            <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={v => `$${v}`} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.06)" />
+            <XAxis dataKey="date" tick={{ fill: '#444444', fontSize: 11 }} interval="preserveStartEnd" />
+            <YAxis tick={{ fill: '#444444', fontSize: 11 }} tickFormatter={v => `$${v}`} />
             <Tooltip
-              contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
+              contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 8 }}
               formatter={(v: number) => [fmtUSD(Number(v)), 'Cum. P&L']}
             />
             <ReferenceLine y={0} stroke="#475569" strokeDasharray="4 4" />
-            <Line type="monotone" dataKey="cumPnl" stroke="#6366f1" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="cumPnl" stroke="#00d4ff" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -118,7 +118,7 @@ function ByTypeTab({ data }: { data: any }) {
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-xs text-slate-400 border-b border-slate-800">
+            <tr className="text-xs text-slate-400 border-b border-dark-600">
               <th className="text-left p-3">Market Type</th>
               <th className="text-right p-3">Bets</th>
               <th className="text-right p-3">Won</th>
@@ -130,7 +130,7 @@ function ByTypeTab({ data }: { data: any }) {
             {rows.length === 0 ? (
               <tr><td colSpan={5} className="p-6 text-center text-slate-500 text-sm">No resolved bets yet</td></tr>
             ) : rows.map(r => (
-              <tr key={r.type} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+              <tr key={r.type} className="border-b border-dark-600/50 hover:bg-dark-700/30">
                 <td className="p-3 text-white font-medium">{LABELS[r.type] ?? r.type}</td>
                 <td className="p-3 text-right text-slate-300">{r.bets}</td>
                 <td className="p-3 text-right text-slate-300">{r.won}</td>
@@ -155,13 +155,13 @@ function ByTypeTab({ data }: { data: any }) {
           <h3 className="font-semibold text-white text-sm mb-3">Win Rate by Market Type</h3>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={rows.map(r => ({ name: LABELS[r.type] ?? r.type, winRate: +(r.winRate * 100).toFixed(1) }))}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} unit="%" domain={[0, 100]} />
-              <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.06)" />
+              <XAxis dataKey="name" tick={{ fill: '#444444', fontSize: 11 }} />
+              <YAxis tick={{ fill: '#444444', fontSize: 11 }} unit="%" domain={[0, 100]} />
+              <Tooltip contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 8 }}
                 formatter={(v: number) => [`${v}%`, 'Win Rate']} />
               <ReferenceLine y={52.4} stroke="#475569" strokeDasharray="4 4"
-                label={{ value: 'BE', fill: '#64748b', fontSize: 10 }} />
+                label={{ value: 'BE', fill: '#444444', fontSize: 10 }} />
               <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
                 {rows.map((r, i) => <Cell key={i} fill={r.winRate >= 0.524 ? '#22c55e' : '#ef4444'} />)}
               </Bar>
@@ -200,13 +200,13 @@ function CalibrationTab({ data }: { data: any }) {
         <p className="text-xs text-slate-500 mb-3">Dots above diagonal = over-confident; below = under-confident. Perfect model lies on the line.</p>
         <ResponsiveContainer width="100%" height={240}>
           <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis type="number" dataKey="predicted" name="Predicted %" domain={[0, 100]} unit="%" tick={{ fill: '#64748b', fontSize: 11 }} />
-            <YAxis type="number" dataKey="actual" name="Actual %" domain={[0, 100]} unit="%" tick={{ fill: '#64748b', fontSize: 11 }} />
-            <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.06)" />
+            <XAxis type="number" dataKey="predicted" name="Predicted %" domain={[0, 100]} unit="%" tick={{ fill: '#444444', fontSize: 11 }} />
+            <YAxis type="number" dataKey="actual" name="Actual %" domain={[0, 100]} unit="%" tick={{ fill: '#444444', fontSize: 11 }} />
+            <Tooltip contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 8 }}
               formatter={(v: number, name: string) => [`${Number(v).toFixed(1)}%`, name]} />
-            <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 100, y: 100 }]} stroke="#475569" strokeDasharray="4 4" label={{ value: 'Perfect', fill: '#64748b', fontSize: 10, position: 'insideTopRight' }} />
-            <Scatter data={chartData.filter(d => d.actual !== null)} fill="#6366f1" />
+            <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 100, y: 100 }]} stroke="#475569" strokeDasharray="4 4" label={{ value: 'Perfect', fill: '#444444', fontSize: 10, position: 'insideTopRight' }} />
+            <Scatter data={chartData.filter(d => d.actual !== null)} fill="#00d4ff" />
           </ScatterChart>
         </ResponsiveContainer>
       </div>
@@ -299,7 +299,7 @@ function LeaderboardTab() {
     <div className="card overflow-hidden">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-xs text-slate-400 border-b border-slate-800">
+          <tr className="text-xs text-slate-400 border-b border-dark-600">
             <th className="text-left p-3">#</th>
             <th className="text-left p-3">Model</th>
             <th className="text-right p-3">ROI</th>
@@ -310,7 +310,7 @@ function LeaderboardTab() {
         </thead>
         <tbody>
           {rows.map((perf: any, i: number) => (
-            <tr key={i} className="border-b border-slate-800 hover:bg-slate-800/50">
+            <tr key={i} className="border-b border-dark-600 hover:bg-dark-700/50">
               <td className="py-2.5 px-3 text-slate-500">{i + 1}</td>
               <td className="py-2.5 px-3 font-medium text-white">{perf.model?.name ?? 'Unknown'}</td>
               <td className="py-2.5 px-3 text-right">
@@ -378,7 +378,7 @@ export default function PerformancePage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-slate-800">
+      <div className="flex gap-1 border-b border-dark-600">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-t transition-colors ${
