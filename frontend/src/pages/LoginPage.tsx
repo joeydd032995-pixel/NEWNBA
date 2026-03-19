@@ -32,13 +32,13 @@ export default function LoginPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: 'linear-gradient(160deg, #040812 0%, #080d1a 60%, #060b15 100%)' }}
+      style={{ background: 'linear-gradient(160deg, #000000 0%, #080808 60%, #050505 100%)' }}
     >
       {/* Background glow orbs */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full pointer-events-none opacity-20"
            style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.25) 0%, transparent 70%)', filter: 'blur(40px)' }} />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full pointer-events-none opacity-15"
-           style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.25) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+           style={{ background: 'radial-gradient(circle, rgba(0,212,255,0.25) 0%, transparent 70%)', filter: 'blur(40px)' }} />
 
       <div className="w-full max-w-sm relative animate-fade-in">
 
@@ -114,7 +114,7 @@ export default function LoginPage() {
             >
               {isLoading ? (
                 <span className="flex items-center gap-2 justify-center">
-                  <span className="w-3.5 h-3.5 border-2 border-navy-950/30 border-t-navy-950 rounded-full animate-spin" />
+                  <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                   Signing in…
                 </span>
               ) : (

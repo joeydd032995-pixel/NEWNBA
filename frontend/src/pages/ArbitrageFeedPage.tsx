@@ -44,7 +44,7 @@ export default function ArbitrageFeedPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2 tracking-tight">
-            <ArrowLeftRight size={18} className="text-cyan-400" />
+            <ArrowLeftRight size={18} className="text-neon-blue-400" />
             Arbitrage Feed
           </h1>
           <p className="text-slate-500 text-xs mt-0.5">Risk-free profit opportunities across books</p>
@@ -71,11 +71,11 @@ export default function ArbitrageFeedPage() {
           {arbItems.map((arb: any) => (
             <div
               key={arb.id}
-              className="card-cyan relative overflow-hidden transition-all duration-200"
+              className="card-blue relative overflow-hidden transition-all duration-200"
             >
               {/* Subtle background gradient */}
               <div className="absolute inset-0 pointer-events-none opacity-30"
-                   style={{ background: 'radial-gradient(ellipse at top right, rgba(6,182,212,0.08) 0%, transparent 70%)' }} />
+                   style={{ background: 'radial-gradient(ellipse at top right, rgba(0,212,255,0.08) 0%, transparent 70%)' }} />
 
               <div className="relative">
                 {/* Header row */}

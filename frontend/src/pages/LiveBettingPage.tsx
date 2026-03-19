@@ -14,7 +14,7 @@ function fmtOdds(odds: number) {
 function evColor(evPct: number) {
   if (evPct > 0.05) return 'text-green-400'
   if (evPct > 0.02) return 'text-yellow-400'
-  if (evPct > 0)    return 'text-blue-400'
+  if (evPct > 0)    return 'text-neon-blue-400'
   return 'text-slate-500'
 }
 
@@ -53,8 +53,8 @@ function MomentumBar({
         />
         {/* Home side */}
         <div
-          className="bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-700"
-          style={{ width: `${homePct}%` }}
+          className="transition-all duration-700"
+          style={{ background: 'linear-gradient(to right, #1400ab, #00d4ff)', width: `${homePct}%` }}
         />
       </div>
       <div className="flex justify-between text-[10px] text-slate-600 mt-0.5">

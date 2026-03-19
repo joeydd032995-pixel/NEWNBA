@@ -35,12 +35,16 @@ export default {
           700: '#8a0020',
         },
         // Neon Blue — primary actions / links / navigation
+        // 300–500: bright neon (text/icons on black), 600–950: dark indigo family
         'neon-blue': {
-          300: '#6ef3ff',
+          300: '#0205ad',
           400: '#33e3ff',
           500: '#00d4ff',
-          600: '#00aacc',
-          700: '#007a99',
+          600: '#0f0082',
+          700: '#050088',
+          800: '#000766',
+          900: '#000c33',
+          950: '#1400ab',
         },
         // Neon Purple — models / analytics / ensemble
         'neon-purple': {
@@ -79,11 +83,14 @@ export default {
         },
         // Primary alias — neon blue for actions/links
         primary: {
-          300: '#6ef3ff',
+          300: '#0205ad',
           400: '#33e3ff',
           500: '#00d4ff',
-          600: '#00aacc',
-          700: '#007a99',
+          600: '#0f0082',
+          700: '#050088',
+          800: '#000766',
+          900: '#000c33',
+          950: '#1400ab',
         },
         // Keep navy alias for any legacy references
         navy: {

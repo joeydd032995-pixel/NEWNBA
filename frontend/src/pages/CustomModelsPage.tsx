@@ -63,7 +63,14 @@ function ModelCard({ model, onDelete, onDuplicate }: any) {
         <span className={`text-xs px-2 py-0.5 rounded-full ${model.isPublic ? 'bg-green-900/30 text-green-400' : 'bg-slate-800 text-slate-400'}`}>
           {model.isPublic ? 'Public' : 'Private'}
         </span>
-        {model.isActive && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-900/30 text-blue-400">Active</span>}
+        {model.isActive && (
+          <span
+            className="text-xs px-2 py-0.5 rounded-full text-neon-blue-400"
+            style={{ background: 'linear-gradient(135deg, rgba(20,0,171,0.35) 0%, rgba(0,212,255,0.10) 100%)', border: '1px solid rgba(0,212,255,0.30)', boxShadow: '0 0 8px rgba(0,212,255,0.2)' }}
+          >
+            Active
+          </span>
+        )}
       </div>
     </div>
   )
@@ -98,8 +105,8 @@ function CreateModelModal({ onClose, presetModels }: any) {
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-slate-800">
+      <div className="bg-dark-900 border border-dark-600 rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-dark-600">
           <h3 className="font-semibold text-white">Create Custom Model</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18} /></button>
         </div>
@@ -137,7 +144,7 @@ function CreateModelModal({ onClose, presetModels }: any) {
             </div>
           </div>
         </div>
-        <div className="p-4 border-t border-slate-800 flex gap-3">
+        <div className="p-4 border-t border-dark-600 flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
           <button
             onClick={() => createMutation.mutate({ name, description, weights })}

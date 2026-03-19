@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 
 const TYPE_META: Record<string, { icon: React.ComponentType<any>; color: string; label: string }> = {
   EV_THRESHOLD:   { icon: TrendingUp,   color: 'text-green-400',  label: 'EV Alert' },
-  ARBITRAGE:      { icon: Zap,          color: 'text-blue-400',   label: 'Arbitrage' },
+  ARBITRAGE:      { icon: Zap,          color: 'text-neon-blue-400',   label: 'Arbitrage' },
   LINE_MOVEMENT:  { icon: Activity,     color: 'text-yellow-400', label: 'Line Move' },
   INJURY:         { icon: AlertTriangle,color: 'text-red-400',    label: 'Injury' },
   CONTRARIAN:     { icon: Users,        color: 'text-purple-400', label: 'Contrarian' },
@@ -78,7 +78,7 @@ export default function NotificationCenter() {
       {/* Bell button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="relative flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+        className="relative flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-dark-800 transition-colors"
       >
         <Bell size={16} />
         {unreadCount > 0 && (
@@ -90,9 +90,9 @@ export default function NotificationCenter() {
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute right-0 top-10 w-80 bg-dark-900 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-10 w-80 bg-dark-900 border border-dark-600 rounded-xl shadow-2xl z-50 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-dark-600/50">
             <div className="flex items-center gap-2">
               <Bell size={14} className="text-slate-400" />
               <span className="font-semibold text-white text-sm">Notifications</span>
@@ -135,7 +135,7 @@ export default function NotificationCenter() {
                 return (
                   <div
                     key={n.id}
-                    className={`flex gap-3 px-4 py-3 border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors cursor-pointer ${
+                    className={`flex gap-3 px-4 py-3 border-b border-dark-600/50 hover:bg-dark-800/30 transition-colors cursor-pointer ${
                       !n.isRead ? 'bg-primary-600/5' : ''
                     }`}
                     onClick={() => !n.isRead && markReadMut.mutate(n.id)}
@@ -166,7 +166,7 @@ export default function NotificationCenter() {
 
           {/* Footer */}
           {notifList.length > 0 && (
-            <div className="px-4 py-2 border-t border-slate-800 flex justify-end">
+            <div className="px-4 py-2 border-t border-dark-600/50 flex justify-end">
               <a href="/alerts" className="flex items-center gap-1 text-xs text-primary-400 hover:text-primary-300">
                 Manage alerts <ChevronRight size={12} />
               </a>
