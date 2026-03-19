@@ -8,9 +8,18 @@ import toast from 'react-hot-toast'
 function StatusBadge({ status }: { status: string }) {
   const map: any = {
     DRAFT: 'bg-slate-800 text-slate-400',
-    RUNNING: 'bg-blue-900/50 text-blue-400',
     COMPLETED: 'bg-green-900/50 text-green-400',
     PAUSED: 'bg-yellow-900/50 text-yellow-400',
+  }
+  if (status === 'RUNNING') {
+    return (
+      <span
+        className="px-2 py-0.5 rounded-full text-xs font-semibold text-neon-blue-400"
+        style={{ background: 'linear-gradient(135deg, rgba(0,3,112,0.35) 0%, rgba(0,212,255,0.10) 100%)', border: '1px solid rgba(0,212,255,0.30)', boxShadow: '0 0 8px rgba(0,212,255,0.2)' }}
+      >
+        {status}
+      </span>
+    )
   }
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${map[status] ?? map.DRAFT}`}>{status}</span>
 }
@@ -32,7 +41,7 @@ function TestCard({ test, onStart, onStop, onDelete, onAnalyze }: any) {
             {test.status === 'RUNNING' && (
               <button onClick={() => onStop(test.id)} className="p-1.5 text-slate-500 hover:text-yellow-400"><Square size={14} /></button>
             )}
-            <button onClick={() => onAnalyze(test.id)} className="p-1.5 text-slate-500 hover:text-blue-400"><BarChart2 size={14} /></button>
+            <button onClick={() => onAnalyze(test.id)} className="p-1.5 text-slate-500 hover:text-neon-blue-400"><BarChart2 size={14} /></button>
             <button onClick={() => onDelete(test.id)} className="p-1.5 text-slate-500 hover:text-red-400"><Trash2 size={14} /></button>
           </div>
         </div>
@@ -83,8 +92,8 @@ function AnalysisModal({ testId, onClose }: { testId: string; onClose: () => voi
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-900 border border-slate-700 rounded-xl w-full max-w-2xl">
-        <div className="flex items-center justify-between p-4 border-b border-slate-800">
+      <div className="bg-dark-900 border border-dark-600 rounded-xl w-full max-w-2xl">
+        <div className="flex items-center justify-between p-4 border-b border-dark-600">
           <h3 className="font-semibold text-white">A/B Test Analysis</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18} /></button>
         </div>
@@ -96,12 +105,12 @@ function AnalysisModal({ testId, onClose }: { testId: string; onClose: () => voi
               {/* Comparison chart */}
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="variant" stroke="#64748b" tick={{ fontSize: 12 }} />
-                  <YAxis stroke="#64748b" tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#f1f5f9' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.08)" />
+                  <XAxis dataKey="variant" stroke="#444444" tick={{ fontSize: 12 }} />
+                  <YAxis stroke="#444444" tick={{ fontSize: 10 }} />
+                  <Tooltip contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(0,212,255,0.2)', borderRadius: '8px', color: '#f1f5f9' }} />
                   <Legend />
-                  <Bar dataKey="winRate" fill="#3b82f6" name="Win Rate %" />
+                  <Bar dataKey="winRate" fill="#00d4ff" name="Win Rate %" />
                   <Bar dataKey="roi" fill="#22c55e" name="ROI %" />
                 </BarChart>
               </ResponsiveContainer>
@@ -111,7 +120,7 @@ function AnalysisModal({ testId, onClose }: { testId: string; onClose: () => voi
                 {['A', 'B'].map(v => {
                   const stats = v === 'A' ? analysis?.statsA : analysis?.statsB
                   return (
-                    <div key={v} className={`p-3 rounded-lg border ${analysis?.tTest?.winner === v ? 'border-green-500/50 bg-green-900/10' : 'border-slate-700 bg-dark-800'}`}>
+                    <div key={v} className={`p-3 rounded-lg border ${analysis?.tTest?.winner === v ? 'border-green-500/50 bg-green-900/10' : 'border-dark-600 bg-dark-800'}`}>
                       <p className="font-medium text-white mb-2">
                         Variant {v} {analysis?.tTest?.winner === v && <span className="text-green-400 text-xs ml-1">★ Winner</span>}
                       </p>
@@ -185,7 +194,7 @@ export default function ABTestingPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <TestTube2 size={20} className="text-cyan-400" /> A/B Testing
+            <TestTube2 size={20} className="text-neon-blue-400" /> A/B Testing
           </h1>
           <p className="text-slate-400 text-sm">Compare models with statistical significance testing</p>
         </div>
@@ -215,8 +224,8 @@ export default function ABTestingPage() {
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-900 border border-slate-700 rounded-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+          <div className="bg-dark-900 border border-dark-600 rounded-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-dark-600">
               <h3 className="font-semibold text-white">Create A/B Test</h3>
               <button onClick={() => setShowCreate(false)} className="text-slate-500 hover:text-white"><X size={18} /></button>
             </div>
@@ -250,7 +259,7 @@ export default function ABTestingPage() {
                 </div>
               </div>
             </div>
-            <div className="p-4 border-t border-slate-800 flex gap-3">
+            <div className="p-4 border-t border-dark-600 flex gap-3">
               <button onClick={() => setShowCreate(false)} className="btn-secondary flex-1">Cancel</button>
               <button onClick={() => createMutation.mutate(form)} disabled={!form.name || !form.variantAId || !form.variantBId} className="btn-primary flex-1">
                 {createMutation.isPending ? 'Creating...' : 'Create Test'}

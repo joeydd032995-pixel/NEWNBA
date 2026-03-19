@@ -31,7 +31,7 @@ function hitRateColor(pct: number) {
 function evColor(evPct: number) {
   if (evPct > 0.05) return 'bg-green-500/20 text-green-400 border-green-500/30'
   if (evPct > 0.02) return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-  if (evPct > 0)    return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+  if (evPct > 0)    return 'bg-neon-blue-950/40 text-neon-blue-400 border-neon-blue-500/30'
   return 'bg-slate-700/40 text-slate-400 border-slate-600/30'
 }
 
