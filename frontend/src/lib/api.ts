@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api'
 
@@ -20,7 +21,9 @@ api.interceptors.response.use(
         await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true })
         return api(originalRequest)
       } catch {
-        // Refresh failed – redirect to login
+        // Refresh failed – clear auth state then redirect to login so
+        // PublicRoute doesn't bounce the user back to a protected page
+        await useAuthStore.getState().logout()
         window.location.href = '/login'
       }
     }
