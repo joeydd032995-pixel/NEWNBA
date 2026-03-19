@@ -1,7 +1,8 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { BetslipService, AddItemDto, UpdateSlipDto } from './betslip.service';
+import { BetslipService } from './betslip.service';
+import { CreateBetSlipDto, AddItemDto, UpdateSlipDto } from './dto/betslip.dto';
 
 @ApiTags('Bet Slip')
 @ApiBearerAuth()
@@ -21,8 +22,8 @@ export class BetslipController {
   }
 
   @Post()
-  create(@Body('name') name: string, @Request() req) {
-    return this.betslipService.create(req.user.id, name);
+  create(@Body() dto: CreateBetSlipDto, @Request() req) {
+    return this.betslipService.create(req.user.id, dto.name);
   }
 
   @Post(':id/items')

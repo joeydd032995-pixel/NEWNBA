@@ -5,11 +5,19 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AnalyticsService } from './analytics.service';
-import { CustomModelService, CreateModelDto, UpdateModelDto } from './custom-model.service';
+import { CustomModelService } from './custom-model.service';
 import { PerformanceTrackingService } from './performance-tracking.service';
-import { OptimizationService, GAConfig } from './optimization.service';
-import { EnsembleService, EnsembleStrategy } from './ensemble.service';
+import { OptimizationService } from './optimization.service';
+import { EnsembleService } from './ensemble.service';
 import { ABTestingService } from './ab-testing.service';
+import {
+  CreateModelDto, UpdateModelDto,
+  TrueShootingDto, EFGDto, PythagoreanDto, FourFactorsDto, CalcEVDto, RemoveVigDto,
+  RecordPredictionDto, ResolvePerformancePredictionDto,
+  CreateOptimizationRunDto,
+  CreateEnsembleDto, UpdateEnsembleDto,
+  CreateABTestDto, RecordABResultDto,
+} from './dto/analytics.dto';
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
@@ -43,35 +51,35 @@ export class AnalyticsController {
   }
 
   @Post('formulas/true-shooting')
-  calcTrueShooting(@Body() body: { points: number; fga: number; fta: number }) {
-    return { tsPct: this.analyticsService.calcTrueShooting(body.points, body.fga, body.fta) };
+  calcTrueShooting(@Body() dto: TrueShootingDto) {
+    return { tsPct: this.analyticsService.calcTrueShooting(dto.points, dto.fga, dto.fta) };
   }
 
   @Post('formulas/efg')
-  calcEFG(@Body() body: { fg: number; fg3: number; fga: number }) {
-    return { efgPct: this.analyticsService.calcEffectiveFG(body.fg, body.fg3, body.fga) };
+  calcEFG(@Body() dto: EFGDto) {
+    return { efgPct: this.analyticsService.calcEffectiveFG(dto.fg, dto.fg3, dto.fga) };
   }
 
   @Post('formulas/pythagorean')
-  calcPythagorean(@Body() body: { pointsFor: number; pointsAgainst: number }) {
-    return { winPct: this.analyticsService.calcPythagoreanWinPct(body.pointsFor, body.pointsAgainst) };
+  calcPythagorean(@Body() dto: PythagoreanDto) {
+    return { winPct: this.analyticsService.calcPythagoreanWinPct(dto.pointsFor, dto.pointsAgainst) };
   }
 
   @Post('formulas/four-factors')
-  calcFourFactors(@Body() body: { efgPct: number; tovPct: number; orbPct: number; ftr: number }) {
+  calcFourFactors(@Body() dto: FourFactorsDto) {
     return {
-      offense: this.analyticsService.calcFourFactorsOffense(body.efgPct, body.tovPct, body.orbPct, body.ftr),
+      offense: this.analyticsService.calcFourFactorsOffense(dto.efgPct, dto.tovPct, dto.orbPct, dto.ftr),
     };
   }
 
   @Post('formulas/ev')
-  calcEV(@Body() body: { trueProb: number; odds: number; stake?: number }) {
-    return this.analyticsService.calcEV(body.trueProb, body.odds, body.stake);
+  calcEV(@Body() dto: CalcEVDto) {
+    return this.analyticsService.calcEV(dto.trueProb, dto.odds, dto.stake);
   }
 
   @Post('formulas/remove-vig')
-  removeVig(@Body() body: { odds: number[] }) {
-    return { trueProbabilities: this.analyticsService.removeVig(body.odds) };
+  removeVig(@Body() dto: RemoveVigDto) {
+    return { trueProbabilities: this.analyticsService.removeVig(dto.odds) };
   }
 
   // ============================================================
@@ -114,21 +122,13 @@ export class AnalyticsController {
   // ============================================================
 
   @Post('performance/predict')
-  recordPrediction(@Request() req, @Body() body: {
-    modelId: string;
-    eventId?: string;
-    marketId?: string;
-    outcome: string;
-    predictedProb: number;
-    confidence: number;
-    metadata?: any;
-  }) {
-    return this.performanceService.recordPrediction(req.user.id, body.modelId, body);
+  recordPrediction(@Request() req, @Body() dto: RecordPredictionDto) {
+    return this.performanceService.recordPrediction(req.user.id, dto.modelId, dto);
   }
 
   @Put('performance/resolve/:predictionId')
-  resolvePrediction(@Param('predictionId') id: string, @Request() req, @Body() body: { actualResult: boolean }) {
-    return this.performanceService.resolvePrediction(id, body.actualResult, req.user.id);
+  resolvePrediction(@Param('predictionId') id: string, @Request() req, @Body() dto: ResolvePerformancePredictionDto) {
+    return this.performanceService.resolvePrediction(id, dto.actualResult, req.user.id);
   }
 
   @Get('performance/:modelId')
@@ -162,16 +162,12 @@ export class AnalyticsController {
   }
 
   @Post('optimization')
-  async createOptimizationRun(@Request() req, @Body() body: {
-    name: string;
-    config: GAConfig;
-    runNow?: boolean;
-  }) {
-    const run = await this.optimizationService.createOptimizationRun(req.user.id, body.name, body.config);
+  async createOptimizationRun(@Request() req, @Body() dto: CreateOptimizationRunDto) {
+    const run = await this.optimizationService.createOptimizationRun(req.user.id, dto.name, dto.config as any);
 
-    if (body.runNow) {
+    if (dto.runNow) {
       // Run async (don't await - long running)
-      this.optimizationService.runGeneticAlgorithm(run.id, body.config).catch(err =>
+      this.optimizationService.runGeneticAlgorithm(run.id, dto.config as any).catch(err =>
         console.error('GA optimization failed:', err)
       );
     }
@@ -188,7 +184,7 @@ export class AnalyticsController {
   async startOptimization(@Param('id') id: string, @Request() req) {
     const run = await this.optimizationService.getOptimizationRun(id, req.user.id);
     if (!run) throw new NotFoundException(`Optimization run ${id} not found`);
-    this.optimizationService.runGeneticAlgorithm(id, run.config as unknown as GAConfig).catch((err) =>
+    this.optimizationService.runGeneticAlgorithm(id, run.config as any).catch((err) =>
       this.logger.error(`GA optimization failed for run ${id}: ${err.message}`),
     );
     return { message: 'Optimization started', runId: id };
@@ -209,13 +205,8 @@ export class AnalyticsController {
   }
 
   @Post('ensemble')
-  createEnsemble(@Request() req, @Body() body: {
-    name: string;
-    description?: string;
-    strategy: EnsembleStrategy;
-    components: Array<{ modelId: string; weight: number }>;
-  }) {
-    return this.ensembleService.createEnsemble(req.user.id, body);
+  createEnsemble(@Request() req, @Body() dto: CreateEnsembleDto) {
+    return this.ensembleService.createEnsemble(req.user.id, dto as any);
   }
 
   @Get('ensemble/:id')
@@ -224,8 +215,8 @@ export class AnalyticsController {
   }
 
   @Put('ensemble/:id')
-  updateEnsemble(@Param('id') id: string, @Request() req, @Body() body: any) {
-    return this.ensembleService.update(id, req.user.id, body);
+  updateEnsemble(@Param('id') id: string, @Request() req, @Body() dto: UpdateEnsembleDto) {
+    return this.ensembleService.update(id, req.user.id, dto as any);
   }
 
   @Delete('ensemble/:id')
@@ -248,15 +239,8 @@ export class AnalyticsController {
   }
 
   @Post('ab-tests')
-  createABTest(@Request() req, @Body() body: {
-    name: string;
-    description?: string;
-    variantAId: string;
-    variantBId: string;
-    sampleSize?: number;
-    confidenceLevel?: number;
-  }) {
-    return this.abTestingService.createTest(req.user.id, body);
+  createABTest(@Request() req, @Body() dto: CreateABTestDto) {
+    return this.abTestingService.createTest(req.user.id, dto);
   }
 
   @Get('ab-tests/:id')
@@ -280,14 +264,8 @@ export class AnalyticsController {
   }
 
   @Post('ab-tests/:id/record')
-  recordABResult(@Param('id') id: string, @Body() body: {
-    variant: 'A' | 'B';
-    outcome: boolean;
-    predictedProb: number;
-    actualProb?: number;
-    ev?: number;
-  }) {
-    return this.abTestingService.recordResult(id, body);
+  recordABResult(@Param('id') id: string, @Body() dto: RecordABResultDto) {
+    return this.abTestingService.recordResult(id, dto);
   }
 
   @Get('ab-tests/:id/analyze')

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Query, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BankrollService } from './bankroll.service';
+import { CalculateKellyDto } from './dto/bankroll.dto';
 
 @Controller('bankroll')
 @UseGuards(JwtAuthGuard)
@@ -31,14 +32,12 @@ export class BankrollController {
 
   /** Inline Kelly calculator */
   @Post('calculate')
-  calculate(
-    @Body() body: { bankroll: number; odds: number; trueProb: number; fraction: number },
-  ) {
+  calculate(@Body() dto: CalculateKellyDto) {
     return this.bankrollService.calcKelly(
-      body.bankroll,
-      body.odds,
-      body.trueProb,
-      body.fraction,
+      dto.bankroll,
+      dto.odds,
+      dto.trueProb,
+      dto.fraction,
     );
   }
 }

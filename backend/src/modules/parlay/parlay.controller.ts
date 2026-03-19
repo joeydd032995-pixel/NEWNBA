@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ParlayService, SGPLegInput } from './parlay.service';
+import { ParlayService } from './parlay.service';
+import { AnalyzeSGPDto, AnalyzeParlayDto } from './dto/parlay.dto';
 
 @Controller('parlay')
 @UseGuards(JwtAuthGuard)
@@ -24,13 +25,13 @@ export class ParlayController {
 
   /** Full SGP analysis: correlation matrix + adjusted EV */
   @Post('sgp/analyze')
-  analyzeSGP(@Body() body: { eventId: string; legs: SGPLegInput[] }) {
-    return this.parlayService.analyzeSGP(body.eventId, body.legs);
+  analyzeSGP(@Body() dto: AnalyzeSGPDto) {
+    return this.parlayService.analyzeSGP(dto.eventId, dto.legs);
   }
 
   /** Standard multi-game parlay EV (legs across different events = independent) */
   @Post('standard')
-  analyzeParlay(@Body() body: { legs: Array<{ marketId: string; outcome: string }> }) {
-    return this.parlayService.analyzeParlay(body.legs);
+  analyzeParlay(@Body() dto: AnalyzeParlayDto) {
+    return this.parlayService.analyzeParlay(dto.legs);
   }
 }

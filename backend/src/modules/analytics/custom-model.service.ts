@@ -1,22 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-
-export class CreateModelDto {
-  @ApiProperty() @IsString() name: string;
-  @ApiProperty({ required: false }) @IsOptional() @IsString() description?: string;
-  @ApiProperty() weights: Record<string, number>;
-  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() isPublic?: boolean;
-}
-
-export class UpdateModelDto {
-  @ApiProperty({ required: false }) @IsOptional() @IsString() name?: string;
-  @ApiProperty({ required: false }) @IsOptional() @IsString() description?: string;
-  @ApiProperty({ required: false }) @IsOptional() weights?: Record<string, number>;
-  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() isPublic?: boolean;
-  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() isActive?: boolean;
-}
+import { CreateModelDto, UpdateModelDto } from './dto/analytics.dto';
 
 @Injectable()
 export class CustomModelService {

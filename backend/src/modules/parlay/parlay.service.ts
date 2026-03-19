@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { PropStatType } from '@prisma/client';
+import { SGPLegInputDto } from './dto/parlay.dto';
 
 // ─── Leg type classification ─────────────────────────────────────────────────
 
@@ -148,7 +149,7 @@ function decimalToAmerican(decimal: number): number {
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
-export interface SGPLegInput { marketId: string; outcome: string }
+export type SGPLegInput = SGPLegInputDto;
 
 @Injectable()
 export class ParlayService {
