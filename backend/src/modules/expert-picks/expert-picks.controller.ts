@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ExpertPicksService } from './expert-picks.service';
+import { CreateExpertPickDto, ResolveExpertPickDto } from './dto/expert-picks.dto';
 
 @Controller('expert-picks')
 @UseGuards(JwtAuthGuard)
@@ -8,18 +9,8 @@ export class ExpertPicksController {
   constructor(private readonly service: ExpertPicksService) {}
 
   @Post()
-  create(
-    @Body() body: {
-      expertName: string;
-      source?: string;
-      marketId: string;
-      outcome: string;
-      odds?: number;
-      confidence?: number;
-      reasoning?: string;
-    },
-  ) {
-    return this.service.createPick(body);
+  create(@Body() dto: CreateExpertPickDto) {
+    return this.service.createPick(dto);
   }
 
   @Get()
@@ -48,10 +39,7 @@ export class ExpertPicksController {
   }
 
   @Patch(':id/result')
-  resolve(
-    @Param('id') id: string,
-    @Body('result') result: 'WIN' | 'LOSS' | 'PUSH',
-  ) {
-    return this.service.resolvePick(id, result);
+  resolve(@Param('id') id: string, @Body() dto: ResolveExpertPickDto) {
+    return this.service.resolvePick(id, dto.result);
   }
 }

@@ -1,20 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BetSlipStatus } from '@prisma/client';
-
-export class AddItemDto {
-  marketId?: string;
-  eventId?: string;
-  outcome: string;
-  odds: number;
-  stake?: number;
-  ev?: number;
-}
-
-export class UpdateSlipDto {
-  name?: string;
-  totalStake?: number;
-}
+import { AddItemDto, UpdateSlipDto } from './dto/betslip.dto';
 
 @Injectable()
 export class BetslipService {

@@ -1,18 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AlertType } from '@prisma/client';
-
-export class CreateAlertDto {
-  name: string;
-  type: AlertType;
-  conditions: Record<string, any>;
-}
-
-export class UpdateAlertDto {
-  name?: string;
-  conditions?: Record<string, any>;
-  isActive?: boolean;
-}
+import { CreateAlertDto, UpdateAlertDto } from './dto/alerts.dto';
 
 @Injectable()
 export class AlertsService {
