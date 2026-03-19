@@ -4,6 +4,21 @@ This file provides guidance for AI assistants working in the NEWNBA repository.
 
 ---
 
+## Authorization Policy
+
+**AI assistants must never make unauthorized changes to this codebase.**
+
+- **Explicit approval required**: Do not modify any file, schema, configuration, dependency, or git history unless the user has explicitly requested that specific change in the current session.
+- **Scope discipline**: Authorization for one task does not imply authorization for related tasks. Each distinct change requires its own approval.
+- **No proactive "improvements"**: Do not refactor, reformat, add comments, fix unrelated bugs, or update dependencies unless directly asked.
+- **Git operations**: Do not commit, push, create branches, or open pull requests without explicit instruction.
+- **Infrastructure & config**: Do not alter `.env` files, Docker configs, CI/CD pipelines, or database schemas without explicit instruction.
+- **When in doubt, ask**: If the scope of a requested change is unclear, ask the user before proceeding.
+
+Violations of this policy may cause data loss, broken deployments, or unintended behavior in production systems.
+
+---
+
 ## Project Overview
 
 NEWNBA is a full-stack sports betting analytics platform built around NBA data. It provides:
