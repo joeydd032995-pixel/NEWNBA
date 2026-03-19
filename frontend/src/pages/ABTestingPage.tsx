@@ -15,7 +15,7 @@ function StatusBadge({ status }: { status: string }) {
     return (
       <span
         className="px-2 py-0.5 rounded-full text-xs font-semibold text-neon-blue-400"
-        style={{ background: 'linear-gradient(135deg, rgba(0,3,112,0.35) 0%, rgba(0,212,255,0.10) 100%)', border: '1px solid rgba(0,212,255,0.30)', boxShadow: '0 0 8px rgba(0,212,255,0.2)' }}
+        style={{ background: 'linear-gradient(135deg, rgba(20,0,171,0.35) 0%, rgba(0,212,255,0.10) 100%)', border: '1px solid rgba(0,212,255,0.30)', boxShadow: '0 0 8px rgba(0,212,255,0.2)' }}
       >
         {status}
       </span>
