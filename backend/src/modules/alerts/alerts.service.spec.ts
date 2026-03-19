@@ -77,7 +77,7 @@ describe('AlertsService', () => {
       const userId = 'user-123';
       const dto = {
         name: 'High EV Alert',
-        type: 'EV_THRESHOLD',
+        type: 'EV_THRESHOLD' as any,
         conditions: { minEV: 5, sport: 'NBA' },
       };
       const createdAlert = { id: 'alert-new', userId, ...dto };

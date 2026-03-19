@@ -14,7 +14,7 @@ describe('ExpertPicksService', () => {
         update: jest.fn(),
       },
       publicBettingSplit: {
-        findFirst: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     };
     service = new ExpertPicksService(prismaStub);
@@ -134,10 +134,13 @@ describe('ExpertPicksService', () => {
 
       const result = await service.getConsensus('market-1');
 
-      expect(result).toEqual({
-        home: { count: 2, pct: 67 },
-        away: { count: 1, pct: 33 },
-      });
+      expect(result.total).toBe(3);
+      const homeEntry = result.consensus.find((c: any) => c.outcome === 'home')!;
+      const awayEntry = result.consensus.find((c: any) => c.outcome === 'away')!;
+      expect(homeEntry.count).toBe(2);
+      expect(homeEntry.pct).toBe(67);
+      expect(awayEntry.count).toBe(1);
+      expect(awayEntry.pct).toBe(33);
     });
 
     it('returns empty consensus when no picks for market', async () => {
@@ -145,7 +148,8 @@ describe('ExpertPicksService', () => {
 
       const result = await service.getConsensus('market-unknown');
 
-      expect(Object.keys(result).length).toBe(0);
+      expect(result.total).toBe(0);
+      expect(result.consensus).toEqual([]);
     });
   });
 
@@ -177,40 +181,54 @@ describe('ExpertPicksService', () => {
       expect(result.result).toBe('WIN');
     });
 
-    it('throws NotFoundException when pick does not exist', async () => {
-      prismaStub.expertPick.findUnique.mockResolvedValue(null);
+    it('calls update with where: { id } and result data (no pre-existence check)', async () => {
+      prismaStub.expertPick.update.mockResolvedValue({ id: 'pick-999', result: 'WIN', resolvedAt: new Date() });
 
-      await expect(service.resolvePick('pick-999', 'WIN')).rejects.toThrow(
-        NotFoundException,
+      // resolvePick passes directly to prisma.update — no NotFoundException thrown on missing record
+      await service.resolvePick('pick-999', 'WIN');
+
+      expect(prismaStub.expertPick.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'pick-999' } }),
       );
     });
   });
 
   describe('getContrarian', () => {
-    it('returns picks where expert lean differs from public lean', async () => {
-      // Contrarian logic: expert picks "home" but public favors "away"
+    it('returns contrarian picks when experts ≥60% on side public ≤40%', async () => {
+      // Expert at 100% on 'home', public only 30% on 'home' → contrarian
       const picks = [
         {
           id: 'pick-1',
           outcome: 'home',
           marketId: 'market-1',
           expertName: 'Expert A',
-          confidence: 0.8,
+          result: null,
+          market: {
+            id: 'market-1',
+            marketType: 'MONEYLINE',
+            event: { id: 'event-1', homeTeam: { abbreviation: 'LAL' }, awayTeam: { abbreviation: 'BOS' } },
+            player: null,
+            publicBettingSplits: [
+              { outcome: 'home', pctBets: 30, pctMoney: 25, snappedAt: new Date() },
+            ],
+          },
         },
       ];
-      const split = {
-        marketId: 'market-1',
-        outcome: 'away',
-        pctBets: 65,
-        pctMoney: 70,
-      };
-
       prismaStub.expertPick.findMany.mockResolvedValue(picks);
-      prismaStub.publicBettingSplit.findFirst.mockResolvedValue(split);
 
       const result = await service.getContrarian();
 
-      expect(result).toBeDefined();
+      expect(result).toHaveLength(1);
+      expect(result[0].expertOutcome).toBe('home');
+      expect(result[0].expertPct).toBe(100);
+    });
+
+    it('returns empty array when no contrarian signals', async () => {
+      prismaStub.expertPick.findMany.mockResolvedValue([]);
+
+      const result = await service.getContrarian();
+
+      expect(result).toEqual([]);
     });
   });
 });

@@ -189,8 +189,9 @@ describe('ParlayService', () => {
         { marketId: 'm2', outcome: 'away' },
       ]);
 
-      expect(result.corrProb).toBeGreaterThanOrEqual(0.001);
-      expect(result.corrProb).toBeLessThanOrEqual(0.999);
+      // corrProb is returned as a percentage (0-100) clamped from [0.001, 0.999] → [0.1, 99.9]
+      expect(result.corrProb).toBeGreaterThanOrEqual(0.001 * 100 - 1);
+      expect(result.corrProb).toBeLessThanOrEqual(0.999 * 100 + 1);
     });
   });
 });

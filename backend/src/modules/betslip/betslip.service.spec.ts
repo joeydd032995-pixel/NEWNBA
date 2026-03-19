@@ -22,6 +22,7 @@ describe('BetslipService', () => {
         create: jest.fn(),
         delete: jest.fn(),
         findMany: jest.fn(),
+        findUnique: jest.fn(),
       },
     };
     service = new BetslipService(prismaStub);
@@ -73,56 +74,40 @@ describe('BetslipService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('correctly recalculates totalStake as sum of item stakes', async () => {
+    it('correctly recalculates totalStake as sum of item stakes via betSlip.update', async () => {
       const slip = { id: 'slip-1', userId: 'user-1', status: 'OPEN', items: [] };
       const dto = { marketId: 'market-1', outcome: 'home', odds: -110, stake: 50 };
 
       prismaStub.betSlip.findUnique.mockResolvedValue(slip);
-      prismaStub.betSlipItem.create.mockResolvedValue({
-        id: 'item-1',
-        slipId: 'slip-1',
-        ...dto,
-      });
-      prismaStub.betSlip.update.mockResolvedValue({
-        ...slip,
-        totalStake: 50,
-        items: [{ ...dto }],
-      });
+      prismaStub.betSlipItem.create.mockResolvedValue({ id: 'item-1', betSlipId: 'slip-1', ...dto });
+      prismaStub.betSlipItem.findMany.mockResolvedValue([dto]);
+      prismaStub.betSlip.update.mockResolvedValue({ ...slip, totalStake: 50 });
 
-      const result = await service.addItem('slip-1', 'user-1', dto);
+      await service.addItem('slip-1', 'user-1', dto);
 
-      expect(result.totalStake).toBe(50);
+      // recalcTotals calls betSlip.update with totalStake
+      expect(prismaStub.betSlip.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ totalStake: 50 }),
+        }),
+      );
     });
 
     it('calculates parlay odds as product of decimal odds', async () => {
-      const slip = {
-        id: 'slip-1',
-        userId: 'user-1',
-        status: 'OPEN',
-        items: [
-          { odds: 110, stake: 25 }, // decimal = 2.10
-        ],
-      };
+      const slip = { id: 'slip-1', userId: 'user-1', status: 'OPEN', items: [] };
+      const existingItem = { odds: 110, stake: 25 }; // decimal = 2.10
       const newItem = { marketId: 'market-2', outcome: 'away', odds: -110, stake: 25 }; // decimal = 1.9091
 
       prismaStub.betSlip.findUnique.mockResolvedValue(slip);
-      prismaStub.betSlipItem.create.mockResolvedValue({
-        id: 'item-2',
-        slipId: 'slip-1',
-        ...newItem,
-      });
+      prismaStub.betSlipItem.create.mockResolvedValue({ id: 'item-2', betSlipId: 'slip-1', ...newItem });
+      prismaStub.betSlipItem.findMany.mockResolvedValue([existingItem, newItem]);
+      prismaStub.betSlip.update.mockResolvedValue({});
 
-      const updatedSlip = {
-        ...slip,
-        items: [...slip.items, newItem],
-        totalOdds: 2.1 * (100 / 110 + 1), // ~3.81
-        totalStake: 50,
-      };
-      prismaStub.betSlip.update.mockResolvedValue(updatedSlip);
+      await service.addItem('slip-1', 'user-1', newItem);
 
-      const result = await service.addItem('slip-1', 'user-1', newItem);
-
-      expect(result.totalOdds).toBeCloseTo(3.81, 1);
+      // parlay odds = 2.10 × 1.9091 ≈ 4.009 — verify update was called with totalOdds
+      const updateCall = prismaStub.betSlip.update.mock.calls[0][0];
+      expect(updateCall.data.totalOdds).toBeCloseTo(2.1 * (100 / 110 + 1), 1);
     });
 
     it('throws NotFoundException when slip does not exist', async () => {
