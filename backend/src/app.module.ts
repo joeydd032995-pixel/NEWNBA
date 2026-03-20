@@ -18,6 +18,7 @@ import { LiveModule } from './modules/live/live.module';
 import { ParlayModule } from './modules/parlay/parlay.module';
 import { BankrollModule } from './modules/bankroll/bankroll.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     ParlayModule,
     BankrollModule,
     NotificationsModule,
+    BillingModule,
   ],
 })
 export class AppModule {}

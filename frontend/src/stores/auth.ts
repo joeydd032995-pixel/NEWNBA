@@ -1,15 +1,19 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { authApi } from '../lib/api'
+import type { Plan } from '../lib/plans'
+
+type SubscriptionStatus = 'TRIALING' | 'ACTIVE' | 'EXPIRED' | 'CANCELED'
 
 interface User {
   id: string
   email: string
   firstName?: string
   lastName?: string
-  planType: 'FREE' | 'PRO' | 'PREMIUM'
-  subscriptionStatus?: 'TRIALING' | 'ACTIVE' | 'EXPIRED' | 'CANCELED'
+  planType: Plan
+  subscriptionStatus?: SubscriptionStatus
   trialEndsAt?: string | null
+  subscriptionId?: string | null
 }
 
 interface AuthStore {
