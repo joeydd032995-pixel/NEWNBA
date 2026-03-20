@@ -8,6 +8,8 @@ interface User {
   firstName?: string
   lastName?: string
   planType: 'FREE' | 'PRO' | 'PREMIUM'
+  subscriptionStatus?: 'TRIALING' | 'ACTIVE' | 'EXPIRED' | 'CANCELED'
+  trialEndsAt?: string | null
 }
 
 interface AuthStore {

@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PlanType } from '@prisma/client';
+import { PlanType, SubscriptionStatus } from '@prisma/client';
 import { PLAN_KEY } from '../decorators/require-plan.decorator';
 
 const PLAN_RANK: Record<PlanType, number> = {
@@ -23,6 +23,16 @@ export class PlanGuard implements CanActivate {
     if (!required) return true;
 
     const { user } = context.switchToHttp().getRequest();
+
+    // Active trial grants full PREMIUM access
+    if (
+      user?.subscriptionStatus === SubscriptionStatus.TRIALING &&
+      user?.trialEndsAt &&
+      new Date(user.trialEndsAt).getTime() > Date.now()
+    ) {
+      return true;
+    }
+
     const userRank = PLAN_RANK[user?.planType as PlanType] ?? 0;
     const requiredRank = PLAN_RANK[required];
 

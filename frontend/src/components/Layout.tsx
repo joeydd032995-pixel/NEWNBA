@@ -4,7 +4,7 @@ import {
   FlaskConical, GitBranch, TestTube2, Calculator, Bell,
   ShoppingCart, LogOut, ChevronRight, Menu, X, Dumbbell, UserCheck, Users, Radio, Layers, Wallet
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAuthStore } from '../stores/auth'
 import { useBetSlipStore } from '../stores/betslip'
 import NotificationCenter from './NotificationCenter'
@@ -125,6 +125,9 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </header>
 
+        {/* Trial banner */}
+        <TrialBanner />
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {children}
@@ -133,6 +136,34 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Betslip drawer */}
       <BetSlipDrawer />
+    </div>
+  )
+}
+
+function TrialBanner() {
+  const { user } = useAuthStore()
+  const navigate = useNavigate()
+
+  const daysLeft = useMemo(() => {
+    if (user?.subscriptionStatus !== 'TRIALING' || !user.trialEndsAt) return null
+    const msLeft = new Date(user.trialEndsAt).getTime() - Date.now()
+    if (msLeft <= 0) return null
+    return Math.ceil(msLeft / (1000 * 60 * 60 * 24))
+  }, [user?.subscriptionStatus, user?.trialEndsAt])
+
+  if (daysLeft === null) return null
+
+  return (
+    <div className="flex items-center justify-between px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-sm">
+      <span className="text-amber-400">
+        {daysLeft} day{daysLeft !== 1 ? 's' : ''} left in your free trial
+      </span>
+      <button
+        onClick={() => navigate('/pricing')}
+        className="text-amber-400 font-semibold hover:text-amber-300 transition-colors"
+      >
+        Upgrade now →
+      </button>
     </div>
   )
 }

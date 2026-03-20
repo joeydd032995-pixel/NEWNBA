@@ -6,7 +6,7 @@ import { PrismaService } from '../../modules/prisma/prisma.service';
 import { OddsApiService } from '../odds-api/odds-api.service';
 import { NbaDataService } from '../nba-data/nba-data.service';
 import { BallDontLieService } from '../balldontlie/balldontlie.service';
-import { MarketType } from '@prisma/client';
+import { MarketType, SubscriptionStatus } from '@prisma/client';
 import { DataIngestionService } from '../../modules/data-ingestion/data-ingestion.service';
 import { InjuryIngestService } from '../../modules/data-ingestion/injury-ingest.service';
 import { NewsIngestService } from '../../modules/data-ingestion/news-ingest.service';
@@ -764,6 +764,21 @@ export class JobsService implements OnModuleInit {
       this.logger.error('Alert evaluation job failed:', e.message);
     } finally {
       this.isAlertEvalRunning = false;
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async expireTrialsJob() {
+    try {
+      const result = await this.prisma.user.updateMany({
+        where: { subscriptionStatus: SubscriptionStatus.TRIALING, trialEndsAt: { lt: new Date() } },
+        data: { planType: 'FREE', subscriptionStatus: SubscriptionStatus.EXPIRED },
+      });
+      if (result.count > 0) {
+        this.logger.log(`Trial expiry: downgraded ${result.count} user(s) to FREE`);
+      }
+    } catch (e) {
+      this.logger.error('Trial expiry job failed:', e.message);
     }
   }
 
