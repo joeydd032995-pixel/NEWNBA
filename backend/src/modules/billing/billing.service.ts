@@ -25,7 +25,7 @@ export class BillingService {
     private prisma: PrismaService,
   ) {
     this.stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY', ''), {
-      apiVersion: '2025-01-27.acacia',
+      apiVersion: '2026-02-25.clover',
     });
     this.frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
     this.proPriceId = this.config.get<string>('STRIPE_PRO_PRICE_ID', '');
