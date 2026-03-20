@@ -111,7 +111,7 @@ function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null
   const d = payload[0].payload
   return (
-    <div className="bg-slate-800 border border-slate-600 rounded p-2 text-xs">
+    <div className="bg-dark-800 border border-dark-500 rounded p-2 text-xs">
       <div className="font-semibold text-white">{d.matchup}</div>
       <div className="text-slate-300">{d.gameDate}</div>
       <div className={d.hitOver ? 'text-green-400' : 'text-red-400'}>
@@ -162,9 +162,9 @@ export function PlayerCheatSheetDrawer({
       />
 
       {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-slate-900 border-l border-slate-700 z-50 flex flex-col overflow-hidden shadow-2xl">
+      <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-dark-900 border-l border-dark-600 z-50 flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-dark-600 flex-shrink-0">
           <div>
             <h2 className="text-lg font-bold text-white">{playerName}</h2>
             {data && (
@@ -214,11 +214,11 @@ export function PlayerCheatSheetDrawer({
                     Recent News
                   </div>
                   {data.news.map((item) => (
-                    <div key={item.id} className="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                    <div key={item.id} className="bg-dark-800 border border-dark-600 rounded-lg p-3">
                       <div className="text-sm font-medium text-white leading-snug">
                         {item.url ? (
                           <a href={item.url} target="_blank" rel="noopener noreferrer"
-                            className="hover:text-blue-400 transition-colors">
+                            className="hover:text-neon-blue-400 transition-colors">
                             {item.headline}
                           </a>
                         ) : item.headline}
@@ -240,19 +240,19 @@ export function PlayerCheatSheetDrawer({
                   <TrendingUp className="h-3 w-3" />
                   Last {data.trend.length} Games — Season avg: {data.seasonAvg}
                 </div>
-                <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+                <div className="bg-dark-800 rounded-lg p-3 border border-dark-600">
                   {chartData.length === 0 ? (
                     <div className="text-center text-slate-500 text-sm py-6">No game data</div>
                   ) : (
                     <ResponsiveContainer width="100%" height={180}>
                       <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -10 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.1)" />
                         <XAxis
                           dataKey="matchup"
-                          tick={{ fontSize: 9, fill: '#94a3b8' }}
+                          tick={{ fontSize: 9, fill: '#555555' }}
                           interval={Math.floor(chartData.length / 5)}
                         />
-                        <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                        <YAxis tick={{ fontSize: 10, fill: '#555555' }} />
                         <Tooltip content={<CustomTooltip />} />
                         <ReferenceLine
                           y={line}
@@ -263,7 +263,7 @@ export function PlayerCheatSheetDrawer({
                         <Line
                           type="monotone"
                           dataKey="statValue"
-                          stroke="#6366f1"
+                          stroke="#00d4ff"
                           strokeWidth={2}
                           dot={<CustomDot />}
                           activeDot={{ r: 6 }}

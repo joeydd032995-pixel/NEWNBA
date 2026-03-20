@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import {
-  Layers, Plus, X, Zap, TrendingUp, TrendingDown,
+  Plus, X, Zap, TrendingUp, TrendingDown,
   RefreshCw, ChevronDown, AlertTriangle, Star,
 } from 'lucide-react'
 import { parlayApi, sportsApi } from '../lib/api'
@@ -19,13 +19,13 @@ function fmtOdds(odds: number) {
 }
 
 function corrColor(r: number) {
-  if (r >= 0.5)  return 'bg-green-700 text-green-100'
-  if (r >= 0.2)  return 'bg-green-900/60 text-green-300'
-  if (r >= 0.05) return 'bg-green-900/30 text-green-400'
-  if (r <= -0.5) return 'bg-red-700 text-red-100'
-  if (r <= -0.2) return 'bg-red-900/60 text-red-300'
-  if (r <= -0.05)return 'bg-red-900/30 text-red-400'
-  return 'bg-slate-700 text-slate-400'
+  if (r >= 0.5)  return 'bg-secondary/20 text-secondary'
+  if (r >= 0.2)  return 'bg-secondary/10 text-secondary'
+  if (r >= 0.05) return 'bg-secondary/6 text-secondary'
+  if (r <= -0.5) return 'bg-error/20 text-error'
+  if (r <= -0.2) return 'bg-error/10 text-error'
+  if (r <= -0.05)return 'bg-error/6 text-error'
+  return 'bg-surface-container-highest text-on-surface-variant'
 }
 
 function corrLabel(r: number) {
@@ -40,11 +40,11 @@ function corrLabel(r: number) {
 
 function evBadge(evPct: number) {
   const sign = evPct > 0 ? '+' : ''
-  const cls  = evPct > 5  ? 'text-green-400 bg-green-900/30 border-green-700/50'
-             : evPct > 0  ? 'text-yellow-400 bg-yellow-900/20 border-yellow-700/40'
-             : evPct > -5 ? 'text-slate-400 bg-slate-800 border-slate-700'
-             :               'text-red-400 bg-red-900/20 border-red-700/40'
-  return <span className={`px-2 py-0.5 rounded border text-xs font-semibold ${cls}`}>{sign}{evPct.toFixed(1)}% EV</span>
+  const cls  = evPct > 5  ? 'text-secondary bg-secondary/12 border-secondary/30'
+             : evPct > 0  ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30'
+             : evPct > -5 ? 'text-on-surface-variant bg-surface-container-highest border-outline-variant/20'
+             :               'text-error bg-error/10 border-error/30'
+  return <span className={`px-2 py-0.5 rounded-lg border text-xs font-bold ${cls}`}>{sign}{evPct.toFixed(1)}% EV</span>
 }
 
 // ─── Correlation Matrix ───────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ function CorrelationMatrix({ legs, matrix }: { legs: any[]; matrix: number[][] }
   if (n < 2) return null
   return (
     <div>
-      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+      <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest mb-3">
         Correlation Matrix
       </h3>
       <div className="overflow-x-auto">
@@ -62,8 +62,8 @@ function CorrelationMatrix({ legs, matrix }: { legs: any[]; matrix: number[][] }
           <thead>
             <tr>
               <th className="w-24" />
-              {legs.map((l, j) => (
-                <th key={j} className="px-2 py-1 text-slate-500 font-normal text-center max-w-[80px] truncate">
+              {legs.map((_, j) => (
+                <th key={j} className="px-2 py-1 text-on-surface-variant font-normal text-center max-w-[80px] truncate">
                   {j + 1}
                 </th>
               ))}
@@ -72,15 +72,15 @@ function CorrelationMatrix({ legs, matrix }: { legs: any[]; matrix: number[][] }
           <tbody>
             {legs.map((_, i) => (
               <tr key={i}>
-                <td className="pr-2 text-slate-500 text-right">
-                  <span className="inline-block w-4 h-4 rounded-full bg-primary-700 text-primary-200 text-[10px] text-center leading-4 mr-1">{i + 1}</span>
+                <td className="pr-2 text-on-surface-variant text-right">
+                  <span className="inline-block w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] text-center leading-5 mr-1 font-bold">{i + 1}</span>
                 </td>
                 {matrix[i].map((r, j) => (
                   <td key={j} className="p-0.5">
                     {i === j ? (
-                      <div className="w-14 h-7 bg-slate-700 rounded flex items-center justify-center text-slate-500">—</div>
+                      <div className="w-14 h-7 bg-surface-container-highest rounded-lg flex items-center justify-center text-on-surface-variant">—</div>
                     ) : (
-                      <div className={`w-14 h-7 rounded flex items-center justify-center font-mono text-[10px] ${corrColor(r)}`}>
+                      <div className={`w-14 h-7 rounded-lg flex items-center justify-center font-mono text-[10px] ${corrColor(r)}`}>
                         {r >= 0 ? '+' : ''}{r.toFixed(2)}
                       </div>
                     )}
@@ -100,10 +100,10 @@ function CorrelationMatrix({ legs, matrix }: { legs: any[]; matrix: number[][] }
             const r = matrix[i][j]
             return (
               <div key={`${i}-${j}`} className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">
-                  <span className="text-primary-400">#{i + 1}</span> × <span className="text-primary-400">#{j + 1}</span>
+                <span className="text-on-surface-variant">
+                  <span className="text-primary">#{i + 1}</span> × <span className="text-primary">#{j + 1}</span>
                 </span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${corrColor(r)}`}>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${corrColor(r)}`}>
                   {corrLabel(r)}
                 </span>
               </div>
@@ -135,10 +135,10 @@ function LegPicker({ eventData, selected, onAdd }: {
           <button
             key={t}
             onClick={() => setFilter(t)}
-            className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
+            className={`px-3 py-1 rounded-xl text-xs font-bold border transition-colors ${
               filter === t
-                ? 'bg-primary-600/30 border-primary-500/50 text-primary-300'
-                : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'
+                ? 'bg-primary/20 border-primary/40 text-primary'
+                : 'bg-surface-container-high border-outline-variant/20 text-on-surface-variant hover:border-outline-variant/40'
             }`}
           >
             {t === 'PLAYER_PROP' ? 'Props' : t === 'ALL' ? 'All' : t}
@@ -146,7 +146,7 @@ function LegPicker({ eventData, selected, onAdd }: {
         ))}
       </div>
 
-      <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+      <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
         {legs.map((market: any) =>
           market.outcomes.map((o: any) => {
             const key = `${market.marketId}-${o.outcome}`
@@ -155,24 +155,24 @@ function LegPicker({ eventData, selected, onAdd }: {
               ? `${market.playerName} ${o.outcome.toUpperCase()}${o.line != null ? ` ${o.line}` : ''} (${market.propStatType ?? market.marketType})`
               : `${o.outcome.toUpperCase()}${o.line != null ? ` ${o.line}` : ''} ${market.marketType}`
             return (
-              <div key={key} className="flex items-center justify-between bg-slate-800/50 rounded-lg px-3 py-2">
+              <div key={key} className="flex items-center justify-between bg-surface-container-high/60 rounded-xl px-3 py-2.5 border border-outline-variant/10">
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-white truncate">{label}</div>
+                  <div className="text-xs text-on-surface truncate">{label}</div>
                   {market.playerName && (
-                    <div className="text-[10px] text-slate-500">{market.marketType}</div>
+                    <div className="text-[10px] text-on-surface-variant">{market.marketType}</div>
                   )}
                 </div>
                 <div className="flex items-center gap-2 ml-2 shrink-0">
-                  <span className={`text-xs font-mono font-bold ${o.odds > 0 ? 'text-green-400' : 'text-slate-300'}`}>
+                  <span className={`text-xs font-mono font-bold ${o.odds > 0 ? 'text-secondary' : 'text-on-surface'}`}>
                     {fmtOdds(o.odds)}
                   </span>
                   <button
                     disabled={alreadyAdded}
                     onClick={() => onAdd({ marketId: market.marketId, outcome: o.outcome, label, odds: o.odds })}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold transition-colors ${
                       alreadyAdded
-                        ? 'bg-slate-700 text-slate-600 cursor-not-allowed'
-                        : 'bg-primary-600/30 text-primary-400 hover:bg-primary-600/50'
+                        ? 'bg-surface-container-highest text-on-surface-variant/40 cursor-not-allowed'
+                        : 'bg-primary/20 text-primary hover:bg-primary/35'
                     }`}
                   >
                     {alreadyAdded ? '✓' : '+'}
@@ -183,7 +183,7 @@ function LegPicker({ eventData, selected, onAdd }: {
           })
         )}
         {legs.length === 0 && (
-          <div className="text-center text-slate-500 text-xs py-6">No markets available for this type</div>
+          <div className="text-center text-on-surface-variant text-xs py-6">No markets available for this type</div>
         )}
       </div>
     </div>
@@ -279,21 +279,20 @@ export default function ParlayBuilderPage() {
     `${ev.awayTeam?.abbreviation ?? ev.away} @ ${ev.homeTeam?.abbreviation ?? ev.home}`
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Layers size={20} className="text-primary-400" /> Parlay Builder
-          </h1>
-          <p className="text-slate-400 text-sm">
-            SGP correlation engine · same-game parlays · multi-game parlay EV
-          </p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-black font-headline tracking-tighter text-on-surface flex items-center gap-3">
+          <span className="material-symbols-outlined text-primary" style={{ fontSize: '28px' }}>layers</span>
+          Parlay Builder
+        </h1>
+        <p className="text-on-surface-variant text-sm mt-1">
+          SGP correlation engine · same-game parlays · multi-game parlay EV
+        </p>
       </div>
 
       {/* Mode tabs */}
-      <div className="flex gap-1 border-b border-slate-800">
+      <div className="flex gap-1 border-b border-outline-variant/10">
         {([
           { key: 'sgp',    label: 'Same-Game Parlay (SGP)' },
           { key: 'parlay', label: 'Multi-Game Parlay' },
@@ -301,10 +300,10 @@ export default function ParlayBuilderPage() {
           <button
             key={key}
             onClick={() => { setMode(key); setLegs([]); setAnalysis(null) }}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+            className={`px-4 py-2.5 text-sm font-headline font-bold transition-colors border-b-2 ${
               mode === key
-                ? 'border-primary-500 text-primary-400'
-                : 'border-transparent text-slate-500 hover:text-slate-300'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-on-surface-variant hover:text-on-surface'
             }`}
           >
             {label}
@@ -318,7 +317,7 @@ export default function ParlayBuilderPage() {
 
           {/* Event selector */}
           <div className="card">
-            <label className="label-sm mb-1">
+            <label className="label-sm mb-2">
               {mode === 'sgp' ? 'Game (same game for all legs)' : 'Add legs from any game'}
             </label>
             <div className="relative">
@@ -332,13 +331,13 @@ export default function ParlayBuilderPage() {
                   <option key={ev.id} value={ev.id}>{eventLabel(ev)}</option>
                 ))}
               </select>
-              <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
             </div>
 
             {/* SGP Suggestions */}
             {mode === 'sgp' && suggestedData?.suggested?.length > 0 && (
-              <div className="mt-3">
-                <div className="flex items-center gap-1 text-[10px] font-semibold text-yellow-400 uppercase tracking-wider mb-2">
+              <div className="mt-4">
+                <div className="flex items-center gap-1 text-[10px] font-black text-yellow-400 uppercase tracking-widest mb-2">
                   <Star size={10} /> AI Suggested Legs (positive EV, low conflict)
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -346,13 +345,13 @@ export default function ParlayBuilderPage() {
                     <button
                       key={i}
                       onClick={() => addSuggestedLeg(s)}
-                      className="flex items-center gap-1.5 px-2 py-1 bg-yellow-900/20 border border-yellow-700/40 rounded-lg text-xs hover:bg-yellow-900/30 transition-colors"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-400/10 border border-yellow-400/25 rounded-xl text-xs hover:bg-yellow-400/20 transition-colors"
                     >
                       <Plus size={10} className="text-yellow-400" />
-                      <span className="text-slate-300 max-w-[160px] truncate">
+                      <span className="text-on-surface max-w-[160px] truncate">
                         {s.playerName ? `${s.playerName} ${s.outcome}` : `${s.outcome} ${s.marketType}`}
                       </span>
-                      <span className="text-green-400 font-mono">{fmtOdds(s.odds)}</span>
+                      <span className="text-secondary font-mono font-bold">{fmtOdds(s.odds)}</span>
                     </button>
                   ))}
                 </div>
@@ -365,10 +364,10 @@ export default function ParlayBuilderPage() {
             <div className="card">
               <button
                 onClick={() => setShowLegPicker(v => !v)}
-                className="flex items-center justify-between w-full text-sm font-semibold text-white mb-2"
+                className="flex items-center justify-between w-full text-sm font-headline font-bold text-on-surface mb-3"
               >
                 <span>Available Legs {marketsLoading ? '(loading…)' : ''}</span>
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${showLegPicker ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`text-on-surface-variant transition-transform ${showLegPicker ? 'rotate-180' : ''}`} />
               </button>
               {showLegPicker && !marketsLoading && eventMarketsData && (
                 <LegPicker
@@ -387,36 +386,36 @@ export default function ParlayBuilderPage() {
           {/* Selected legs */}
           <div className="card">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-white">
+              <span className="text-sm font-headline font-bold text-on-surface">
                 Selected Legs ({legs.length})
               </span>
               {legs.length > 0 && (
-                <button onClick={() => { setLegs([]); setAnalysis(null) }} className="text-xs text-slate-500 hover:text-red-400">
+                <button onClick={() => { setLegs([]); setAnalysis(null) }} className="text-xs text-on-surface-variant hover:text-error transition-colors">
                   Clear all
                 </button>
               )}
             </div>
 
             {legs.length === 0 ? (
-              <div className="text-center text-slate-500 text-xs py-6">
-                <Layers size={24} className="mx-auto mb-2 opacity-30" />
+              <div className="text-center text-on-surface-variant text-xs py-6">
+                <span className="material-symbols-outlined opacity-30 mb-2" style={{ fontSize: '28px', display: 'block' }}>layers</span>
                 Add at least 2 legs from the picker
               </div>
             ) : (
               <div className="space-y-1.5">
                 {legs.map((leg, i) => (
-                  <div key={i} className="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2">
+                  <div key={i} className="flex items-center justify-between bg-surface-container-high/60 rounded-xl px-3 py-2.5 border border-outline-variant/10">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-5 h-5 rounded-full bg-primary-700 text-primary-200 text-[10px] font-bold flex items-center justify-center shrink-0">
+                      <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">
                         {i + 1}
                       </span>
-                      <span className="text-xs text-slate-300 truncate">{leg.label}</span>
+                      <span className="text-xs text-on-surface truncate">{leg.label}</span>
                     </div>
                     <div className="flex items-center gap-2 ml-2 shrink-0">
-                      <span className={`text-xs font-mono font-bold ${leg.odds > 0 ? 'text-green-400' : 'text-slate-300'}`}>
+                      <span className={`text-xs font-mono font-bold ${leg.odds > 0 ? 'text-secondary' : 'text-on-surface'}`}>
                         {fmtOdds(leg.odds)}
                       </span>
-                      <button onClick={() => removeLeg(i)} className="text-slate-600 hover:text-red-400">
+                      <button onClick={() => removeLeg(i)} className="text-on-surface-variant hover:text-error transition-colors">
                         <X size={12} />
                       </button>
                     </div>
@@ -429,7 +428,7 @@ export default function ParlayBuilderPage() {
               <button
                 onClick={() => analyzeMutation.mutate()}
                 disabled={analyzeMutation.isPending}
-                className="btn-primary w-full mt-3 flex items-center justify-center gap-2"
+                className="btn-primary w-full mt-4"
               >
                 {analyzeMutation.isPending
                   ? <><RefreshCw size={14} className="animate-spin" /> Analyzing…</>
@@ -442,7 +441,7 @@ export default function ParlayBuilderPage() {
           {/* Analysis results */}
           {analysis && (
             <div className="card space-y-4">
-              <h3 className="text-sm font-semibold text-white">Analysis Results</h3>
+              <h3 className="text-sm font-headline font-bold text-on-surface">Analysis Results</h3>
 
               {/* Odds & Probability */}
               <div className="grid grid-cols-2 gap-2">
@@ -455,9 +454,9 @@ export default function ParlayBuilderPage() {
                     { label: 'Adj Prob (corr)', value: `${analysis.corrProb.toFixed(1)}%` }
                   ] : []),
                 ].map(({ label, value }) => (
-                  <div key={label} className="bg-slate-800/50 rounded-lg p-2 text-center">
-                    <div className="text-xs text-slate-500 mb-0.5">{label}</div>
-                    <div className="text-sm font-bold text-white">{value}</div>
+                  <div key={label} className="bg-surface-container-high/60 rounded-xl p-3 text-center border border-outline-variant/10">
+                    <div className="text-xs text-on-surface-variant mb-0.5">{label}</div>
+                    <div className="text-sm font-headline font-bold text-on-surface">{value}</div>
                   </div>
                 ))}
               </div>
@@ -465,7 +464,7 @@ export default function ParlayBuilderPage() {
               {/* EV row */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-on-surface-variant">
                     {mode === 'sgp' ? 'Independent EV' : 'Parlay EV'}
                   </span>
                   {evBadge(analysis.indepEVPct ?? analysis.evPct)}
@@ -473,13 +472,13 @@ export default function ParlayBuilderPage() {
                 {mode === 'sgp' && analysis.corrEVPct != null && (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400">Correlation-Adjusted EV</span>
+                      <span className="text-xs text-on-surface-variant">Correlation-Adjusted EV</span>
                       {evBadge(analysis.corrEVPct)}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">EV Impact from Correlations</span>
-                      <span className={`text-xs font-semibold flex items-center gap-1 ${
-                        analysis.evImprovementPct > 0 ? 'text-green-400' : 'text-red-400'
+                      <span className="text-xs text-on-surface-variant">EV Impact from Correlations</span>
+                      <span className={`text-xs font-bold flex items-center gap-1 ${
+                        analysis.evImprovementPct > 0 ? 'text-secondary' : 'text-error'
                       }`}>
                         {analysis.evImprovementPct > 0
                           ? <TrendingUp size={11} />
@@ -488,9 +487,9 @@ export default function ParlayBuilderPage() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">Avg leg correlation</span>
+                      <span className="text-xs text-on-surface-variant">Avg leg correlation</span>
                       <span className={`text-xs font-mono ${
-                        analysis.avgCorrelation > 0.1 ? 'text-green-400' : analysis.avgCorrelation < -0.1 ? 'text-red-400' : 'text-slate-400'
+                        analysis.avgCorrelation > 0.1 ? 'text-secondary' : analysis.avgCorrelation < -0.1 ? 'text-error' : 'text-on-surface-variant'
                       }`}>
                         {analysis.avgCorrelation >= 0 ? '+' : ''}{analysis.avgCorrelation.toFixed(2)}
                       </span>
@@ -501,7 +500,7 @@ export default function ParlayBuilderPage() {
 
               {/* Warning for negative corr */}
               {mode === 'sgp' && analysis.avgCorrelation < -0.15 && (
-                <div className="flex gap-2 bg-red-900/20 border border-red-700/40 rounded-lg p-2 text-xs text-red-300">
+                <div className="flex gap-2 bg-error/10 border border-error/25 rounded-xl p-3 text-xs text-error">
                   <AlertTriangle size={13} className="shrink-0 mt-0.5" />
                   Legs are negatively correlated — these props conflict. Consider removing contradictory legs.
                 </div>
@@ -514,24 +513,24 @@ export default function ParlayBuilderPage() {
 
               {/* Individual legs */}
               <div>
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Leg Breakdown</h4>
-                <div className="space-y-1">
+                <h4 className="text-xs font-black text-on-surface-variant uppercase tracking-widest mb-2">Leg Breakdown</h4>
+                <div className="space-y-1.5">
                   {analysis.legs.map((leg: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between text-xs bg-slate-800/40 rounded-lg px-3 py-2">
+                    <div key={i} className="flex items-center justify-between text-xs bg-surface-container-high/50 rounded-xl px-3 py-2.5 border border-outline-variant/10">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-4 h-4 rounded-full bg-primary-700 text-primary-200 text-[9px] font-bold flex items-center justify-center shrink-0">
+                        <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-[9px] font-bold flex items-center justify-center shrink-0">
                           {i + 1}
                         </span>
                         <div className="min-w-0">
-                          <div className="text-slate-300 truncate">
+                          <div className="text-on-surface truncate">
                             {leg.player?.name ?? leg.event?.home ?? ''} {leg.outcome}
                             {leg.line != null ? ` ${leg.line}` : ''}
                           </div>
-                          <div className="text-slate-600">{leg.marketType}</div>
+                          <div className="text-on-surface-variant/60">{leg.marketType}</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-2">
-                        <span className="text-slate-400">{(leg.trueProb * 100).toFixed(0)}%</span>
+                        <span className="text-on-surface-variant">{(leg.trueProb * 100).toFixed(0)}%</span>
                         {evBadge(leg.ev?.evPct * 100 ?? 0)}
                       </div>
                     </div>
@@ -540,7 +539,7 @@ export default function ParlayBuilderPage() {
               </div>
 
               {/* Send to slip */}
-              <button onClick={sendToBetSlip} className="btn-secondary w-full flex items-center justify-center gap-2">
+              <button onClick={sendToBetSlip} className="btn-secondary w-full">
                 <Plus size={14} /> Add to Bet Slip ({fmtOdds(analysis.parlayOddsAmerican)})
               </button>
             </div>

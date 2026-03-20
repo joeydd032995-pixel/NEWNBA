@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Radio, RefreshCw, TrendingUp, TrendingDown, Clock, Zap } from 'lucide-react'
+import { RefreshCw, TrendingUp, TrendingDown, Clock, Zap } from 'lucide-react'
 import { liveApi } from '../lib/api'
 import { useBetSlipStore } from '../stores/betslip'
 import toast from 'react-hot-toast'
@@ -12,17 +12,17 @@ function fmtOdds(odds: number) {
 }
 
 function evColor(evPct: number) {
-  if (evPct > 0.05) return 'text-green-400'
+  if (evPct > 0.05) return 'text-secondary'
   if (evPct > 0.02) return 'text-yellow-400'
-  if (evPct > 0)    return 'text-blue-400'
-  return 'text-slate-500'
+  if (evPct > 0)    return 'text-primary'
+  return 'text-on-surface-variant'
 }
 
 function moveDir(dir: string) {
   return dir === 'steam' ? (
-    <span className="flex items-center gap-0.5 text-green-400"><TrendingUp size={11} /> Steam</span>
+    <span className="flex items-center gap-0.5 text-secondary"><TrendingUp size={11} /> Steam</span>
   ) : (
-    <span className="flex items-center gap-0.5 text-red-400"><TrendingDown size={11} /> Fade</span>
+    <span className="flex items-center gap-0.5 text-error"><TrendingDown size={11} /> Fade</span>
   )
 }
 
@@ -33,31 +33,30 @@ function MomentumBar({
 }: {
   awayAbbr: string; homeAbbr: string; homePct: number; awayScore: number; homeScore: number
 }) {
-  // homePct: share of total points scored by home team (50 = tied)
   const awayPct = 100 - homePct
 
   return (
     <div className="mt-3">
-      <div className="flex justify-between text-xs text-slate-400 mb-1">
-        <span>{awayAbbr} <span className="text-white font-bold">{awayScore}</span></span>
-        <span className="text-slate-500 text-[10px]">
+      <div className="flex justify-between text-xs text-on-surface-variant mb-1">
+        <span>{awayAbbr} <span className="text-on-surface font-headline font-bold">{awayScore}</span></span>
+        <span className="text-on-surface-variant/60 text-[10px]">
           {homePct === 50 ? 'Tied' : homePct > 50 ? `${homeAbbr} +${homeScore - awayScore}` : `${awayAbbr} +${awayScore - homeScore}`}
         </span>
-        <span><span className="text-white font-bold">{homeScore}</span> {homeAbbr}</span>
+        <span><span className="text-on-surface font-headline font-bold">{homeScore}</span> {homeAbbr}</span>
       </div>
-      <div className="flex h-2 rounded-full overflow-hidden bg-slate-800">
+      <div className="flex h-2 rounded-full overflow-hidden bg-surface-container-highest">
         {/* Away side */}
         <div
-          className="bg-gradient-to-r from-red-600 to-red-500 transition-all duration-700"
+          className="bg-gradient-to-r from-error/80 to-error/60 transition-all duration-700"
           style={{ width: `${awayPct}%` }}
         />
         {/* Home side */}
         <div
-          className="bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-700"
-          style={{ width: `${homePct}%` }}
+          className="transition-all duration-700"
+          style={{ background: 'linear-gradient(to right, rgba(223,142,255,0.7), rgba(0,244,254,0.7))', width: `${homePct}%` }}
         />
       </div>
-      <div className="flex justify-between text-[10px] text-slate-600 mt-0.5">
+      <div className="flex justify-between text-[10px] text-on-surface-variant/50 mt-0.5">
         <span>{awayPct}% scoring</span>
         <span>{homePct}% scoring</span>
       </div>
@@ -72,27 +71,27 @@ function LiveGameCard({ game, onAddBet }: { game: any; onAddBet: (item: any) => 
   const isLive = event.status === 'LIVE'
 
   return (
-    <div className={`card border ${isLive ? 'border-red-700/50' : 'border-slate-700'}`}>
+    <div className={`bg-surface-container-low rounded-xl border p-5 transition-all ${isLive ? 'border-error/30' : 'border-outline-variant/10'}`}>
       {/* Status + time */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {isLive ? (
-            <span className="flex items-center gap-1 text-xs font-bold text-red-400 bg-red-900/30 border border-red-700/40 rounded px-2 py-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+            <span className="flex items-center gap-1.5 text-xs font-bold text-error bg-error/12 border border-error/25 rounded-lg px-2 py-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse" />
               LIVE
             </span>
           ) : (
-            <span className="text-xs text-slate-500 bg-slate-800 rounded px-2 py-0.5">Upcoming</span>
+            <span className="text-xs text-on-surface-variant bg-surface-container-high rounded-lg px-2 py-0.5">Upcoming</span>
           )}
           {isLive && event.period && (
-            <span className="text-xs text-slate-400 flex items-center gap-1">
+            <span className="text-xs text-on-surface-variant flex items-center gap-1">
               <Clock size={10} />
               {event.period}{event.timeRemaining ? ` · ${event.timeRemaining}` : ''}
             </span>
           )}
         </div>
         {!isLive && (
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-on-surface-variant">
             {new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         )}
@@ -109,19 +108,19 @@ function LiveGameCard({ game, onAddBet }: { game: any; onAddBet: (item: any) => 
         />
       ) : (
         <div className="flex items-center justify-between text-sm mb-2">
-          <span className="text-white font-medium">{event.awayTeam.abbr}</span>
-          <span className="text-slate-500">@</span>
-          <span className="text-white font-medium">{event.homeTeam.abbr}</span>
+          <span className="text-on-surface font-headline font-bold">{event.awayTeam.abbr}</span>
+          <span className="text-on-surface-variant">@</span>
+          <span className="text-on-surface font-headline font-bold">{event.homeTeam.abbr}</span>
         </div>
       )}
 
       {/* Markets */}
       {markets.length > 0 && (
-        <div className="mt-3 space-y-2">
+        <div className="mt-4 space-y-2">
           {markets.map((market: any) => (
-            <div key={market.id} className="bg-slate-800/50 rounded-lg p-2">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+            <div key={market.id} className="bg-surface-container-high/60 rounded-xl p-3 border border-outline-variant/10">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-black">
                   {market.marketType}
                 </span>
                 {market.lineMovements.length > 0 && (
@@ -143,15 +142,15 @@ function LiveGameCard({ game, onAddBet }: { game: any; onAddBet: (item: any) => 
                         odds: o.odds,
                         stake: 10,
                       })}
-                      className={`text-left p-2 rounded border transition-colors ${
+                      className={`text-left p-2.5 rounded-xl border transition-colors ${
                         (o.evPct ?? 0) > 0
-                          ? 'border-green-700/50 bg-green-900/20 hover:bg-green-900/30'
-                          : 'border-slate-700 bg-slate-800 hover:bg-slate-700'
+                          ? 'border-secondary/25 bg-secondary/8 hover:bg-secondary/15'
+                          : 'border-outline-variant/10 bg-surface-container-highest hover:bg-surface-bright'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-300 capitalize font-medium">{o.outcome}</span>
-                        <span className={`text-xs font-mono font-bold ${o.odds > 0 ? 'text-green-400' : 'text-slate-200'}`}>
+                        <span className="text-xs text-on-surface-variant capitalize font-medium">{o.outcome}</span>
+                        <span className={`text-xs font-mono font-bold ${o.odds > 0 ? 'text-secondary' : 'text-on-surface'}`}>
                           {fmtOdds(o.odds)}
                         </span>
                       </div>
@@ -180,61 +179,61 @@ function LiveGameCard({ game, onAddBet }: { game: any; onAddBet: (item: any) => 
 function LineMovementFeed({ moves }: { moves: any[] }) {
   if (moves.length === 0) {
     return (
-      <div className="card text-center text-slate-500 text-sm py-8">
+      <div className="card text-center text-on-surface-variant text-sm py-10">
         No significant line movements in the last hour — movements appear when odds shift ≥3% implied probability.
       </div>
     )
   }
 
   return (
-    <div className="card p-0 overflow-hidden">
+    <div className="bg-surface-container-low rounded-xl border border-outline-variant/10 overflow-hidden">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-slate-800 text-slate-500 uppercase tracking-wider">
-            <th className="text-left py-2.5 px-4">Game</th>
-            <th className="text-left py-2.5 px-4">Market</th>
-            <th className="text-left py-2.5 px-4">Outcome</th>
-            <th className="text-right py-2.5 px-4">Was</th>
-            <th className="text-right py-2.5 px-4">Now</th>
-            <th className="text-right py-2.5 px-4">Move</th>
-            <th className="text-left py-2.5 px-4">Signal</th>
-            <th className="text-left py-2.5 px-4">Book</th>
+          <tr className="bg-surface-container-high/50 border-b border-outline-variant/10">
+            <th className="text-left py-3 px-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Game</th>
+            <th className="text-left py-3 px-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Market</th>
+            <th className="text-left py-3 px-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Outcome</th>
+            <th className="text-right py-3 px-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Was</th>
+            <th className="text-right py-3 px-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Now</th>
+            <th className="text-right py-3 px-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Move</th>
+            <th className="text-left py-3 px-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Signal</th>
+            <th className="text-left py-3 px-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Book</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-800/60">
+        <tbody className="divide-y divide-outline-variant/5">
           {moves.map((m: any, i: number) => (
-            <tr key={i} className={`hover:bg-slate-800/30 transition-colors ${
-              m.event?.status === 'LIVE' ? 'bg-red-900/5' : ''
+            <tr key={i} className={`hover:bg-surface-container-high/30 transition-colors ${
+              m.event?.status === 'LIVE' ? 'bg-error/4' : ''
             }`}>
               <td className="py-2.5 px-4">
-                <div className="font-medium text-white">
+                <div className="font-medium text-on-surface">
                   {m.event?.away} @ {m.event?.home}
                 </div>
                 {m.event?.status === 'LIVE' && m.event?.period && (
-                  <div className="text-red-400 text-[10px]">
+                  <div className="text-error text-[10px]">
                     LIVE · {m.event.period}
                     {m.event.homeScore != null && ` · ${m.event.awayScore}–${m.event.homeScore}`}
                   </div>
                 )}
-                {m.player && <div className="text-primary-400 text-[10px]">{m.player}</div>}
+                {m.player && <div className="text-primary text-[10px]">{m.player}</div>}
               </td>
-              <td className="py-2.5 px-4 text-slate-400">{m.marketType}</td>
+              <td className="py-2.5 px-4 text-on-surface-variant">{m.marketType}</td>
               <td className="py-2.5 px-4">
                 <span className={`capitalize font-medium ${
-                  ['over', 'home'].includes(m.outcome) ? 'text-green-400' : 'text-slate-300'
+                  ['over', 'home'].includes(m.outcome) ? 'text-secondary' : 'text-on-surface'
                 }`}>
                   {m.outcome}
                 </span>
               </td>
-              <td className="py-2.5 px-4 text-right font-mono text-slate-400">{fmtOdds(m.oldOdds)}</td>
-              <td className="py-2.5 px-4 text-right font-mono text-white font-medium">{fmtOdds(m.newOdds)}</td>
+              <td className="py-2.5 px-4 text-right font-mono text-on-surface-variant">{fmtOdds(m.oldOdds)}</td>
+              <td className="py-2.5 px-4 text-right font-mono text-on-surface font-medium">{fmtOdds(m.newOdds)}</td>
               <td className="py-2.5 px-4 text-right">
-                <span className={`font-semibold ${m.movePct >= 5 ? 'text-yellow-300' : 'text-slate-300'}`}>
+                <span className={`font-bold ${m.movePct >= 5 ? 'text-yellow-300' : 'text-on-surface-variant'}`}>
                   {m.movePct}%
                 </span>
               </td>
               <td className="py-2.5 px-4">{moveDir(m.direction)}</td>
-              <td className="py-2.5 px-4 text-slate-500 capitalize">{m.bookName}</td>
+              <td className="py-2.5 px-4 text-on-surface-variant capitalize">{m.bookName}</td>
             </tr>
           ))}
         </tbody>
@@ -275,27 +274,27 @@ export default function LiveBettingPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <Radio size={20} className="text-red-400" />
+          <h1 className="text-3xl font-black font-headline tracking-tighter text-on-surface flex items-center gap-3">
+            <span className="material-symbols-outlined text-error" style={{ fontSize: '28px' }}>sensors</span>
             Live Betting
             {liveGames.length > 0 && (
-              <span className="flex items-center gap-1 text-sm font-normal text-red-400 bg-red-900/30 border border-red-700/40 rounded px-2 py-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+              <span className="flex items-center gap-1.5 text-sm font-normal text-error bg-error/12 border border-error/25 rounded-lg px-2.5 py-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse" />
                 {liveGames.length} Live
               </span>
             )}
           </h1>
-          <p className="text-slate-400 text-sm">
+          <p className="text-on-surface-variant text-sm mt-1">
             Live scoreboards · momentum · real-time line movements · auto-refreshes every 15s
           </p>
         </div>
         <button
           onClick={() => { gamesQuery.refetch(); movesQuery.refetch() }}
-          className="btn-secondary flex items-center gap-2"
+          className="btn-secondary"
         >
           <RefreshCw size={14} className={gamesQuery.isFetching || movesQuery.isFetching ? 'animate-spin' : ''} />
           Refresh
@@ -303,7 +302,7 @@ export default function LiveBettingPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-slate-800">
+      <div className="flex gap-1 border-b border-outline-variant/10">
         {([
           { key: 'games',     label: `Games (${games.length})` },
           { key: 'movements', label: `Line Movements (${moves.length})` },
@@ -311,10 +310,10 @@ export default function LiveBettingPage() {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+            className={`px-4 py-2.5 text-sm font-headline font-bold transition-colors border-b-2 ${
               tab === key
-                ? 'border-red-500 text-red-400'
-                : 'border-transparent text-slate-500 hover:text-slate-300'
+                ? 'border-error text-error'
+                : 'border-transparent text-on-surface-variant hover:text-on-surface'
             }`}
           >
             {label}
@@ -327,20 +326,20 @@ export default function LiveBettingPage() {
           {gamesQuery.isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="card animate-pulse h-48 bg-slate-800" />
+                <div key={i} className="card animate-pulse h-48 bg-surface-container-high" />
               ))}
             </div>
           ) : games.length === 0 ? (
-            <div className="card text-center py-12 text-slate-500">
-              <Radio size={36} className="mx-auto mb-3 opacity-20" />
+            <div className="card text-center py-12 text-on-surface-variant">
+              <span className="material-symbols-outlined opacity-20 mb-3" style={{ fontSize: '40px', display: 'block' }}>sensors</span>
               No NBA games right now. Check back on game day.
             </div>
           ) : (
             <>
               {liveGames.length > 0 && (
                 <div>
-                  <h2 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" /> In Progress
+                  <h2 className="text-xs font-black text-error uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse inline-block" /> In Progress
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {liveGames.map((g: any) => (
@@ -351,7 +350,7 @@ export default function LiveBettingPage() {
               )}
               {scheduled.length > 0 && (
                 <div>
-                  <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  <h2 className="text-xs font-black text-on-surface-variant uppercase tracking-widest mb-3">
                     Upcoming
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -368,21 +367,21 @@ export default function LiveBettingPage() {
         <>
           {/* Threshold control */}
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-400">Min move:</span>
+            <span className="text-sm text-on-surface-variant">Min move:</span>
             {[2, 3, 5, 8].map(t => (
               <button
                 key={t}
                 onClick={() => setThreshold(t)}
-                className={`px-3 py-1 text-xs rounded-lg border font-medium transition-colors ${
+                className={`px-3 py-1.5 text-xs rounded-xl border font-bold transition-colors ${
                   threshold === t
-                    ? 'bg-primary-600/30 border-primary-500/50 text-primary-300'
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'
+                    ? 'bg-primary/20 border-primary/40 text-primary'
+                    : 'bg-surface-container-high border-outline-variant/20 text-on-surface-variant hover:border-outline-variant/40'
                 }`}
               >
                 {t}%
               </button>
             ))}
-            <span className="text-xs text-slate-500 ml-2">implied probability shift · last 60 min</span>
+            <span className="text-xs text-on-surface-variant ml-2">implied probability shift · last 60 min</span>
           </div>
 
           {movesQuery.isLoading ? (
@@ -392,9 +391,9 @@ export default function LiveBettingPage() {
           )}
 
           {/* Legend */}
-          <div className="flex flex-wrap gap-4 text-xs text-slate-500 px-1">
-            <span className="flex items-center gap-1"><TrendingUp size={11} className="text-green-400" /> Steam = sharp money moving odds shorter (more likely)</span>
-            <span className="flex items-center gap-1"><TrendingDown size={11} className="text-red-400" /> Fade = odds drifting out (less likely)</span>
+          <div className="flex flex-wrap gap-4 text-xs text-on-surface-variant px-1">
+            <span className="flex items-center gap-1.5"><TrendingUp size={11} className="text-secondary" /> Steam = sharp money moving odds shorter (more likely)</span>
+            <span className="flex items-center gap-1.5"><TrendingDown size={11} className="text-error" /> Fade = odds drifting out (less likely)</span>
           </div>
         </>
       )}

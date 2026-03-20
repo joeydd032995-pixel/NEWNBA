@@ -16,32 +16,32 @@ interface StatCardProps {
   label: string
   value: React.ReactNode
   delta?: number
-  accent?: 'gold' | 'cyan' | 'green' | 'default'
+  accent?: 'primary' | 'secondary' | 'positive' | 'default'
   icon?: React.ElementType
   subtitle?: string
 }
 
 function StatCard({ label, value, delta, accent = 'default', icon: Icon, subtitle }: StatCardProps) {
-  const accentStyles: Record<string, { iconColor: string; glowClass: string; valueColor: string }> = {
-    gold:    { iconColor: 'text-gold-400', glowClass: 'card-gold', valueColor: 'text-gold-300' },
-    cyan:    { iconColor: 'text-cyan-400', glowClass: 'card-cyan', valueColor: 'text-cyan-300' },
-    green:   { iconColor: 'text-green-400', glowClass: 'card', valueColor: 'text-green-400' },
-    default: { iconColor: 'text-slate-400', glowClass: 'card', valueColor: 'text-white' },
+  const accentStyles: Record<string, { iconColor: string; borderClass: string; valueColor: string }> = {
+    primary:   { iconColor: 'text-primary',   borderClass: 'card border-primary/20',   valueColor: 'text-primary' },
+    secondary: { iconColor: 'text-secondary', borderClass: 'card border-secondary/20', valueColor: 'text-secondary' },
+    positive:  { iconColor: 'text-secondary', borderClass: 'card',                     valueColor: 'text-secondary' },
+    default:   { iconColor: 'text-on-surface-variant', borderClass: 'card',            valueColor: 'text-on-surface' },
   }
   const s = accentStyles[accent]
 
   return (
-    <div className={s.glowClass}>
+    <div className={s.borderClass}>
       <div className="flex items-start justify-between mb-3">
         <p className="stat-label">{label}</p>
         {Icon && <Icon size={15} className={s.iconColor} />}
       </div>
       <p className={`stat-value ${s.valueColor}`}>{value}</p>
-      {subtitle && <p className="text-slate-600 text-2xs mt-1">{subtitle}</p>}
+      {subtitle && <p className="text-on-surface-variant text-xs mt-1">{subtitle}</p>}
       {delta !== undefined && (
-        <div className={`flex items-center gap-1 mt-2 text-2xs font-semibold ${delta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+        <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${delta >= 0 ? 'text-secondary' : 'text-error'}`}>
           <span>{delta >= 0 ? '+' : ''}{delta}%</span>
-          <span className="text-slate-600 font-normal">vs last week</span>
+          <span className="text-on-surface-variant font-normal">vs last week</span>
         </div>
       )}
     </div>
@@ -60,36 +60,36 @@ export default function DashboardPage() {
 
       {/* ── Hero header ──────────────────────────────────────────────────── */}
       <div
-        className="rounded-2xl p-5 relative overflow-hidden"
+        className="rounded-2xl p-6 relative overflow-hidden"
         style={{
-          background: 'linear-gradient(135deg, #0d1425 0%, #131c30 50%, #0a1520 100%)',
-          border: '1px solid rgba(255,255,255,0.07)',
-          boxShadow: '0 4px 32px rgba(0,0,0,0.4)',
+          background: 'linear-gradient(135deg, rgba(223,142,255,0.08) 0%, rgba(0,244,254,0.04) 100%)',
+          border: '1px solid rgba(223,142,255,0.15)',
         }}
       >
         {/* Background glow blobs */}
-        <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-20 pointer-events-none"
-             style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.3) 0%, transparent 70%)' }} />
-        <div className="absolute -bottom-10 left-20 w-40 h-40 rounded-full opacity-15 pointer-events-none"
-             style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.3) 0%, transparent 70%)' }} />
+        <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-30 pointer-events-none"
+             style={{ background: 'radial-gradient(circle, rgba(223,142,255,0.25) 0%, transparent 70%)', filter: 'blur(30px)' }} />
+        <div className="absolute -bottom-10 left-20 w-40 h-40 rounded-full opacity-20 pointer-events-none"
+             style={{ background: 'radial-gradient(circle, rgba(0,244,254,0.25) 0%, transparent 70%)', filter: 'blur(30px)' }} />
 
         <div className="relative">
-          <h1 className="text-xl font-bold text-white tracking-tight">
-            Welcome back, <span style={{ background: 'linear-gradient(135deg, #fbbf24, #f97316)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{user?.firstName ?? user?.email?.split('@')[0]}</span>
+          <h1 className="text-3xl font-black font-headline tracking-tighter text-on-surface">
+            Welcome back,{' '}
+            <span className="text-primary">{user?.firstName ?? user?.email?.split('@')[0]}</span>
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5">
+          <p className="text-on-surface-variant text-sm mt-1">
             {user?.planType} Plan &middot; {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
         </div>
       </div>
 
       {/* ── KPI stat cards ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           label="EV Opportunities"
           value={evFeed?.data?.length ?? '—'}
           delta={12}
-          accent="gold"
+          accent="primary"
           icon={TrendingUp}
           subtitle="active right now"
         />
@@ -97,7 +97,7 @@ export default function DashboardPage() {
           label="Arb Opportunities"
           value={arbFeed?.data?.length ?? '—'}
           delta={5}
-          accent="cyan"
+          accent="secondary"
           icon={ArrowLeftRight}
           subtitle="risk-free profit"
         />
@@ -112,7 +112,7 @@ export default function DashboardPage() {
           label="30-Day ROI"
           value="+8.4%"
           delta={8.4}
-          accent="green"
+          accent="positive"
           icon={Activity}
           subtitle="beating market by 11.6%"
         />
@@ -122,11 +122,10 @@ export default function DashboardPage() {
       <div className="card">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-sm font-semibold text-white">Portfolio Performance</h2>
-            <p className="text-2xs text-slate-600 mt-0.5">30-day bankroll trajectory</p>
+            <h2 className="text-base font-headline font-bold text-on-surface">Portfolio Performance</h2>
+            <p className="text-xs text-on-surface-variant mt-0.5">30-day bankroll trajectory</p>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-semibold"
-               style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.2)' }}>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold badge-positive">
             <Target size={10} />
             <span>+8.4% ROI</span>
           </div>
@@ -135,43 +134,43 @@ export default function DashboardPage() {
           <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="bankrollGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#f59e0b" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                <stop offset="5%"  stopColor="#df8eff" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#df8eff" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(70,72,74,0.3)" vertical={false} />
             <XAxis
               dataKey="day"
               stroke="transparent"
-              tick={{ fontSize: 9, fill: '#475569' }}
+              tick={{ fontSize: 9, fill: '#aaabad' }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
               stroke="transparent"
-              tick={{ fontSize: 9, fill: '#475569' }}
+              tick={{ fontSize: 9, fill: '#aaabad' }}
               tickLine={false}
               axisLine={false}
             />
             <Tooltip
               contentStyle={{
-                background: '#0d1425',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '10px',
-                color: '#f1f5f9',
+                background: '#1d2022',
+                border: '1px solid rgba(70,72,74,0.3)',
+                borderRadius: '12px',
+                color: '#eeeef0',
                 fontSize: '11px',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
               }}
-              cursor={{ stroke: 'rgba(245,158,11,0.3)', strokeWidth: 1 }}
+              cursor={{ stroke: 'rgba(223,142,255,0.3)', strokeWidth: 1 }}
             />
             <Area
               type="monotone"
               dataKey="bankroll"
-              stroke="#f59e0b"
+              stroke="#df8eff"
               strokeWidth={2}
               fill="url(#bankrollGradient)"
               dot={false}
-              activeDot={{ r: 4, fill: '#fbbf24', strokeWidth: 0 }}
+              activeDot={{ r: 4, fill: '#df8eff', strokeWidth: 0 }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -184,16 +183,14 @@ export default function DashboardPage() {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md flex items-center justify-center"
-                   style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                <TrendingUp size={12} className="text-gold-400" />
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-primary/15 border border-primary/20">
+                <TrendingUp size={13} className="text-primary" />
               </div>
-              <h3 className="font-semibold text-white text-sm">Top EV Opportunities</h3>
+              <h3 className="font-headline font-bold text-on-surface text-sm">Top EV Opportunities</h3>
             </div>
             <Link
               to="/ev-feed"
-              className="flex items-center gap-1 text-2xs font-semibold transition-colors duration-150"
-              style={{ color: '#fbbf24' }}
+              className="flex items-center gap-1 text-xs font-semibold text-primary hover:brightness-110 transition-all"
             >
               View all <ChevronRight size={11} />
             </Link>
@@ -209,18 +206,18 @@ export default function DashboardPage() {
             ).map((item: any, i: number) => (
               <div
                 key={i}
-                className="flex justify-between items-center py-2 px-2 rounded-lg transition-all duration-150"
-                style={{ borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}
+                className="flex justify-between items-center py-2.5 px-3 rounded-xl hover:bg-surface-container-high/50 transition-colors"
+                style={{ borderBottom: i < 2 ? '1px solid rgba(70,72,74,0.15)' : 'none' }}
               >
                 <div>
-                  <p className="text-xs text-white font-medium">{item.outcome ?? 'Home ML'}</p>
-                  <p className="text-2xs text-slate-600 mt-0.5">
+                  <p className="text-xs text-on-surface font-medium">{item.outcome ?? 'Home ML'}</p>
+                  <p className="text-xs text-on-surface-variant mt-0.5">
                     {item.market?.event?.homeTeam?.name ?? 'Team A'} vs {item.market?.event?.awayTeam?.name ?? 'Team B'}
                   </p>
                 </div>
                 <div className="text-right">
                   <span className="badge-positive">+{((item.evPct ?? 0.05) * 100).toFixed(1)}% EV</span>
-                  <p className="text-2xs text-slate-600 mt-1 font-mono">{(item.bookOdds ?? 0) > 0 ? '+' : ''}{item.bookOdds ?? '-110'}</p>
+                  <p className="text-xs text-on-surface-variant mt-1 font-mono">{(item.bookOdds ?? 0) > 0 ? '+' : ''}{item.bookOdds ?? '-110'}</p>
                 </div>
               </div>
             ))}
@@ -231,11 +228,10 @@ export default function DashboardPage() {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md flex items-center justify-center"
-                   style={{ background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.2)' }}>
-                <Zap size={12} className="text-cyan-400" />
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-secondary/15 border border-secondary/20">
+                <Zap size={13} className="text-secondary" />
               </div>
-              <h3 className="font-semibold text-white text-sm">Upcoming Games</h3>
+              <h3 className="font-headline font-bold text-on-surface text-sm">Upcoming Games</h3>
             </div>
           </div>
           <div className="space-y-1">
@@ -249,20 +245,19 @@ export default function DashboardPage() {
             ).map((event: any, i: number) => (
               <div
                 key={event.id ?? i}
-                className="flex justify-between items-center py-2 px-2 rounded-lg transition-all duration-150"
-                style={{ borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}
+                className="flex justify-between items-center py-2.5 px-3 rounded-xl hover:bg-surface-container-high/50 transition-colors"
+                style={{ borderBottom: i < 4 ? '1px solid rgba(70,72,74,0.15)' : 'none' }}
               >
                 <div>
-                  <p className="text-xs text-white font-medium">
+                  <p className="text-xs text-on-surface font-medium">
                     {event.homeTeam?.abbreviation} vs {event.awayTeam?.abbreviation}
                   </p>
-                  <p className="text-2xs text-slate-600 mt-0.5">
+                  <p className="text-xs text-on-surface-variant mt-0.5">
                     {event.startTime ? new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                   </p>
                 </div>
                 {event.status === 'LIVE' ? (
-                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-2xs font-semibold"
-                        style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}>
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-error/12 text-error border border-error/25">
                     <span className="live-dot" />
                     LIVE
                   </span>

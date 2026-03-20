@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary-dim": "#bb00fc",
+            "primary": "#df8eff",
+            "secondary": "#00f4fe",
+            "surface-tint": "#df8eff",
+            "tertiary-dim": "#63e1e7",
+            "outline-variant": "#46484a",
+            "inverse-on-surface": "#535557",
+            "on-tertiary-fixed": "#004346",
+            "primary-fixed-dim": "#d061ff",
+            "on-surface-variant": "#aaabad",
+            "tertiary-fixed": "#72eff5",
+            "on-secondary-fixed": "#004346",
+            "primary-container": "#d878ff",
+            "surface-container-lowest": "#000000",
+            "primary-fixed": "#d878ff",
+            "on-tertiary-container": "#00585b",
+            "surface-container-highest": "#232629",
+            "error-container": "#9f0519",
+            "error": "#ff716c",
+            "secondary-dim": "#00e5ee",
+            "tertiary": "#9dfaff",
+            "tertiary-container": "#72eff5",
+            "secondary-fixed-dim": "#00e5ee",
+            "inverse-primary": "#9a00d0",
+            "outline": "#747578",
+            "secondary-fixed": "#00f4fe",
+            "on-primary-fixed-variant": "#4b0068",
+            "on-secondary-fixed-variant": "#006266",
+            "error-dim": "#d7383b",
+            "surface-bright": "#292c2f",
+            "surface-dim": "#0c0e10",
+            "on-secondary": "#00575b",
+            "surface-variant": "#232629",
+            "on-surface": "#eeeef0",
+            "surface": "#0c0e10",
+            "surface-container-low": "#111416",
+            "on-error": "#490006",
+            "tertiary-fixed-dim": "#63e1e7",
+            "surface-container": "#171a1c",
+            "on-secondary-container": "#dffdff",
+            "on-primary": "#4f006d",
+            "inverse-surface": "#f9f9fc",
+            "on-background": "#eeeef0",
+            "on-tertiary": "#006164",
+            "on-error-container": "#ffa8a3",
+            "surface-container-high": "#1d2022",
+            "on-primary-container": "#3d0055",
+            "on-tertiary-fixed-variant": "#006266",
+            "on-primary-fixed": "#000000",
+            "secondary-container": "#00696e",
+            "background": "#0c0e10"
+          },
+          fontFamily: {
+            "headline": ["Space Grotesk"],
+            "body": ["Manrope"],
+            "label": ["Manrope"]
+          },
+          borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .glass-panel {
+      background: rgba(35, 38, 41, 0.6);
+      backdrop-filter: blur(16px);
+    }
+    input[type='range']::-webkit-slider-runnable-track {
+      background: #1d2022;
+      height: 4px;
+      border-radius: 2px;
+    }
+    input[type='range']::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #00f4fe;
+      margin-top: -6px;
+      box-shadow: 0 0 10px rgba(0, 244, 254, 0.5);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary/30">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full flex justify-between items-center px-6 h-16 bg-[#0c0e10]/60 backdrop-blur-xl z-50 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+<div class="flex items-center gap-8">
+<span class="text-xl font-black text-[#df8eff] tracking-widest uppercase font-['Space_Grotesk']">Neon Observatory</span>
+<nav class="hidden md:flex items-center gap-6 font-['Space_Grotesk'] font-bold tracking-tight">
+<a class="text-[#df8eff] border-b-2 border-[#df8eff] pb-1 hover:text-[#00f4fe] transition-colors duration-300" href="#">Models</a>
+<a class="text-[#eeeef0]/60 hover:text-[#00f4fe] transition-colors duration-300" href="#">Analytics</a>
+<a class="text-[#eeeef0]/60 hover:text-[#00f4fe] transition-colors duration-300" href="#">Market</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex bg-surface-container-high px-4 py-1.5 rounded-full items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-sm">payments</span>
+<span class="font-headline font-bold text-on-surface">$1,250.50</span>
+</div>
+<img alt="User Profile Avatar" class="w-8 h-8 rounded-full border border-primary/20" data-alt="Close up portrait of a modern digital analyst avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3mi8h9eYswD2SAocyxwMZOd-ur7coxncpIF3W7CE-E1hKOrbyE7UEDhFCmJR7iFa3aSBSth5xwI_1wTuLM8jRjk_-ggXmFXm1tkf_wUsWR49hw3pWwi7SJeWj5B-Ps6olwd7rJyHk-5xdbvJ55Q7Ag33YUwA5OD6v4YealV3s_DZY4qRaOHEhxub3PYiyoroTa6iJDBptE_45HqxnZYjf9D3fnz-KmQnB2KYSoxnNHzd6QdYV0-Ca1WYlWPUB6BrhRxMJc0V03bM"/>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 bottom-0 flex flex-col pt-8 bg-[#111416] w-20 hover:w-64 transition-all duration-500 overflow-hidden z-40 group">
+<div class="px-6 mb-8 flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+<div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-xl">auto_awesome_motion</span>
+</div>
+<div>
+<p class="text-on-surface font-bold text-sm">Model Builder</p>
+<p class="text-on-surface-variant text-[10px] uppercase tracking-widest">v2.4 Active</p>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<a class="flex items-center gap-6 px-7 py-4 text-[#46484a] hover:bg-[#1d2022] hover:text-[#eeeef0] transition-all group/item" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="font-['Manrope'] text-sm font-medium whitespace-nowrap">Data selection</span>
+</a>
+<a class="flex items-center gap-6 px-7 py-4 bg-[#df8eff]/10 text-[#df8eff] border-r-4 border-[#df8eff] active:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined">tune</span>
+<span class="font-['Manrope'] text-sm font-medium whitespace-nowrap">Weighting</span>
+</a>
+<a class="flex items-center gap-6 px-7 py-4 text-[#46484a] hover:bg-[#1d2022] hover:text-[#eeeef0] transition-all group/item" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="font-['Manrope'] text-sm font-medium whitespace-nowrap">Projections</span>
+</a>
+<a class="flex items-center gap-6 px-7 py-4 text-[#46484a] hover:bg-[#1d2022] hover:text-[#eeeef0] transition-all group/item" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-['Manrope'] text-sm font-medium whitespace-nowrap">History</span>
+</a>
+</div>
+<div class="mt-auto p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="w-full bg-primary text-on-primary py-3 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(223,142,255,0.3)] hover:scale-[1.02] transition-transform">
+        Deploy Model
+      </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-20 pt-20 pb-32 px-8 min-h-screen">
+<div class="max-w-6xl mx-auto">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+<div>
+<h1 class="font-headline text-4xl font-black text-on-surface tracking-tight mb-2 uppercase">New Custom Model</h1>
+<p class="text-on-surface-variant font-medium flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+            Building predictive engine for NBA Playoffs 2024
+          </p>
+</div>
+<div class="flex gap-3">
+<button class="px-6 py-2.5 rounded-full border border-outline-variant/30 text-on-surface font-bold text-sm hover:bg-surface-container-high transition-colors">Save Draft</button>
+<button class="px-6 py-2.5 rounded-full bg-secondary text-on-secondary-fixed-variant font-black text-sm shadow-[0_0_25px_rgba(0,244,254,0.2)] hover:scale-105 transition-transform flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">play_arrow</span>
+            Simulate Outcomes
+          </button>
+</div>
+</div>
+<!-- Bento Grid Workspace -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left: Variable Selection (Bento Item) -->
+<section class="lg:col-span-4 flex flex-col gap-6">
+<div class="bg-surface-container-low rounded-2xl p-6 shadow-xl">
+<h3 class="font-headline text-lg font-bold text-primary mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined">checklist</span>
+              Data Point Selection
+            </h3>
+<div class="space-y-3">
+<!-- Selection Item -->
+<label class="flex items-center justify-between p-4 rounded-xl bg-surface-container-high cursor-pointer border border-transparent hover:border-primary/20 transition-all">
+<div class="flex items-center gap-3">
+<div class="w-5 h-5 rounded bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-bold text-sm text-on-surface">Offensive Efficiency</span>
+</div>
+<span class="text-[10px] font-black text-secondary tracking-widest uppercase">High Impact</span>
+</label>
+<!-- Selection Item -->
+<label class="flex items-center justify-between p-4 rounded-xl bg-surface-container-high cursor-pointer border border-transparent hover:border-primary/20 transition-all">
+<div class="flex items-center gap-3">
+<div class="w-5 h-5 rounded bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-bold text-sm text-on-surface">Turnover Rate</span>
+</div>
+<span class="text-[10px] font-black text-on-surface-variant tracking-widest uppercase">Normal</span>
+</label>
+<!-- Selection Item -->
+<label class="flex items-center justify-between p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 cursor-pointer hover:bg-surface-container-high transition-all">
+<div class="flex items-center gap-3">
+<div class="w-5 h-5 rounded border border-outline-variant"></div>
+<span class="font-bold text-sm text-on-surface-variant">Home Court Advantage</span>
+</div>
+</label>
+<!-- Selection Item -->
+<label class="flex items-center justify-between p-4 rounded-xl bg-surface-container-high cursor-pointer border border-transparent hover:border-primary/20 transition-all">
+<div class="flex items-center gap-3">
+<div class="w-5 h-5 rounded bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-bold text-sm text-on-surface">Recent Form</span>
+</div>
+<span class="text-[10px] font-black text-primary tracking-widest uppercase">Dynamic</span>
+</label>
+<!-- Selection Item -->
+<label class="flex items-center justify-between p-4 rounded-xl bg-surface-container-high cursor-pointer border border-transparent hover:border-primary/20 transition-all">
+<div class="flex items-center gap-3">
+<div class="w-5 h-5 rounded bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-bold text-sm text-on-surface">Injury Impact</span>
+</div>
+<span class="text-[10px] font-black text-error tracking-widest uppercase">Critical</span>
+</label>
+</div>
+</div>
+<div class="bg-gradient-to-br from-primary/10 to-transparent rounded-2xl p-6 border border-primary/10">
+<p class="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">Model Confidence</p>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-headline font-black text-on-surface">88.4</span>
+<span class="text-secondary font-bold">%</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-2">Based on current weighting and historical back-testing for the last 500 games.</p>
+</div>
+</section>
+<!-- Right: Weight Adjustment & Results (Bento Item) -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<!-- Sliders Area -->
+<div class="bg-surface-container-low rounded-2xl p-8 shadow-xl">
+<h3 class="font-headline text-lg font-bold text-secondary mb-8 flex items-center gap-2">
+<span class="material-symbols-outlined">tune</span>
+              Weight Adjustment
+            </h3>
+<div class="space-y-8">
+<!-- Slider 1 -->
+<div>
+<div class="flex justify-between items-center mb-4">
+<span class="text-sm font-bold text-on-surface tracking-tight">Offensive Efficiency</span>
+<span class="font-headline text-xl font-bold text-secondary">45%</span>
+</div>
+<input class="w-full appearance-none cursor-pointer" max="100" min="0" type="range" value="45"/>
+</div>
+<!-- Slider 2 -->
+<div>
+<div class="flex justify-between items-center mb-4">
+<span class="text-sm font-bold text-on-surface tracking-tight">Recent Form</span>
+<span class="font-headline text-xl font-bold text-secondary">30%</span>
+</div>
+<input class="w-full appearance-none cursor-pointer" max="100" min="0" type="range" value="30"/>
+</div>
+<!-- Slider 3 -->
+<div>
+<div class="flex justify-between items-center mb-4">
+<span class="text-sm font-bold text-on-surface tracking-tight">Injury Impact</span>
+<span class="font-headline text-xl font-bold text-secondary">25%</span>
+</div>
+<input class="w-full appearance-none cursor-pointer" max="100" min="0" type="range" value="25"/>
+</div>
+</div>
+</div>
+<!-- Simulation Table Area -->
+<div class="bg-surface-container-low rounded-2xl overflow-hidden shadow-2xl">
+<div class="p-6 border-b border-outline-variant/10 flex justify-between items-center">
+<h3 class="font-headline text-lg font-bold text-on-surface">Simulation Projections</h3>
+<span class="text-[10px] font-black bg-surface-container-highest px-3 py-1 rounded-full uppercase tracking-tighter">Live Analysis</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high/50">
+<th class="px-6 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Matchup</th>
+<th class="px-6 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Win Prob</th>
+<th class="px-6 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Proj Spread</th>
+<th class="px-6 py-4 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Edge</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="font-bold text-sm text-on-surface">LAL @ DEN</span>
+<span class="text-[10px] text-on-surface-variant font-medium">Tonight 10:00 PM</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<span class="font-headline text-lg font-bold text-primary">68.2%</span>
+<div class="w-16 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 68%;"></div>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 font-headline font-bold text-on-surface">-7.5</td>
+<td class="px-6 py-5">
+<span class="px-2 py-1 rounded bg-secondary/10 text-secondary text-[11px] font-black uppercase tracking-widest">+4.2%</span>
+</td>
+</tr>
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="font-bold text-sm text-on-surface">PHI @ NYK</span>
+<span class="text-[10px] text-on-surface-variant font-medium">Tomorrow 7:30 PM</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<span class="font-headline text-lg font-bold text-primary">52.1%</span>
+<div class="w-16 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 52%;"></div>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 font-headline font-bold text-on-surface">+1.5</td>
+<td class="px-6 py-5">
+<span class="px-2 py-1 rounded bg-primary/10 text-primary text-[11px] font-black uppercase tracking-widest">+1.8%</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 bg-surface-container-high/30 text-center">
+<button class="text-secondary text-xs font-bold hover:underline">View 12 more projections</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-[#0c0e10] rounded-t-[1.5rem] shadow-[0_-10px_30px_rgba(0,0,0,0.5)] md:hidden">
+<div class="flex flex-col items-center justify-center text-[#46484a] px-6 py-2">
+<span class="material-symbols-outlined mb-1">sports_esports</span>
+<span class="font-['Manrope'] text-[10px] font-bold uppercase tracking-tighter">Sports</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#46484a] px-6 py-2">
+<span class="material-symbols-outlined mb-1">ads_click</span>
+<span class="font-['Manrope'] text-[10px] font-bold uppercase tracking-tighter">My Picks</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-[#df8eff]/20 text-[#df8eff] rounded-2xl px-6 py-2 shadow-[0_0_15px_rgba(223,142,255,0.3)]">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-['Manrope'] text-[10px] font-bold uppercase tracking-tighter">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#46484a] px-6 py-2">
+<span class="material-symbols-outlined mb-1">account_balance_wallet</span>
+<span class="font-['Manrope'] text-[10px] font-bold uppercase tracking-tighter">Wallet</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#46484a] px-6 py-2">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-['Manrope'] text-[10px] font-bold uppercase tracking-tighter">Account</span>
+</div>
+</footer>
+</body></html>

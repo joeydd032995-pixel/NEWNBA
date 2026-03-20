@@ -10,10 +10,19 @@ const WEIGHT_KEYS = ['efgPct', 'tsPct', 'fourFactorsOffense', 'fourFactorsDefens
 function StatusBadge({ status }: { status: string }) {
   const map: any = {
     PENDING: 'bg-slate-800 text-slate-400',
-    RUNNING: 'bg-blue-900/50 text-blue-400',
     COMPLETED: 'bg-green-900/50 text-green-400',
     FAILED: 'bg-red-900/50 text-red-400',
     CANCELLED: 'bg-slate-800 text-slate-500',
+  }
+  if (status === 'RUNNING') {
+    return (
+      <span
+        className="px-2 py-0.5 rounded-full text-xs font-semibold text-neon-blue-400"
+        style={{ background: 'linear-gradient(135deg, rgba(20,0,171,0.35) 0%, rgba(0,212,255,0.10) 100%)', border: '1px solid rgba(0,212,255,0.30)', boxShadow: '0 0 8px rgba(0,212,255,0.2)' }}
+      >
+        {status}
+      </span>
+    )
   }
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${map[status] ?? map.PENDING}`}>{status}</span>
 }
@@ -117,15 +126,15 @@ export default function OptimizationPage() {
             <TrendingUp size={16} className="text-green-400" />
             Convergence Chart
             {runDetail?.data?.status === 'RUNNING' && (
-              <Loader2 size={14} className="text-blue-400 animate-spin" />
+              <Loader2 size={14} className="text-neon-blue-400 animate-spin" />
             )}
           </h2>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={convergenceData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="generation" stroke="#64748b" tick={{ fontSize: 10 }} />
-              <YAxis stroke="#64748b" tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
-              <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#f1f5f9' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.08)" />
+              <XAxis dataKey="generation" stroke="#444444" tick={{ fontSize: 10 }} />
+              <YAxis stroke="#444444" tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
+              <Tooltip contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(0,212,255,0.2)', borderRadius: '8px', color: '#f1f5f9' }} />
               <Line type="monotone" dataKey="bestFitness" stroke="#22c55e" strokeWidth={2} dot={false} name="Best Fitness" />
               <Line type="monotone" dataKey="avgFitness" stroke="#64748b" strokeWidth={1} dot={false} name="Avg Fitness" strokeDasharray="4 4" />
             </LineChart>
@@ -159,8 +168,8 @@ export default function OptimizationPage() {
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-900 border border-slate-700 rounded-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+          <div className="bg-dark-900 border border-dark-600 rounded-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-dark-600">
               <h3 className="font-semibold text-white">New GA Optimization Run</h3>
               <button onClick={() => setShowCreate(false)} className="text-slate-500 hover:text-white"><X size={18} /></button>
             </div>
@@ -185,7 +194,7 @@ export default function OptimizationPage() {
                 ))}
               </div>
             </div>
-            <div className="p-4 border-t border-slate-800 flex gap-3">
+            <div className="p-4 border-t border-dark-600 flex gap-3">
               <button onClick={() => setShowCreate(false)} className="btn-secondary flex-1">Cancel</button>
               <button
                 onClick={() => createMutation.mutate({

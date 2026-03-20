@@ -32,7 +32,7 @@ function EnsembleCard({ ensemble, onDelete, onOptimize }: any) {
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
           ensemble.strategy === 'STACKING' ? 'bg-purple-900/40 text-purple-400' :
           ensemble.strategy === 'BOOSTING' ? 'bg-orange-900/40 text-orange-400' :
-          ensemble.strategy === 'VOTING' ? 'bg-blue-900/40 text-blue-400' :
+          ensemble.strategy === 'VOTING' ? 'bg-neon-blue-950/40 text-neon-blue-400' :
           'bg-green-900/40 text-green-400'
         }`}>{ensemble.strategy}</span>
       </div>
@@ -78,8 +78,8 @@ function CreateEnsembleModal({ onClose, models }: any) {
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-900 border border-slate-700 rounded-xl w-full max-w-lg">
-        <div className="flex items-center justify-between p-4 border-b border-slate-800">
+      <div className="bg-dark-900 border border-dark-600 rounded-xl w-full max-w-lg">
+        <div className="flex items-center justify-between p-4 border-b border-dark-600">
           <h3 className="font-semibold text-white">Create Ensemble Model</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18} /></button>
         </div>
@@ -127,7 +127,7 @@ function CreateEnsembleModal({ onClose, models }: any) {
             ))}
           </div>
         </div>
-        <div className="p-4 border-t border-slate-800 flex gap-3">
+        <div className="p-4 border-t border-dark-600 flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
           <button onClick={() => createMutation.mutate({ name, description, strategy, components })}
             disabled={!name || components.length < 2 || createMutation.isPending}

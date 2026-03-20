@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEWNBA UI Color Customizer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; color: #e0e0e0; font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+
+  h1 { text-align: center; padding: 24px; font-size: 1.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #00d4ff; text-shadow: 0 0 16px rgba(0,212,255,0.6); }
+  h1 span { color: #39ff14; text-shadow: 0 0 16px rgba(57,255,20,0.5); }
+
+  .layout { display: grid; grid-template-columns: 340px 1fr; gap: 0; height: calc(100vh - 80px); }
+
+  /* LEFT PANEL */
+  .panel { background: #0f0f0f; border-right: 1px solid rgba(255,255,255,0.07); overflow-y: auto; padding: 16px; }
+  .panel-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: #555; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+
+  .color-group { margin-bottom: 20px; }
+  .group-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: #777; margin-bottom: 8px; }
+
+  .color-row { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px; cursor: pointer; transition: background 0.15s; position: relative; }
+  .color-row:hover { background: rgba(255,255,255,0.04); }
+  .color-row.active { background: rgba(0,212,255,0.08); outline: 1px solid rgba(0,212,255,0.25); }
+
+  .swatch { width: 28px; height: 28px; border-radius: 5px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; position: relative; }
+  .swatch::after { content: ''; position: absolute; inset: 0; border-radius: 4px; }
+
+  .color-info { flex: 1; min-width: 0; }
+  .color-name { font-size: 0.8rem; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .color-hex { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #555; }
+
+  .color-usage { font-size: 0.65rem; color: #444; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* RIGHT PANEL */
+  .editor { background: #0a0a0a; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  .editor-card { background: #0f0f0f; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 20px; }
+  .editor-card-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #555; margin-bottom: 16px; }
+
+  .selected-info { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+  .selected-swatch-big { width: 64px; height: 64px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.12); flex-shrink: 0; transition: background-color 0.1s; }
+  .selected-name { font-size: 1rem; color: #e0e0e0; font-weight: 600; }
+  .selected-usage-list { font-size: 0.73rem; color: #777; margin-top: 4px; line-height: 1.6; }
+
+  /* COLOR WHEEL */
+  .wheel-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  #colorWheel { cursor: crosshair; border-radius: 50%; display: block; }
+  .brightness-row { display: flex; align-items: center; gap: 12px; width: 100%; }
+  .brightness-row label { font-size: 0.72rem; color: #666; width: 70px; flex-shrink: 0; }
+  input[type=range] { flex: 1; accent-color: #00d4ff; height: 4px; cursor: pointer; }
+
+  /* HEX INPUT */
+  .hex-row { display: flex; align-items: center; gap: 10px; }
+  .hex-row label { font-size: 0.72rem; color: #666; width: 38px; }
+  .hex-input { background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #e0e0e0; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; padding: 7px 12px; width: 120px; outline: none; transition: border-color 0.15s; }
+  .hex-input:focus { border-color: rgba(0,212,255,0.4); }
+  .apply-btn { background: rgba(0,212,255,0.12); border: 1px solid rgba(0,212,255,0.3); color: #00d4ff; border-radius: 6px; padding: 7px 16px; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; }
+  .apply-btn:hover { background: rgba(0,212,255,0.22); }
+
+  /* RGB sliders */
+  .rgb-sliders { display: flex; flex-direction: column; gap: 10px; }
+  .rgb-row { display: flex; align-items: center; gap: 10px; }
+  .rgb-row label { font-size: 0.72rem; color: #666; width: 14px; }
+  .rgb-row input[type=range] { flex: 1; }
+  .rgb-row span { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #555; width: 30px; text-align: right; }
+  #sliderR { accent-color: #ff4444; }
+  #sliderG { accent-color: #44ff44; }
+  #sliderB { accent-color: #4444ff; }
+
+  /* PREVIEW */
+  .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .preview-item { border-radius: 8px; padding: 14px 12px; font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.06); transition: all 0.2s; }
+  .preview-item .pi-label { color: rgba(255,255,255,0.5); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .preview-item .pi-val { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
+
+  /* SUBMIT */
+  .submit-section { background: #0f0f0f; border: 1px solid rgba(57,255,20,0.2); border-radius: 10px; padding: 20px; }
+  .submit-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #39ff14; margin-bottom: 12px; }
+  .submit-desc { font-size: 0.8rem; color: #666; margin-bottom: 16px; line-height: 1.5; }
+  .export-box { background: #080808; border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #888; max-height: 180px; overflow-y: auto; white-space: pre; line-height: 1.6; }
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .btn-green { background: rgba(57,255,20,0.12); border: 1px solid rgba(57,255,20,0.35); color: #39ff14; border-radius: 6px; padding: 9px 20px; font-size: 0.82rem; cursor: pointer; transition: all 0.15s; font-weight: 600; }
+  .btn-green:hover { background: rgba(57,255,20,0.22); }
+  .btn-gray { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #888; border-radius: 6px; padding: 9px 20px; font-size: 0.82rem; cursor: pointer; transition: all 0.15s; }
+  .btn-gray:hover { background: rgba(255,255,255,0.09); color: #bbb; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #0f0f0f; border: 1px solid rgba(57,255,20,0.4); color: #39ff14; padding: 10px 24px; border-radius: 8px; font-size: 0.82rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 9999; }
+  .toast.show { opacity: 1; }
+
+  ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0a0a0a; } ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+</style>
+</head>
+<body>
+<h1>NEWNBA <span>Color</span> Customizer</h1>
+
+<div class="layout">
+  <!-- LEFT: Color list -->
+  <div class="panel" id="colorPanel"></div>
+
+  <!-- RIGHT: Editor + Preview -->
+  <div class="editor">
+
+    <div class="editor-card">
+      <div class="editor-card-title">Selected Token</div>
+      <div class="selected-info">
+        <div class="selected-swatch-big" id="selectedSwatch"></div>
+        <div>
+          <div class="selected-name" id="selectedName">Click a color to edit</div>
+          <div class="selected-usage-list" id="selectedUsage"></div>
+        </div>
+      </div>
+
+      <!-- Wheel -->
+      <div class="wheel-wrap">
+        <canvas id="colorWheel" width="200" height="200"></canvas>
+        <div class="brightness-row">
+          <label>Brightness</label>
+          <input type="range" id="brightnessSlider" min="0" max="1" step="0.01" value="1" />
+        </div>
+      </div>
+
+      <!-- RGB sliders -->
+      <div class="rgb-sliders" style="margin-top:16px;">
+        <div class="rgb-row"><label style="color:#ff6666">R</label><input type="range" id="sliderR" min="0" max="255" value="0" /><span id="valR">0</span></div>
+        <div class="rgb-row"><label style="color:#66ff66">G</label><input type="range" id="sliderG" min="0" max="255" value="212" /><span id="valG">212</span></div>
+        <div class="rgb-row"><label style="color:#6699ff">B</label><input type="range" id="sliderB" min="0" max="255" value="255" /><span id="valB">255</span></div>
+      </div>
+
+      <!-- Hex input -->
+      <div class="hex-row" style="margin-top:14px;">
+        <label>HEX</label>
+        <input class="hex-input" id="hexInput" type="text" value="#00d4ff" maxlength="7" />
+        <button class="apply-btn" id="applyHex">Apply</button>
+      </div>
+    </div>
+
+    <!-- Live Preview -->
+    <div class="editor-card">
+      <div class="editor-card-title">Live Component Preview</div>
+      <div class="preview-grid" id="previewGrid"></div>
+    </div>
+
+    <!-- Export / Submit -->
+    <div class="submit-section">
+      <div class="submit-title">Submit Your Color Layout</div>
+      <div class="submit-desc">When you're happy with your choices, copy the config below and paste it back to me — I'll apply it to the codebase automatically.</div>
+      <div class="export-box" id="exportBox"></div>
+      <div class="btn-row">
+        <button class="btn-green" id="btnCopy">Copy Config</button>
+        <button class="btn-gray" id="btnReset">Reset to Current</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── COLOR DATA ────────────────────────────────────────────────────────────────
+const COLOR_TOKENS = [
+  // Backgrounds
+  { id: 'dark-950',       label: 'BG Deepest',       hex: '#000000', group: 'Backgrounds',  usage: ['<body> base', 'app-base gradient start', 'navy-950 alias'] },
+  { id: 'dark-900',       label: 'BG Page',           hex: '#080808', group: 'Backgrounds',  usage: ['Page background', 'sidebar gradient start'] },
+  { id: 'dark-800',       label: 'BG Card',           hex: '#0f0f0f', group: 'Backgrounds',  usage: ['Cards', 'Panel backgrounds', 'hero-gradient start'] },
+  { id: 'dark-700',       label: 'BG Elevated',       hex: '#141414', group: 'Backgrounds',  usage: ['Elevated surfaces', 'Modals', 'Dropdowns'] },
+  { id: 'dark-600',       label: 'BG Surface',        hex: '#1a1a1a', group: 'Backgrounds',  usage: ['Input backgrounds', 'Table rows alternate'] },
+  { id: 'dark-500',       label: 'BG Hover',          hex: '#242424', group: 'Backgrounds',  usage: ['Hover states on dark cards'] },
+  { id: 'dark-400',       label: 'Border Strong',     hex: '#2e2e2e', group: 'Backgrounds',  usage: ['Visible dividers', 'Border on inputs'] },
+  { id: 'dark-300',       label: 'Border Subtle',     hex: '#3a3a3a', group: 'Backgrounds',  usage: ['Subtle borders', 'Separator lines'] },
+  { id: 'dark-200',       label: 'Text Muted',        hex: '#888888', group: 'Backgrounds',  usage: ['Muted/disabled text', 'Placeholder text'] },
+  { id: 'dark-100',       label: 'Text Secondary',    hex: '#aaaaaa', group: 'Backgrounds',  usage: ['Secondary labels', 'Captions'] },
+  { id: 'dark-50',        label: 'Text Tertiary',     hex: '#cccccc', group: 'Backgrounds',  usage: ['Tertiary text'] },
+
+  // Neon Blue
+  { id: 'neon-blue-300',  label: 'Blue Deep',         hex: '#0205ad', group: 'Neon Blue',    usage: ['Badge backgrounds', 'Inline highlights'] },
+  { id: 'neon-blue-400',  label: 'Blue Bright',       hex: '#33e3ff', group: 'Neon Blue',    usage: ['Link hover', 'Icon highlights', 'blue-glow gradient end'] },
+  { id: 'neon-blue-500',  label: 'Blue Primary',      hex: '#00d4ff', group: 'Neon Blue',    usage: ['Primary buttons', 'Active nav links', 'Focus rings', 'blue-glow gradient start', 'neon-blue shadow'] },
+  { id: 'neon-blue-600',  label: 'Blue Dark',         hex: '#0f0082', group: 'Neon Blue',    usage: ['Button hover bg', 'Dark accent fills'] },
+  { id: 'neon-blue-700',  label: 'Blue Darker',       hex: '#050088', group: 'Neon Blue',    usage: ['Deep blue fills'] },
+  { id: 'neon-blue-800',  label: 'Blue Deepest',      hex: '#000766', group: 'Neon Blue',    usage: ['Darkest blue surfaces'] },
+  { id: 'neon-blue-950',  label: 'Blue Badge',        hex: '#1400ab', group: 'Neon Blue',    usage: ['Inline badge background', 'Chip fills'] },
+
+  // Neon Green
+  { id: 'neon-green-300', label: 'Green Light',       hex: '#80ff5f', group: 'Neon Green',   usage: ['Success text light', 'Positive delta light'] },
+  { id: 'neon-green-400', label: 'Green Bright',      hex: '#57ff2a', group: 'Neon Green',   usage: ['Positive EV text', 'Win rate chips', 'success-400'] },
+  { id: 'neon-green-500', label: 'Green Primary',     hex: '#39ff14', group: 'Neon Green',   usage: ['Main success color', 'Profit indicators', 'green-glow', 'neon-green shadow', 'pulse-green'] },
+  { id: 'neon-green-600', label: 'Green Dark',        hex: '#28cc0f', group: 'Neon Green',   usage: ['Success button hover', 'success-600'] },
+  { id: 'neon-green-700', label: 'Green Darkest',     hex: '#1a8a0a', group: 'Neon Green',   usage: ['Deep green bg fills'] },
+
+  // Neon Red
+  { id: 'neon-red-300',   label: 'Red Light',         hex: '#ff6b8a', group: 'Neon Red',     usage: ['Danger text light', 'Negative delta light'] },
+  { id: 'neon-red-400',   label: 'Red Bright',        hex: '#ff3359', group: 'Neon Red',     usage: ['Negative EV', 'Loss indicators', 'danger-400'] },
+  { id: 'neon-red-500',   label: 'Red Primary',       hex: '#ff073a', group: 'Neon Red',     usage: ['Live badge', 'Danger alerts', 'red-glow', 'neon-red shadow', 'pulse-red'] },
+  { id: 'neon-red-600',   label: 'Red Dark',          hex: '#cc0030', group: 'Neon Red',     usage: ['Danger button hover', 'danger-600'] },
+  { id: 'neon-red-700',   label: 'Red Darkest',       hex: '#8a0020', group: 'Neon Red',     usage: ['Deep red bg fills'] },
+
+  // Neon Purple
+  { id: 'neon-purple-300',label: 'Purple Light',      hex: '#e080ff', group: 'Neon Purple',  usage: ['Analytics text light', 'Model label light'] },
+  { id: 'neon-purple-400',label: 'Purple Bright',     hex: '#d44dff', group: 'Neon Purple',  usage: ['Ensemble / A-B test chips', 'purple-glow gradient end'] },
+  { id: 'neon-purple-500',label: 'Purple Primary',    hex: '#bf00ff', group: 'Neon Purple',  usage: ['Custom Models page accent', 'Optimization', 'purple-glow', 'neon-purple shadow'] },
+  { id: 'neon-purple-600',label: 'Purple Dark',       hex: '#9900cc', group: 'Neon Purple',  usage: ['Purple button hover'] },
+  { id: 'neon-purple-700',label: 'Purple Darkest',    hex: '#6600aa', group: 'Neon Purple',  usage: ['Deep purple bg fills'] },
+
+  // Neon Yellow
+  { id: 'neon-yellow-300',label: 'Yellow Light',      hex: '#ffff80', group: 'Neon Yellow',  usage: ['Warning text light'] },
+  { id: 'neon-yellow-400',label: 'Yellow Bright',     hex: '#ffff40', group: 'Neon Yellow',  usage: ['Kelly fraction chip', 'warning-400', 'gold-glow alias end'] },
+  { id: 'neon-yellow-500',label: 'Yellow Primary',    hex: '#ffff00', group: 'Neon Yellow',  usage: ['Odds value text', 'Warning alerts', 'neon-yellow shadow', 'gold-glow alias start'] },
+  { id: 'neon-yellow-600',label: 'Yellow Dark',       hex: '#cccc00', group: 'Neon Yellow',  usage: ['Warning button hover'] },
+  { id: 'neon-yellow-700',label: 'Yellow Darkest',    hex: '#aaaa00', group: 'Neon Yellow',  usage: ['Deep yellow bg fills'] },
+];
+
+// Working copy of colors
+const workingColors = {};
+COLOR_TOKENS.forEach(t => { workingColors[t.id] = t.hex; });
+
+// ─── GROUPS ────────────────────────────────────────────────────────────────────
+const GROUPS = ['Backgrounds','Neon Blue','Neon Green','Neon Red','Neon Purple','Neon Yellow'];
+
+let activeToken = null;
+
+// ─── BUILD LEFT PANEL ──────────────────────────────────────────────────────────
+function buildPanel() {
+  const panel = document.getElementById('colorPanel');
+  panel.innerHTML = '<div class="panel-title">Color Tokens</div>';
+  GROUPS.forEach(g => {
+    const tokens = COLOR_TOKENS.filter(t => t.group === g);
+    const wrap = document.createElement('div');
+    wrap.className = 'color-group';
+    wrap.innerHTML = `<div class="group-label">${g}</div>`;
+    tokens.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'color-row';
+      row.id = `row-${t.id}`;
+      row.innerHTML = `
+        <div class="swatch" id="swatch-${t.id}" style="background:${workingColors[t.id]}"></div>
+        <div class="color-info">
+          <div class="color-name">${t.label}</div>
+          <div class="color-hex" id="hex-${t.id}">${workingColors[t.id]}</div>
+          <div class="color-usage">${t.usage[0]}${t.usage.length > 1 ? ` +${t.usage.length-1}` : ''}</div>
+        </div>`;
+      row.addEventListener('click', () => selectToken(t.id));
+      wrap.appendChild(row);
+    });
+    panel.appendChild(wrap);
+  });
+}
+
+// ─── SELECT TOKEN ──────────────────────────────────────────────────────────────
+function selectToken(id) {
+  if (activeToken) {
+    document.getElementById(`row-${activeToken}`)?.classList.remove('active');
+  }
+  activeToken = id;
+  document.getElementById(`row-${id}`)?.classList.add('active');
+
+  const token = COLOR_TOKENS.find(t => t.id === id);
+  const hex = workingColors[id];
+
+  document.getElementById('selectedName').textContent = `${token.label} (${token.id})`;
+  document.getElementById('selectedUsage').innerHTML = token.usage.map(u => `• ${u}`).join('<br>');
+  document.getElementById('selectedSwatch').style.background = hex;
+
+  setEditorColor(hex);
+}
+
+// ─── SET EDITOR COLOR ──────────────────────────────────────────────────────────
+function setEditorColor(hex) {
+  const [r,g,b] = hexToRgb(hex);
+  document.getElementById('sliderR').value = r;
+  document.getElementById('sliderG').value = g;
+  document.getElementById('sliderB').value = b;
+  document.getElementById('valR').textContent = r;
+  document.getElementById('valG').textContent = g;
+  document.getElementById('valB').textContent = b;
+  document.getElementById('hexInput').value = hex;
+  document.getElementById('selectedSwatch').style.background = hex;
+
+  // sync brightness slider from HSL
+  const [,, l] = rgbToHsl(r,g,b);
+  document.getElementById('brightnessSlider').value = Math.min(1, l * 2);
+  drawWheel(Math.min(1, l * 2));
+}
+
+// ─── APPLY COLOR TO TOKEN ──────────────────────────────────────────────────────
+function applyColor(hex) {
+  if (!activeToken) return;
+  hex = normalizeHex(hex);
+  if (!hex) return;
+  workingColors[activeToken] = hex;
+
+  document.getElementById(`swatch-${activeToken}`).style.background = hex;
+  document.getElementById(`hex-${activeToken}`).textContent = hex;
+  document.getElementById('selectedSwatch').style.background = hex;
+  document.getElementById('hexInput').value = hex;
+
+  updatePreview();
+  updateExport();
+}
+
+// ─── COLOR WHEEL ──────────────────────────────────────────────────────────────
+const canvas = document.getElementById('colorWheel');
+const ctx = canvas.getContext('2d');
+
+function drawWheel(brightness = 1) {
+  const cx = canvas.width / 2, cy = canvas.height / 2, r = cx - 2;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let angle = 0; angle < 360; angle++) {
+    const startAngle = (angle - 1) * Math.PI / 180;
+    const endAngle = (angle + 1) * Math.PI / 180;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, `hsla(${angle},0%,${Math.round(brightness * 50)}%,1)`);
+    grad.addColorStop(1, `hsla(${angle},100%,${Math.round(brightness * 50)}%,1)`);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+  // dark center dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fill();
+}
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const dx = x - cx, dy = y - cy;
+  if (Math.sqrt(dx*dx+dy*dy) > cx) return;
+  const px = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
+  const hex = rgbToHex(px[0], px[1], px[2]);
+  setEditorColor(hex);
+  applyColor(hex);
+});
+
+document.getElementById('brightnessSlider').addEventListener('input', e => {
+  drawWheel(parseFloat(e.target.value));
+});
+
+// ─── RGB SLIDERS ──────────────────────────────────────────────────────────────
+['R','G','B'].forEach(ch => {
+  document.getElementById(`slider${ch}`).addEventListener('input', () => {
+    const r = +document.getElementById('sliderR').value;
+    const g = +document.getElementById('sliderG').value;
+    const b = +document.getElementById('sliderB').value;
+    document.getElementById('valR').textContent = r;
+    document.getElementById('valG').textContent = g;
+    document.getElementById('valB').textContent = b;
+    const hex = rgbToHex(r,g,b);
+    document.getElementById('hexInput').value = hex;
+    document.getElementById('selectedSwatch').style.background = hex;
+    applyColor(hex);
+  });
+});
+
+// ─── HEX INPUT ────────────────────────────────────────────────────────────────
+document.getElementById('applyHex').addEventListener('click', () => {
+  const hex = normalizeHex(document.getElementById('hexInput').value);
+  if (hex) { setEditorColor(hex); applyColor(hex); }
+});
+document.getElementById('hexInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('applyHex').click();
+});
+
+// ─── LIVE PREVIEW ─────────────────────────────────────────────────────────────
+function updatePreview() {
+  const grid = document.getElementById('previewGrid');
+  const bg = workingColors['dark-800'];
+  const blue = workingColors['neon-blue-500'];
+  const green = workingColors['neon-green-500'];
+  const red = workingColors['neon-red-500'];
+  const purple = workingColors['neon-purple-500'];
+  const yellow = workingColors['neon-yellow-500'];
+  const text = workingColors['dark-50'];
+  const muted = workingColors['dark-200'];
+  const border = workingColors['dark-400'];
+
+  grid.innerHTML = `
+    <div class="preview-item" style="background:${workingColors['dark-900']};border-color:${border}">
+      <div class="pi-label">Page BG</div>
+      <div class="pi-val" style="color:${muted}">${workingColors['dark-900']}</div>
+    </div>
+    <div class="preview-item" style="background:${bg};border-color:${border}">
+      <div class="pi-label">Card BG</div>
+      <div class="pi-val" style="color:${muted}">${bg}</div>
+    </div>
+    <div class="preview-item" style="background:${bg};border-color:${blue};box-shadow:0 0 10px ${blue}44">
+      <div class="pi-label">Primary Button</div>
+      <div class="pi-val" style="color:${blue};font-weight:700">BET NOW</div>
+    </div>
+    <div class="preview-item" style="background:${bg};border-color:${green};box-shadow:0 0 10px ${green}44">
+      <div class="pi-label">Positive EV</div>
+      <div class="pi-val" style="color:${green};font-weight:700">+4.2%</div>
+    </div>
+    <div class="preview-item" style="background:${bg};border-color:${red};box-shadow:0 0 10px ${red}44">
+      <div class="pi-label">Negative / Live</div>
+      <div class="pi-val" style="color:${red};font-weight:700">LIVE ●</div>
+    </div>
+    <div class="preview-item" style="background:${bg};border-color:${purple};box-shadow:0 0 10px ${purple}44">
+      <div class="pi-label">Analytics</div>
+      <div class="pi-val" style="color:${purple};font-weight:700">MODEL A</div>
+    </div>
+    <div class="preview-item" style="background:${bg};border-color:${yellow};box-shadow:0 0 10px ${yellow}44">
+      <div class="pi-label">Odds / Warning</div>
+      <div class="pi-val" style="color:${yellow};font-weight:700">-110</div>
+    </div>
+    <div class="preview-item" style="background:${bg};border-color:${border}">
+      <div class="pi-label">Body Text</div>
+      <div class="pi-val" style="color:${text}">Player Stats</div>
+      <div style="color:${muted};font-size:0.7rem;margin-top:4px">Secondary label</div>
+    </div>
+    <div class="preview-item" style="background:linear-gradient(135deg,${workingColors['dark-950']} 0%,${workingColors['dark-900']} 40%,${workingColors['dark-800']} 100%);border-color:${border}">
+      <div class="pi-label">App Background</div>
+      <div class="pi-val" style="color:${muted}">Gradient</div>
+    </div>
+    <div class="preview-item" style="background:${workingColors['neon-blue-950']};border-color:${blue}">
+      <div class="pi-label">Badge BG</div>
+      <div class="pi-val" style="color:${blue}">PRO</div>
+    </div>
+  `;
+}
+
+// ─── EXPORT ───────────────────────────────────────────────────────────────────
+function updateExport() {
+  const lines = ['// NEWNBA UI Color Layout', '// Generated: ' + new Date().toISOString().slice(0,10), ''];
+  GROUPS.forEach(g => {
+    lines.push(`// ${g}`);
+    COLOR_TOKENS.filter(t => t.group === g).forEach(t => {
+      lines.push(`"${t.id}": "${workingColors[t.id]}",  // ${t.label}`);
+    });
+    lines.push('');
+  });
+  document.getElementById('exportBox').textContent = lines.join('\n');
+}
+
+// ─── COPY ─────────────────────────────────────────────────────────────────────
+document.getElementById('btnCopy').addEventListener('click', () => {
+  const text = document.getElementById('exportBox').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('Config copied to clipboard!'));
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  COLOR_TOKENS.forEach(t => { workingColors[t.id] = t.hex; });
+  buildPanel();
+  if (activeToken) selectToken(activeToken);
+  updatePreview();
+  updateExport();
+  showToast('Reset to current codebase colors');
+});
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function hexToRgb(hex) {
+  const h = hex.replace('#','');
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function rgbToHex(r,g,b) {
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+function rgbToHsl(r,g,b) {
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let h,s,l=(max+min)/2;
+  if(max===min){h=s=0;}else{
+    const d=max-min; s=l>0.5?d/(2-max-min):d/(max+min);
+    switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;default:h=(r-g)/d+4;}
+    h/=6;
+  }
+  return [h,s,l];
+}
+function normalizeHex(v) {
+  v = v.trim();
+  if (!v.startsWith('#')) v = '#' + v;
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v.toLowerCase();
+  if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+    return '#' + v[1]+v[1]+v[2]+v[2]+v[3]+v[3];
+  }
+  return null;
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+buildPanel();
+drawWheel(1);
+updatePreview();
+updateExport();
+
+// Select first token by default
+selectToken('neon-blue-500');
+</script>
+</body>
+</html>
