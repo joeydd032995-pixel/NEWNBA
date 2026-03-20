@@ -1,10 +1,13 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PlanGuard } from '../auth/guards/plan.guard';
+import { RequiresPlan } from '../auth/decorators/require-plan.decorator';
 import { ExpertPicksService } from './expert-picks.service';
 import { CreateExpertPickDto, ResolveExpertPickDto } from './dto/expert-picks.dto';
 
 @Controller('expert-picks')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PlanGuard)
+@RequiresPlan('PRO')
 export class ExpertPicksController {
   constructor(private readonly service: ExpertPicksService) {}
 

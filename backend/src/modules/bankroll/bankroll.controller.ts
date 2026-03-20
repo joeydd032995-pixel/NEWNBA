@@ -1,10 +1,13 @@
 import { Controller, Get, Post, Query, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PlanGuard } from '../auth/guards/plan.guard';
+import { RequiresPlan } from '../auth/decorators/require-plan.decorator';
 import { BankrollService } from './bankroll.service';
 import { CalculateKellyDto } from './dto/bankroll.dto';
 
 @Controller('bankroll')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PlanGuard)
+@RequiresPlan('PRO')
 export class BankrollController {
   constructor(private readonly bankrollService: BankrollService) {}
 

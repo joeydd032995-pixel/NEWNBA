@@ -1,10 +1,13 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PlanGuard } from '../auth/guards/plan.guard';
+import { RequiresPlan } from '../auth/decorators/require-plan.decorator';
 import { ParlayService } from './parlay.service';
 import { AnalyzeSGPDto, AnalyzeParlayDto } from './dto/parlay.dto';
 
 @Controller('parlay')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PlanGuard)
+@RequiresPlan('PRO')
 export class ParlayController {
   constructor(private readonly parlayService: ParlayService) {}
 
