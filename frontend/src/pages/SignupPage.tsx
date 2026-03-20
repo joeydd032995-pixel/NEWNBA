@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Dumbbell, UserPlus } from 'lucide-react'
 import { useAuthStore } from '../stores/auth'
 import toast from 'react-hot-toast'
 
@@ -31,44 +30,34 @@ export default function SignupPage() {
     setForm(f => ({ ...f, [key]: e.target.value }))
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: 'linear-gradient(160deg, #000000 0%, #080808 60%, #050505 100%)' }}
-    >
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-surface">
       {/* Background glow orbs */}
-      <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full pointer-events-none opacity-20"
-           style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.25) 0%, transparent 70%)', filter: 'blur(40px)' }} />
-      <div className="absolute bottom-1/3 left-1/4 w-80 h-80 rounded-full pointer-events-none opacity-15"
-           style={{ background: 'radial-gradient(circle, rgba(0,212,255,0.2) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+      <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full pointer-events-none opacity-25"
+           style={{ background: 'radial-gradient(circle, rgba(223,142,255,0.3) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+      <div className="absolute bottom-1/3 left-1/4 w-80 h-80 rounded-full pointer-events-none opacity-20"
+           style={{ background: 'radial-gradient(circle, rgba(0,244,254,0.2) 0%, transparent 70%)', filter: 'blur(60px)' }} />
 
       <div className="w-full max-w-sm relative animate-fade-in">
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
-               style={{ background: 'linear-gradient(135deg, #f59e0b, #fbbf24)', boxShadow: '0 0 32px rgba(245,158,11,0.35)' }}>
-            <Dumbbell size={26} style={{ color: '#040812' }} />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
+               style={{ background: 'linear-gradient(135deg, rgba(223,142,255,0.2), rgba(0,244,254,0.1))', border: '1px solid rgba(223,142,255,0.3)', boxShadow: '0 0 32px rgba(223,142,255,0.2)' }}>
+            <span className="material-symbols-outlined text-primary" style={{ fontSize: '28px' }}>sports_basketball</span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">NEWNBA</h1>
-          <p className="text-slate-500 text-sm mt-1">Create your analytics account</p>
+          <h1 className="text-3xl font-black font-headline tracking-tighter text-on-surface">NEWNBA</h1>
+          <p className="text-on-surface-variant text-sm mt-1">Create your analytics account</p>
         </div>
 
         {/* Card */}
-        <div
-          className="rounded-2xl p-6"
-          style={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(12px)',
-          }}
-        >
-          <h2 className="text-base font-semibold text-white mb-5">Create your account</h2>
+        <div className="bg-surface-container-low rounded-2xl p-8 border border-outline-variant/10"
+             style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
+          <h2 className="text-lg font-headline font-bold text-on-surface mb-6">Create your account</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-slate-500 mb-1.5 font-medium" htmlFor="firstName">First Name</label>
+                <label className="label-sm" htmlFor="firstName">First Name</label>
                 <input
                   id="firstName"
                   type="text"
@@ -80,7 +69,7 @@ export default function SignupPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-500 mb-1.5 font-medium" htmlFor="lastName">Last Name</label>
+                <label className="label-sm" htmlFor="lastName">Last Name</label>
                 <input
                   id="lastName"
                   type="text"
@@ -94,7 +83,7 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-slate-500 mb-1.5 font-medium" htmlFor="email">Email address</label>
+              <label className="label-sm" htmlFor="email">Email address</label>
               <input
                 id="email"
                 type="email"
@@ -108,7 +97,7 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-slate-500 mb-1.5 font-medium" htmlFor="password">Password</label>
+              <label className="label-sm" htmlFor="password">Password</label>
               <input
                 id="password"
                 type="password"
@@ -125,25 +114,25 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="btn-primary w-full py-2.5 mt-2"
+              className="btn-primary w-full py-3 mt-2"
             >
               {isLoading ? (
                 <span className="flex items-center gap-2 justify-center">
-                  <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-on-primary-container/30 border-t-on-primary-container rounded-full animate-spin" />
                   Creating account…
                 </span>
               ) : (
                 <span className="flex items-center gap-2 justify-center">
-                  <UserPlus size={14} />
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
                   Create Account
                 </span>
               )}
             </button>
           </form>
 
-          <p className="mt-4 text-center text-xs text-slate-600">
+          <p className="mt-5 text-center text-xs text-on-surface-variant">
             Already have an account?{' '}
-            <Link to="/login" className="font-semibold transition-colors duration-150" style={{ color: '#fbbf24' }}>
+            <Link to="/login" className="font-headline font-bold text-primary hover:brightness-110 transition-all">
               Sign in
             </Link>
           </p>
