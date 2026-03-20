@@ -13,6 +13,7 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
+    rawBody: true,
   });
   console.log(`[bootstrap] NestFactory.create completed in ${Date.now() - startTime}ms`);
 

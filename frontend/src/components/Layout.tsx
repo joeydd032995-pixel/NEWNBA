@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   BarChart3, TrendingUp, ArrowLeftRight, Sliders, Activity,
   FlaskConical, GitBranch, TestTube2, Calculator, Bell,
-  ShoppingCart, LogOut, ChevronRight, Menu, X, Dumbbell, UserCheck, Users, Radio, Layers, Wallet
+  ShoppingCart, LogOut, ChevronRight, Menu, X, Dumbbell, UserCheck, Users, Radio, Layers, Wallet, CreditCard
 } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { useAuthStore } from '../stores/auth'
@@ -26,6 +26,7 @@ const navItems = [
   { to: '/ensemble', label: 'Ensemble', icon: FlaskConical },
   { to: '/ab-testing', label: 'A/B Testing', icon: TestTube2 },
   { to: '/alerts', label: 'Alerts', icon: Bell },
+  { to: '/pricing', label: 'Pricing', icon: CreditCard },
 ]
 
 interface LayoutProps { children: React.ReactNode }

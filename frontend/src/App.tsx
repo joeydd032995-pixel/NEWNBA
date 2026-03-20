@@ -20,6 +20,8 @@ import ExpertPicksPage from './pages/ExpertPicksPage'
 import LiveBettingPage from './pages/LiveBettingPage'
 import ParlayBuilderPage from './pages/ParlayBuilderPage'
 import BankrollPage from './pages/BankrollPage'
+import PricingPage from './pages/PricingPage'
+import BillingSuccessPage from './pages/BillingSuccessPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
@@ -60,6 +62,8 @@ export default function App() {
         {/* Public */}
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+        <Route path="/pricing" element={<ProtectedRoute><PricingPage /></ProtectedRoute>} />
+        <Route path="/billing/success" element={<BillingSuccessPage />} />
 
         {/* FREE */}
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

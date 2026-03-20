@@ -159,6 +159,15 @@ export const bankrollApi = {
     api.post('/bankroll/calculate', data),
 }
 
+// Billing
+export const billingApi = {
+  createCheckout: (plan: 'PRO' | 'PREMIUM') =>
+    api.post<{ url: string }>('/billing/checkout', { plan }).then((r) => r.data),
+  createPortal: () =>
+    api.post<{ url: string }>('/billing/portal').then((r) => r.data),
+  getStatus: () => api.get('/billing/status').then((r) => r.data),
+}
+
 // A/B Testing
 export const abTestApi = {
   getAll: () => api.get('/analytics/ab-tests'),
