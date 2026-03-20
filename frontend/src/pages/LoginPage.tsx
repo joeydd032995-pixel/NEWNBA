@@ -38,7 +38,7 @@ export default function LoginPage() {
       <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full pointer-events-none opacity-20"
            style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.25) 0%, transparent 70%)', filter: 'blur(40px)' }} />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full pointer-events-none opacity-15"
-           style={{ background: 'radial-gradient(circle, rgba(0,212,255,0.25) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+           style={{ background: 'radial-gradient(circle, rgba(76,65,158,0.25) 0%, transparent 70%)', filter: 'blur(40px)' }} />
 
       <div className="w-full max-w-sm relative animate-fade-in">
 

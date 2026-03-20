@@ -246,7 +246,7 @@ export function PlayerCheatSheetDrawer({
                   ) : (
                     <ResponsiveContainer width="100%" height={180}>
                       <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -10 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.1)" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(76,65,158,0.1)" />
                         <XAxis
                           dataKey="matchup"
                           tick={{ fontSize: 9, fill: '#555555' }}
@@ -263,7 +263,7 @@ export function PlayerCheatSheetDrawer({
                         <Line
                           type="monotone"
                           dataKey="statValue"
-                          stroke="#00d4ff"
+                          stroke="#4c419e"
                           strokeWidth={2}
                           dot={<CustomDot />}
                           activeDot={{ r: 6 }}

@@ -85,7 +85,7 @@ function OverviewTab({ data }: { data: any }) {
               formatter={(v: number) => [fmtUSD(Number(v)), 'Cum. P&L']}
             />
             <ReferenceLine y={0} stroke="#475569" strokeDasharray="4 4" />
-            <Line type="monotone" dataKey="cumPnl" stroke="#00d4ff" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="cumPnl" stroke="#4c419e" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -206,7 +206,7 @@ function CalibrationTab({ data }: { data: any }) {
             <Tooltip contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(76,65,158,0.2)', borderRadius: 8 }}
               formatter={(v: number, name: string) => [`${Number(v).toFixed(1)}%`, name]} />
             <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 100, y: 100 }]} stroke="#475569" strokeDasharray="4 4" label={{ value: 'Perfect', fill: '#444444', fontSize: 10, position: 'insideTopRight' }} />
-            <Scatter data={chartData.filter(d => d.actual !== null)} fill="#00d4ff" />
+            <Scatter data={chartData.filter(d => d.actual !== null)} fill="#4c419e" />
           </ScatterChart>
         </ResponsiveContainer>
       </div>

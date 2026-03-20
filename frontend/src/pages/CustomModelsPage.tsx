@@ -66,7 +66,7 @@ function ModelCard({ model, onDelete, onDuplicate }: any) {
         {model.isActive && (
           <span
             className="text-xs px-2 py-0.5 rounded-full text-neon-blue-400"
-            style={{ background: 'linear-gradient(135deg, rgba(20,0,171,0.35) 0%, rgba(0,212,255,0.10) 100%)', border: '1px solid rgba(0,212,255,0.30)', boxShadow: '0 0 8px rgba(0,212,255,0.2)' }}
+            style={{ background: 'linear-gradient(135deg, rgba(0,3,112,0.35) 0%, rgba(76,65,158,0.10) 100%)', border: '1px solid rgba(76,65,158,0.30)', boxShadow: '0 0 8px rgba(76,65,158,0.2)' }}
           >
             Active
           </span>
