@@ -27,22 +27,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <Layout>{children}</Layout>
 }
 
-function ProRoute({ children, featureName }: { children: React.ReactNode; featureName?: string }) {
+function PlanRoute({ children, requiredPlan, featureName }: {
+  children: React.ReactNode
+  requiredPlan: 'PRO' | 'PREMIUM'
+  featureName?: string
+}) {
   const { isAuthenticated } = useAuthStore()
   if (!isAuthenticated) return <Navigate to="/login" replace />
   return (
     <Layout>
-      <PlanGate requiredPlan="PRO" featureName={featureName}>{children}</PlanGate>
-    </Layout>
-  )
-}
-
-function PremiumRoute({ children, featureName }: { children: React.ReactNode; featureName?: string }) {
-  const { isAuthenticated } = useAuthStore()
-  if (!isAuthenticated) return <Navigate to="/login" replace />
-  return (
-    <Layout>
-      <PlanGate requiredPlan="PREMIUM" featureName={featureName}>{children}</PlanGate>
+      <PlanGate requiredPlan={requiredPlan} featureName={featureName}>{children}</PlanGate>
     </Layout>
   )
 }
@@ -72,21 +66,21 @@ export default function App() {
         <Route path="/formulas" element={<ProtectedRoute><FormulasPage /></ProtectedRoute>} />
 
         {/* PRO */}
-        <Route path="/ev-feed" element={<ProRoute featureName="EV Feed"><EVFeedPage /></ProRoute>} />
-        <Route path="/arbitrage" element={<ProRoute featureName="Arbitrage"><ArbitrageFeedPage /></ProRoute>} />
-        <Route path="/player-props" element={<ProRoute featureName="Player Props"><PlayerPropsPage /></ProRoute>} />
-        <Route path="/expert-picks" element={<ProRoute featureName="Expert Picks"><ExpertPicksPage /></ProRoute>} />
-        <Route path="/live" element={<ProRoute featureName="Live Betting"><LiveBettingPage /></ProRoute>} />
-        <Route path="/parlay" element={<ProRoute featureName="Parlay Builder"><ParlayBuilderPage /></ProRoute>} />
-        <Route path="/bankroll" element={<ProRoute featureName="Bankroll"><BankrollPage /></ProRoute>} />
-        <Route path="/alerts" element={<ProRoute featureName="Alerts"><AlertsPage /></ProRoute>} />
+        <Route path="/ev-feed" element={<PlanRoute requiredPlan="PRO" featureName="EV Feed"><EVFeedPage /></PlanRoute>} />
+        <Route path="/arbitrage" element={<PlanRoute requiredPlan="PRO" featureName="Arbitrage"><ArbitrageFeedPage /></PlanRoute>} />
+        <Route path="/player-props" element={<PlanRoute requiredPlan="PRO" featureName="Player Props"><PlayerPropsPage /></PlanRoute>} />
+        <Route path="/expert-picks" element={<PlanRoute requiredPlan="PRO" featureName="Expert Picks"><ExpertPicksPage /></PlanRoute>} />
+        <Route path="/live" element={<PlanRoute requiredPlan="PRO" featureName="Live Betting"><LiveBettingPage /></PlanRoute>} />
+        <Route path="/parlay" element={<PlanRoute requiredPlan="PRO" featureName="Parlay Builder"><ParlayBuilderPage /></PlanRoute>} />
+        <Route path="/bankroll" element={<PlanRoute requiredPlan="PRO" featureName="Bankroll"><BankrollPage /></PlanRoute>} />
+        <Route path="/alerts" element={<PlanRoute requiredPlan="PRO" featureName="Alerts"><AlertsPage /></PlanRoute>} />
 
         {/* PREMIUM */}
-        <Route path="/models" element={<PremiumRoute featureName="Custom Models"><CustomModelsPage /></PremiumRoute>} />
-        <Route path="/optimization" element={<PremiumRoute featureName="GA Optimizer"><OptimizationPage /></PremiumRoute>} />
-        <Route path="/ensemble" element={<PremiumRoute featureName="Ensemble"><EnsemblePage /></PremiumRoute>} />
-        <Route path="/ab-testing" element={<PremiumRoute featureName="A/B Testing"><ABTestingPage /></PremiumRoute>} />
-        <Route path="/performance" element={<PremiumRoute featureName="Performance"><PerformancePage /></PremiumRoute>} />
+        <Route path="/models" element={<PlanRoute requiredPlan="PREMIUM" featureName="Custom Models"><CustomModelsPage /></PlanRoute>} />
+        <Route path="/optimization" element={<PlanRoute requiredPlan="PREMIUM" featureName="GA Optimizer"><OptimizationPage /></PlanRoute>} />
+        <Route path="/ensemble" element={<PlanRoute requiredPlan="PREMIUM" featureName="Ensemble"><EnsemblePage /></PlanRoute>} />
+        <Route path="/ab-testing" element={<PlanRoute requiredPlan="PREMIUM" featureName="A/B Testing"><ABTestingPage /></PlanRoute>} />
+        <Route path="/performance" element={<PlanRoute requiredPlan="PREMIUM" featureName="Performance"><PerformancePage /></PlanRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

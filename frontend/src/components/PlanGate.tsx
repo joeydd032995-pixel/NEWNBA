@@ -1,10 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Lock } from 'lucide-react'
 import { useAuthStore } from '../stores/auth'
-
-type Plan = 'FREE' | 'PRO' | 'PREMIUM'
-
-const PLAN_RANK: Record<Plan, number> = { FREE: 0, PRO: 1, PREMIUM: 2 }
+import { PLAN_RANK, PLAN_UPGRADE_MESSAGE } from '../lib/plans'
 
 interface PlanGateProps {
   requiredPlan: 'PRO' | 'PREMIUM'
@@ -16,8 +13,8 @@ export default function PlanGate({ requiredPlan, featureName, children }: PlanGa
   const { user } = useAuthStore()
   const navigate = useNavigate()
 
-  const userPlan = (user?.planType ?? 'FREE') as Plan
-  const hasAccess = PLAN_RANK[userPlan] >= PLAN_RANK[requiredPlan]
+  const userRank = PLAN_RANK[user?.planType ?? 'FREE']
+  const hasAccess = userRank >= PLAN_RANK[requiredPlan]
 
   if (hasAccess) return <>{children}</>
 
@@ -33,9 +30,7 @@ export default function PlanGate({ requiredPlan, featureName, children }: PlanGa
         </h2>
 
         <p className="text-slate-400 text-sm mb-8">
-          {requiredPlan === 'PRO'
-            ? 'Upgrade to PRO to unlock EV Feed, Arbitrage, Player Props, Live Betting, Parlay Builder, Bankroll, Alerts, and Expert Picks.'
-            : 'Upgrade to PREMIUM to unlock Custom Models, Optimization, Ensemble, A/B Testing, and Performance Tracking.'}
+          {PLAN_UPGRADE_MESSAGE[requiredPlan]}
         </p>
 
         <div className="flex gap-3">
