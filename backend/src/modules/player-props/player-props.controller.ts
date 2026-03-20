@@ -2,11 +2,14 @@ import { Controller, Get, Query, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PropStatType } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PlanGuard } from '../auth/guards/plan.guard';
+import { RequiresPlan } from '../auth/decorators/require-plan.decorator';
 import { PlayerPropsService } from './player-props.service';
 
 @ApiTags('Player Props')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PlanGuard)
+@RequiresPlan('PRO')
 @Controller('player-props')
 export class PlayerPropsController {
   constructor(private playerPropsService: PlayerPropsService) {}

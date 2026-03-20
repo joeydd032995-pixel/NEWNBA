@@ -8,6 +8,8 @@ interface User {
   firstName?: string
   lastName?: string
   planType: 'FREE' | 'PRO' | 'PREMIUM'
+  subscriptionStatus?: 'TRIALING' | 'ACTIVE' | 'EXPIRED' | 'CANCELED'
+  trialEndsAt?: string | null
 }
 
 interface AuthStore {
@@ -22,7 +24,7 @@ interface AuthStore {
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
@@ -59,7 +61,10 @@ export const useAuthStore = create<AuthStore>()(
           const { data } = await authApi.profile()
           set({ user: data, isAuthenticated: true })
         } catch {
-          set({ user: null, isAuthenticated: false })
+          const { user, isAuthenticated } = get()
+          if (user !== null || isAuthenticated) {
+            set({ user: null, isAuthenticated: false })
+          }
         }
       },
     }),

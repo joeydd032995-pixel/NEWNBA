@@ -2,8 +2,11 @@ import { Injectable, UnauthorizedException, ConflictException, NotFoundException
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupDto } from './dto/auth.dto';
+
+const TRIAL_DURATION_DAYS = 14;
 
 @Injectable()
 export class AuthService {
@@ -27,8 +30,17 @@ export class AuthService {
     if (existing) throw new ConflictException('Email already registered');
 
     const password = await bcrypt.hash(dto.password, 12);
+    const trialEndsAt = new Date(Date.now() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000);
     const user = await this.prisma.user.create({
-      data: { email: dto.email, password, firstName: dto.firstName, lastName: dto.lastName },
+      data: {
+        email: dto.email,
+        password,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        planType: 'PREMIUM',
+        subscriptionStatus: SubscriptionStatus.TRIALING,
+        trialEndsAt,
+      },
     });
 
     const tokens = await this.generateTokens(user.id, user.email);

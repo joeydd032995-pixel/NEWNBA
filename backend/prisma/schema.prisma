@@ -16,10 +16,14 @@ model User {
   password          String
   firstName         String?
   lastName          String?
-  planType          PlanType  @default(FREE)
-  isActive          Boolean   @default(true)
-  refreshToken      String?
-  createdAt         DateTime  @default(now())
+  planType           PlanType  @default(FREE)
+  isActive           Boolean   @default(true)
+  refreshToken       String?
+  stripeCustomerId   String?
+  subscriptionId     String?
+  subscriptionStatus SubscriptionStatus? @default(TRIALING)
+  trialEndsAt        DateTime?
+  createdAt          DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
   customModels      CustomModel[]
@@ -39,6 +43,13 @@ enum PlanType {
   FREE
   PRO
   PREMIUM
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  EXPIRED
+  CANCELED
 }
 
 // ============================================================
