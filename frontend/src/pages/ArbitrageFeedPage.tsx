@@ -75,7 +75,7 @@ export default function ArbitrageFeedPage() {
             >
               {/* Subtle background gradient */}
               <div className="absolute inset-0 pointer-events-none opacity-30"
-                   style={{ background: 'radial-gradient(ellipse at top right, rgba(0,212,255,0.08) 0%, transparent 70%)' }} />
+                   style={{ background: 'radial-gradient(ellipse at top right, rgba(76,65,158,0.08) 0%, transparent 70%)' }} />
 
               <div className="relative">
                 {/* Header row */}

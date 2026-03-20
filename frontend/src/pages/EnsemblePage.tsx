@@ -93,7 +93,7 @@ function CreateEnsembleModal({ onClose, models }: any) {
             <div className="grid grid-cols-2 gap-2">
               {STRATEGIES.map(s => (
                 <label key={s.value} className={`flex flex-col gap-0.5 p-2 rounded-lg border cursor-pointer transition-colors ${
-                  strategy === s.value ? 'border-primary-500 bg-primary-500/10' : 'border-slate-700 hover:border-slate-600'
+                  strategy === s.value ? 'border-primary-500 bg-primary-500/10' : 'border-dark-600 hover:border-dark-500'
                 }`}>
                   <input type="radio" value={s.value} checked={strategy === s.value} onChange={() => setStrategy(s.value)} className="sr-only" />
                   <span className="text-sm font-medium text-white">{s.label}</span>

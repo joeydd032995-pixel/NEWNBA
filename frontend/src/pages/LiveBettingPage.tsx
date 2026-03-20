@@ -54,7 +54,7 @@ function MomentumBar({
         {/* Home side */}
         <div
           className="transition-all duration-700"
-          style={{ background: 'linear-gradient(to right, #1400ab, #00d4ff)', width: `${homePct}%` }}
+          style={{ background: 'linear-gradient(to right, #000370, #4c419e)', width: `${homePct}%` }}
         />
       </div>
       <div className="flex justify-between text-[10px] text-slate-600 mt-0.5">
@@ -203,7 +203,7 @@ function LineMovementFeed({ moves }: { moves: any[] }) {
         </thead>
         <tbody className="divide-y divide-slate-800/60">
           {moves.map((m: any, i: number) => (
-            <tr key={i} className={`hover:bg-slate-800/30 transition-colors ${
+            <tr key={i} className={`hover:bg-dark-700/30 transition-colors ${
               m.event?.status === 'LIVE' ? 'bg-red-900/5' : ''
             }`}>
               <td className="py-2.5 px-4">

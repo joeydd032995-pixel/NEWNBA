@@ -71,7 +71,7 @@ export default function DashboardPage() {
         <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-20 pointer-events-none"
              style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.3) 0%, transparent 70%)' }} />
         <div className="absolute -bottom-10 left-20 w-40 h-40 rounded-full opacity-15 pointer-events-none"
-             style={{ background: 'radial-gradient(circle, rgba(0,212,255,0.3) 0%, transparent 70%)' }} />
+             style={{ background: 'radial-gradient(circle, rgba(76,65,158,0.3) 0%, transparent 70%)' }} />
 
         <div className="relative">
           <h1 className="text-xl font-bold text-white tracking-tight">
@@ -232,7 +232,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-md flex items-center justify-center"
-                   style={{ background: 'rgba(0,212,255,0.12)', border: '1px solid rgba(0,212,255,0.2)' }}>
+                   style={{ background: 'rgba(76,65,158,0.12)', border: '1px solid rgba(76,65,158,0.2)' }}>
                 <Zap size={12} className="text-neon-blue-400" />
               </div>
               <h3 className="font-semibold text-white text-sm">Upcoming Games</h3>

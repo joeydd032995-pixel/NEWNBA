@@ -81,7 +81,7 @@ function AnalyzerRow({ marketId, row }: { marketId: string; row: any }) {
 
   if (loading) return (
     <tr>
-      <td colSpan={11} className="px-4 py-3 bg-slate-900/60 border-b border-slate-800">
+      <td colSpan={11} className="px-4 py-3 bg-slate-900/60 border-b border-dark-600">
         <div className="text-xs text-slate-500 animate-pulse">Loading analyzer…</div>
       </td>
     </tr>
@@ -89,7 +89,7 @@ function AnalyzerRow({ marketId, row }: { marketId: string; row: any }) {
 
   if (!data) return (
     <tr>
-      <td colSpan={11} className="px-4 py-3 bg-slate-900/60 border-b border-slate-800">
+      <td colSpan={11} className="px-4 py-3 bg-slate-900/60 border-b border-dark-600">
         <div className="text-xs text-slate-500">No analyzer data available.</div>
       </td>
     </tr>
@@ -101,7 +101,7 @@ function AnalyzerRow({ marketId, row }: { marketId: string; row: any }) {
 
   return (
     <tr>
-      <td colSpan={11} className="px-4 py-3 bg-slate-900/60 border-b border-slate-800">
+      <td colSpan={11} className="px-4 py-3 bg-slate-900/60 border-b border-dark-600">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold mr-1">Analyzer</span>
 
@@ -364,7 +364,7 @@ export default function PlayerPropsPage() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-xs text-slate-500">
+              <tr className="border-b border-dark-600 text-xs text-slate-500">
                 <th className="px-4 py-3 text-left">Player</th>
                 <th className="px-3 py-3 text-left">Matchup</th>
                 <th className="px-3 py-3 text-center">Stat</th>
@@ -378,7 +378,7 @@ export default function PlayerPropsPage() {
                 <th className="px-3 py-3 text-center">Add</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-dark-600/60">
               {props.map((row) => {
                 const rowKey = `${row.marketId}-${row.bestEV.outcome}`
                 const isExpanded = expandedRow === rowKey
@@ -387,7 +387,7 @@ export default function PlayerPropsPage() {
                     <tr
                       key={rowKey}
                       onClick={() => toggleAnalyzer(rowKey)}
-                      className={`hover:bg-slate-800/30 transition-colors cursor-pointer ${isExpanded ? 'bg-slate-800/20' : ''}`}
+                      className={`hover:bg-dark-700/30 transition-colors cursor-pointer ${isExpanded ? 'bg-dark-700/20' : ''}`}
                     >
                       {/* Player */}
                       <td className="px-4 py-3">

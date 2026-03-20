@@ -18,7 +18,7 @@ function StatusBadge({ status }: { status: string }) {
     return (
       <span
         className="px-2 py-0.5 rounded-full text-xs font-semibold text-neon-blue-400"
-        style={{ background: 'linear-gradient(135deg, rgba(20,0,171,0.35) 0%, rgba(0,212,255,0.10) 100%)', border: '1px solid rgba(0,212,255,0.30)', boxShadow: '0 0 8px rgba(0,212,255,0.2)' }}
+        style={{ background: 'linear-gradient(135deg, rgba(0,3,112,0.35) 0%, rgba(76,65,158,0.10) 100%)', border: '1px solid rgba(76,65,158,0.30)', boxShadow: '0 0 8px rgba(76,65,158,0.2)' }}
       >
         {status}
       </span>
@@ -131,10 +131,10 @@ export default function OptimizationPage() {
           </h2>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={convergenceData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.08)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(76,65,158,0.08)" />
               <XAxis dataKey="generation" stroke="#444444" tick={{ fontSize: 10 }} />
               <YAxis stroke="#444444" tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
-              <Tooltip contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(0,212,255,0.2)', borderRadius: '8px', color: '#f1f5f9' }} />
+              <Tooltip contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(76,65,158,0.2)', borderRadius: '8px', color: '#f1f5f9' }} />
               <Line type="monotone" dataKey="bestFitness" stroke="#22c55e" strokeWidth={2} dot={false} name="Best Fitness" />
               <Line type="monotone" dataKey="avgFitness" stroke="#64748b" strokeWidth={1} dot={false} name="Avg Fitness" strokeDasharray="4 4" />
             </LineChart>

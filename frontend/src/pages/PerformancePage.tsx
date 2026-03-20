@@ -77,11 +77,11 @@ function OverviewTab({ data }: { data: any }) {
         </h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.06)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(76,65,158,0.08)" />
             <XAxis dataKey="date" tick={{ fill: '#444444', fontSize: 11 }} interval="preserveStartEnd" />
             <YAxis tick={{ fill: '#444444', fontSize: 11 }} tickFormatter={v => `$${v}`} />
             <Tooltip
-              contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 8 }}
+              contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(76,65,158,0.2)', borderRadius: 8 }}
               formatter={(v: number) => [fmtUSD(Number(v)), 'Cum. P&L']}
             />
             <ReferenceLine y={0} stroke="#475569" strokeDasharray="4 4" />
@@ -155,10 +155,10 @@ function ByTypeTab({ data }: { data: any }) {
           <h3 className="font-semibold text-white text-sm mb-3">Win Rate by Market Type</h3>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={rows.map(r => ({ name: LABELS[r.type] ?? r.type, winRate: +(r.winRate * 100).toFixed(1) }))}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.06)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(76,65,158,0.08)" />
               <XAxis dataKey="name" tick={{ fill: '#444444', fontSize: 11 }} />
               <YAxis tick={{ fill: '#444444', fontSize: 11 }} unit="%" domain={[0, 100]} />
-              <Tooltip contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 8 }}
+              <Tooltip contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(76,65,158,0.2)', borderRadius: 8 }}
                 formatter={(v: number) => [`${v}%`, 'Win Rate']} />
               <ReferenceLine y={52.4} stroke="#475569" strokeDasharray="4 4"
                 label={{ value: 'BE', fill: '#444444', fontSize: 10 }} />
@@ -200,10 +200,10 @@ function CalibrationTab({ data }: { data: any }) {
         <p className="text-xs text-slate-500 mb-3">Dots above diagonal = over-confident; below = under-confident. Perfect model lies on the line.</p>
         <ResponsiveContainer width="100%" height={240}>
           <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.06)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(76,65,158,0.08)" />
             <XAxis type="number" dataKey="predicted" name="Predicted %" domain={[0, 100]} unit="%" tick={{ fill: '#444444', fontSize: 11 }} />
             <YAxis type="number" dataKey="actual" name="Actual %" domain={[0, 100]} unit="%" tick={{ fill: '#444444', fontSize: 11 }} />
-            <Tooltip contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 8 }}
+            <Tooltip contentStyle={{ background: '#0f0f0f', border: '1px solid rgba(76,65,158,0.2)', borderRadius: 8 }}
               formatter={(v: number, name: string) => [`${Number(v).toFixed(1)}%`, name]} />
             <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 100, y: 100 }]} stroke="#475569" strokeDasharray="4 4" label={{ value: 'Perfect', fill: '#444444', fontSize: 10, position: 'insideTopRight' }} />
             <Scatter data={chartData.filter(d => d.actual !== null)} fill="#00d4ff" />
