@@ -4,7 +4,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine,
 } from 'recharts'
-import { Wallet, TrendingUp, AlertTriangle, PlusCircle, Calculator, RefreshCw } from 'lucide-react'
+import { TrendingUp, AlertTriangle, PlusCircle, Calculator, RefreshCw } from 'lucide-react'
 import { bankrollApi } from '../lib/api'
 import { useBankrollStore, KellyFraction } from '../stores/bankroll'
 import { useBetSlipStore } from '../stores/betslip'
@@ -31,12 +31,12 @@ function fmtUSD(v: number) {
 
 // ─── Stats Bar ───────────────────────────────────────────────
 
-function StatCard({ label, value, sub, color = 'text-white' }: { label: string; value: string; sub?: string; color?: string }) {
+function StatCard({ label, value, sub, color = 'text-on-surface' }: { label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div className="card p-4">
-      <p className="text-xs text-slate-400 mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+    <div className="card">
+      <p className="text-xs text-on-surface-variant mb-1">{label}</p>
+      <p className={`text-2xl font-headline font-black ${color}`}>{value}</p>
+      {sub && <p className="text-xs text-on-surface-variant mt-0.5">{sub}</p>}
     </div>
   )
 }
@@ -61,14 +61,14 @@ function KellyCalculator({ bankroll, kellyFraction }: { bankroll: number; kellyF
   })
 
   return (
-    <div className="card p-4">
+    <div className="card">
       <div className="flex items-center gap-2 mb-4">
-        <Calculator size={16} className="text-primary-400" />
-        <h3 className="font-semibold text-white text-sm">Kelly Calculator</h3>
+        <Calculator size={16} className="text-primary" />
+        <h3 className="font-headline font-bold text-on-surface text-sm">Kelly Calculator</h3>
       </div>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
-          <label className="text-xs text-slate-400 block mb-1">American Odds</label>
+          <label className="label-sm">American Odds</label>
           <input
             type="text"
             value={odds}
@@ -78,7 +78,7 @@ function KellyCalculator({ bankroll, kellyFraction }: { bankroll: number; kellyF
           />
         </div>
         <div>
-          <label className="text-xs text-slate-400 block mb-1">True Probability (%)</label>
+          <label className="label-sm">True Probability (%)</label>
           <input
             type="number"
             value={prob}
@@ -98,24 +98,24 @@ function KellyCalculator({ bankroll, kellyFraction }: { bankroll: number; kellyF
         {calcMut.isPending ? 'Calculating…' : 'Calculate'}
       </button>
       {result && (
-        <div className="bg-slate-800 rounded-lg p-3 grid grid-cols-2 gap-2 text-sm">
+        <div className="bg-surface-container-high rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
           <div>
-            <p className="text-slate-400 text-xs">Recommended Stake</p>
-            <p className="text-green-400 font-bold">{fmtUSD(result.stake)}</p>
+            <p className="text-on-surface-variant text-xs mb-0.5">Recommended Stake</p>
+            <p className="text-secondary font-headline font-bold">{fmtUSD(result.stake)}</p>
           </div>
           <div>
-            <p className="text-slate-400 text-xs">EV per $100</p>
-            <p className={result.ev >= 0 ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
+            <p className="text-on-surface-variant text-xs mb-0.5">EV per $100</p>
+            <p className={`font-headline font-bold ${result.ev >= 0 ? 'text-secondary' : 'text-error'}`}>
               {fmtUSD(result.ev)}
             </p>
           </div>
           <div>
-            <p className="text-slate-400 text-xs">EV %</p>
-            <p className="text-white">{fmtPct(result.evPct)}</p>
+            <p className="text-on-surface-variant text-xs mb-0.5">EV %</p>
+            <p className="text-on-surface">{fmtPct(result.evPct)}</p>
           </div>
           <div>
-            <p className="text-slate-400 text-xs">Full Kelly %</p>
-            <p className="text-white">{fmtPct(result.kellyFull)}</p>
+            <p className="text-on-surface-variant text-xs mb-0.5">Full Kelly %</p>
+            <p className="text-on-surface">{fmtPct(result.kellyFull)}</p>
           </div>
         </div>
       )}
@@ -167,11 +167,13 @@ export default function BankrollPage() {
     <div className="space-y-5 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Wallet size={20} className="text-primary-400" />
-          <h1 className="text-xl font-bold text-white">Bankroll Manager</h1>
+        <div>
+          <h1 className="text-3xl font-black font-headline tracking-tighter text-on-surface flex items-center gap-3">
+            <span className="material-symbols-outlined text-primary" style={{ fontSize: '28px' }}>account_balance_wallet</span>
+            Bankroll Manager
+          </h1>
         </div>
-        <button onClick={() => refetchPort()} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white">
+        <button onClick={() => refetchPort()} className="btn-ghost text-xs">
           <RefreshCw size={13} />
           Refresh Portfolio
         </button>
@@ -179,7 +181,7 @@ export default function BankrollPage() {
 
       {/* Stop Loss Warning */}
       {stopLossHit && (
-        <div className="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+        <div className="flex items-center gap-3 p-4 bg-error/10 border border-error/30 rounded-xl text-error text-sm">
           <AlertTriangle size={16} />
           <span><strong>Stop Loss Hit:</strong> Your bankroll has dropped {ddPct.toFixed(1)}% — consider pausing betting for today.</span>
         </div>
@@ -189,11 +191,11 @@ export default function BankrollPage() {
         {/* Left: Settings + Calculator */}
         <div className="space-y-4">
           {/* Settings Card */}
-          <div className="card p-4">
-            <h3 className="font-semibold text-white text-sm mb-4">Session Settings</h3>
-            <div className="space-y-3">
+          <div className="card">
+            <h3 className="font-headline font-bold text-on-surface text-sm mb-4">Session Settings</h3>
+            <div className="space-y-4">
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Bankroll ($)</label>
+                <label className="label-sm">Bankroll ($)</label>
                 <input
                   type="number"
                   value={bankrollInput}
@@ -203,26 +205,26 @@ export default function BankrollPage() {
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-2">Kelly Fraction</label>
+                <label className="label-sm mb-2">Kelly Fraction</label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {KELLY_OPTIONS.map(opt => (
                     <button
                       key={opt.value}
                       onClick={() => setKellyFraction(opt.value)}
-                      className={`py-1.5 rounded text-sm font-medium transition-colors ${
+                      className={`py-2 rounded-xl text-sm font-headline font-bold transition-colors ${
                         kellyFraction === opt.value
-                          ? 'bg-primary-600 text-white'
-                          : 'bg-slate-800 text-slate-400 hover:text-white'
+                          ? 'bg-primary text-on-primary-container'
+                          : 'bg-surface-container-high text-on-surface-variant hover:text-on-surface'
                       }`}
                     >
                       {opt.label}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-slate-500 mt-1.5">¼ Kelly recommended for reduced variance</p>
+                <p className="text-xs text-on-surface-variant mt-2">¼ Kelly recommended for reduced variance</p>
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Stop Loss (%)</label>
+                <label className="label-sm">Stop Loss (%)</label>
                 <input
                   type="number"
                   value={stopLossInput}
@@ -232,24 +234,24 @@ export default function BankrollPage() {
                   max={50}
                 />
               </div>
-              <button onClick={applySettings} className="btn-primary w-full text-sm">
+              <button onClick={applySettings} className="btn-primary w-full">
                 Apply Settings
               </button>
             </div>
           </div>
 
           {/* Drawdown Meter */}
-          <div className="card p-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs text-slate-400">Drawdown</span>
-              <span className={`text-xs font-bold ${ddPct >= stopLossPct ? 'text-red-400' : ddPct >= stopLossPct * 0.7 ? 'text-yellow-400' : 'text-green-400'}`}>
+          <div className="card">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-xs text-on-surface-variant">Drawdown</span>
+              <span className={`text-xs font-headline font-bold ${ddPct >= stopLossPct ? 'text-error' : ddPct >= stopLossPct * 0.7 ? 'text-yellow-400' : 'text-secondary'}`}>
                 {ddPct.toFixed(1)}% / {stopLossPct}%
               </span>
             </div>
-            <div className="w-full bg-slate-700 rounded-full h-2">
+            <div className="w-full bg-surface-container-highest rounded-full h-2">
               <div
                 className={`h-2 rounded-full transition-all ${
-                  ddPct >= stopLossPct ? 'bg-red-500' : ddPct >= stopLossPct * 0.7 ? 'bg-yellow-500' : 'bg-green-500'
+                  ddPct >= stopLossPct ? 'bg-error' : ddPct >= stopLossPct * 0.7 ? 'bg-yellow-500' : 'bg-secondary'
                 }`}
                 style={{ width: `${Math.min(100, (ddPct / stopLossPct) * 100)}%` }}
               />
@@ -265,7 +267,7 @@ export default function BankrollPage() {
           {statsLoading ? (
             <div className="grid grid-cols-4 gap-3">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="card p-4 animate-pulse h-20 bg-slate-800" />
+                <div key={i} className="card h-20 animate-pulse bg-surface-container-high" />
               ))}
             </div>
           ) : statsData && (
@@ -274,7 +276,7 @@ export default function BankrollPage() {
                 label="ROI"
                 value={fmtPct(statsData.roi)}
                 sub={`${statsData.totalBets} bets`}
-                color={statsData.roi >= 0 ? 'text-green-400' : 'text-red-400'}
+                color={statsData.roi >= 0 ? 'text-secondary' : 'text-error'}
               />
               <StatCard
                 label="Record"
@@ -284,107 +286,107 @@ export default function BankrollPage() {
               <StatCard
                 label="Sharpe Ratio"
                 value={statsData.sharpe.toFixed(2)}
-                color={statsData.sharpe >= 1 ? 'text-green-400' : statsData.sharpe >= 0 ? 'text-yellow-400' : 'text-red-400'}
+                color={statsData.sharpe >= 1 ? 'text-secondary' : statsData.sharpe >= 0 ? 'text-yellow-400' : 'text-error'}
               />
               <StatCard
                 label="Max Drawdown"
                 value={fmtPct(statsData.maxDrawdown)}
-                color={statsData.maxDrawdown > 0.15 ? 'text-red-400' : 'text-slate-300'}
+                color={statsData.maxDrawdown > 0.15 ? 'text-error' : 'text-on-surface-variant'}
               />
             </div>
           )}
 
           {/* Growth Chart */}
           {growthHistory.length > 0 && (
-            <div className="card p-4">
+            <div className="card">
               <div className="flex items-center gap-2 mb-3">
-                <TrendingUp size={15} className="text-primary-400" />
-                <h3 className="font-semibold text-white text-sm">Bankroll Growth</h3>
+                <TrendingUp size={15} className="text-primary" />
+                <h3 className="font-headline font-bold text-on-surface text-sm">Bankroll Growth</h3>
               </div>
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={growthHistory}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={v => `$${v}`} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(70,72,74,0.3)" />
+                  <XAxis dataKey="date" tick={{ fill: '#aaabad', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#aaabad', fontSize: 11 }} tickFormatter={v => `$${v}`} />
                   <Tooltip
-                    contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
-                    labelStyle={{ color: '#94a3b8' }}
+                    contentStyle={{ background: '#1d2022', border: '1px solid rgba(70,72,74,0.3)', borderRadius: 12 }}
+                    labelStyle={{ color: '#aaabad' }}
                     formatter={(v: number) => [fmtUSD(v), 'Bankroll']}
                   />
-                  <ReferenceLine y={statsData?.growthHistory?.[0]?.bankroll ?? 1000} stroke="#475569" strokeDasharray="4 4" />
-                  <Line type="monotone" dataKey="bankroll" stroke="#6366f1" strokeWidth={2} dot={false} />
+                  <ReferenceLine y={statsData?.growthHistory?.[0]?.bankroll ?? 1000} stroke="#46484a" strokeDasharray="4 4" />
+                  <Line type="monotone" dataKey="bankroll" stroke="#df8eff" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           )}
 
           {/* Portfolio Table */}
-          <div className="card overflow-hidden">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="font-semibold text-white text-sm">
+          <div className="bg-surface-container-low rounded-xl border border-outline-variant/10 overflow-hidden">
+            <div className="p-4 border-b border-outline-variant/10 flex items-center justify-between">
+              <h3 className="font-headline font-bold text-on-surface text-sm">
                 Kelly Portfolio
-                {bets.length > 0 && <span className="ml-2 text-slate-500 font-normal">({bets.length} bets)</span>}
+                {bets.length > 0 && <span className="ml-2 text-on-surface-variant font-normal text-xs">({bets.length} bets)</span>}
               </h3>
               {portfolioData && (
-                <span className="text-xs text-slate-400">
-                  Total stake: <span className="text-white font-medium">{fmtUSD(portfolioData.totalStake)}</span>
+                <span className="text-xs text-on-surface-variant">
+                  Total stake: <span className="text-on-surface font-bold">{fmtUSD(portfolioData.totalStake)}</span>
                   {' '}({((portfolioData.totalStake / bankroll) * 100).toFixed(1)}% of bankroll)
                 </span>
               )}
             </div>
 
             {portLoading ? (
-              <div className="p-6 text-center text-slate-500 text-sm">Loading portfolio…</div>
+              <div className="p-6 text-center text-on-surface-variant text-sm">Loading portfolio…</div>
             ) : bets.length === 0 ? (
-              <div className="p-6 text-center text-slate-500 text-sm">
+              <div className="p-6 text-center text-on-surface-variant text-sm">
                 No +EV bets found. Run a scan from the EV Feed page.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-xs text-slate-400 border-b border-slate-800">
-                      <th className="text-left p-3">Event / Outcome</th>
-                      <th className="text-left p-3">Book</th>
-                      <th className="text-right p-3">Odds</th>
-                      <th className="text-right p-3">EV %</th>
-                      <th className="text-right p-3">Kelly</th>
-                      <th className="text-right p-3">Stake</th>
-                      <th className="text-right p-3">Public %</th>
+                    <tr className="bg-surface-container-high/50 border-b border-outline-variant/10">
+                      <th className="text-left p-3 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Event / Outcome</th>
+                      <th className="text-left p-3 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Book</th>
+                      <th className="text-right p-3 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Odds</th>
+                      <th className="text-right p-3 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">EV %</th>
+                      <th className="text-right p-3 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Kelly</th>
+                      <th className="text-right p-3 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Stake</th>
+                      <th className="text-right p-3 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Public %</th>
                       <th className="p-3" />
                     </tr>
                   </thead>
                   <tbody>
                     {bets.map((bet) => (
-                      <tr key={bet.marketOddsId} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                      <tr key={bet.marketOddsId} className="border-b border-outline-variant/5 hover:bg-surface-container-high/30 transition-colors">
                         <td className="p-3">
-                          <p className="text-white font-medium">{bet.outcome}</p>
-                          <p className="text-slate-500 text-xs">{bet.eventName}</p>
+                          <p className="text-on-surface font-medium">{bet.outcome}</p>
+                          <p className="text-on-surface-variant text-xs">{bet.eventName}</p>
                         </td>
-                        <td className="p-3 text-slate-300">{bet.bookName}</td>
+                        <td className="p-3 text-on-surface-variant">{bet.bookName}</td>
                         <td className="p-3 text-right">
-                          <span className={bet.odds > 0 ? 'text-green-400 font-medium' : 'text-slate-300'}>
+                          <span className={bet.odds > 0 ? 'text-secondary font-medium' : 'text-on-surface-variant'}>
                             {fmtOdds(bet.odds)}
                           </span>
                         </td>
                         <td className="p-3 text-right">
-                          <span className="text-green-400 font-medium">{fmtPct(bet.evPct)}</span>
+                          <span className="text-secondary font-medium">{fmtPct(bet.evPct)}</span>
                         </td>
-                        <td className="p-3 text-right text-slate-300">
+                        <td className="p-3 text-right text-on-surface-variant">
                           {fmtPct(bet.kellyFractional)}
                         </td>
                         <td className="p-3 text-right">
-                          <span className="text-primary-400 font-bold">{fmtUSD(bet.recommendedStake)}</span>
+                          <span className="text-primary font-headline font-bold">{fmtUSD(bet.recommendedStake)}</span>
                         </td>
                         <td className="p-3 text-right">
                           {bet.publicBetPct !== null ? (
                             <span className={`text-xs font-medium ${
-                              bet.publicBetPct <= 40 ? 'text-green-400' : bet.publicBetPct >= 60 ? 'text-red-400' : 'text-slate-400'
+                              bet.publicBetPct <= 40 ? 'text-secondary' : bet.publicBetPct >= 60 ? 'text-error' : 'text-on-surface-variant'
                             }`}>
                               {bet.publicBetPct.toFixed(0)}%
                             </span>
                           ) : (
-                            <span className="text-slate-600">—</span>
+                            <span className="text-on-surface-variant/40">—</span>
                           )}
                         </td>
                         <td className="p-3">
@@ -400,7 +402,7 @@ export default function BankrollPage() {
                               })
                               toast.success('Added to bet slip')
                             }}
-                            className="flex items-center gap-1 text-xs text-primary-400 hover:text-primary-300"
+                            className="flex items-center gap-1 text-xs text-primary hover:brightness-110 transition-all"
                           >
                             <PlusCircle size={14} />
                             Add

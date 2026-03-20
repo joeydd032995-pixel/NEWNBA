@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeftRight, RefreshCw, Zap, TrendingUp } from 'lucide-react'
+import { RefreshCw, Zap, TrendingUp } from 'lucide-react'
 import { arbApi } from '../lib/api'
 import toast from 'react-hot-toast'
 
@@ -38,16 +38,16 @@ export default function ArbitrageFeedPage() {
   const arbItems: any[] = data?.data?.length ? data.data : DEMO_ARB
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
 
-      {/* ── Page header ─────────────────────────────────────────────────── */}
+      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2 tracking-tight">
-            <ArrowLeftRight size={18} className="text-neon-blue-400" />
+          <h1 className="text-3xl font-black font-headline tracking-tighter text-on-surface flex items-center gap-3">
+            <span className="material-symbols-outlined text-secondary" style={{ fontSize: '28px' }}>balance</span>
             Arbitrage Feed
           </h1>
-          <p className="text-slate-500 text-xs mt-0.5">Risk-free profit opportunities across books</p>
+          <p className="text-on-surface-variant text-sm mt-1">Risk-free profit opportunities across books</p>
         </div>
         <button
           onClick={() => scanMutation.mutate()}
@@ -59,11 +59,11 @@ export default function ArbitrageFeedPage() {
         </button>
       </div>
 
-      {/* ── Arb cards ───────────────────────────────────────────────────── */}
+      {/* Arb cards */}
       {isLoading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {[1, 2].map(i => (
-            <div key={i} className="card h-36 skeleton" />
+            <div key={i} className="card h-40 skeleton" />
           ))}
         </div>
       ) : (
@@ -71,60 +71,54 @@ export default function ArbitrageFeedPage() {
           {arbItems.map((arb: any) => (
             <div
               key={arb.id}
-              className="card-blue relative overflow-hidden transition-all duration-200"
+              className="relative overflow-hidden rounded-xl border border-secondary/25 p-6 transition-all duration-200 hover:border-secondary/40"
+              style={{ background: 'linear-gradient(135deg, rgba(0,244,254,0.04) 0%, rgba(35,38,41,0.8) 100%)' }}
             >
               {/* Subtle background gradient */}
-              <div className="absolute inset-0 pointer-events-none opacity-30"
-                   style={{ background: 'radial-gradient(ellipse at top right, rgba(0,212,255,0.08) 0%, transparent 70%)' }} />
+              <div className="absolute inset-0 pointer-events-none"
+                   style={{ background: 'radial-gradient(ellipse at top right, rgba(0,244,254,0.06) 0%, transparent 70%)' }} />
 
               <div className="relative">
                 {/* Header row */}
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-5">
                   <div>
-                    <p className="font-semibold text-white text-sm">
+                    <p className="font-headline font-bold text-on-surface">
                       {arb.event?.homeTeam?.name ?? arb.market?.event?.homeTeam?.name ?? 'Team A'} vs{' '}
                       {arb.event?.awayTeam?.name ?? arb.market?.event?.awayTeam?.name ?? 'Team B'}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <Zap size={11} className="text-gold-400" />
-                      <span className="text-xs font-semibold text-gold-300">
+                      <Zap size={12} className="text-primary" />
+                      <span className="text-xs font-semibold text-primary">
                         +{((arb.profitPct ?? 0.02) * 100).toFixed(2)}% guaranteed profit
                       </span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p
-                      className="text-2xl font-bold tracking-tight"
-                      style={{ color: '#4ade80' }}
-                    >
+                    <p className="text-3xl font-black font-headline tracking-tighter text-secondary">
                       +${(arb.profit ?? 2.3).toFixed(2)}
                     </p>
-                    <p className="text-2xs text-slate-600 mt-0.5">on ${arb.totalStake ?? 100} stake</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">on ${arb.totalStake ?? 100} stake</p>
                   </div>
                 </div>
 
                 {/* Legs */}
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-2 gap-3">
                   {(arb.legs ?? []).map((leg: any, i: number) => (
                     <div
                       key={i}
-                      className="rounded-xl p-3"
-                      style={{
-                        background: 'rgba(4,8,18,0.5)',
-                        border: '1px solid rgba(255,255,255,0.06)',
-                      }}
+                      className="rounded-xl p-4 bg-surface-container-high/60 border border-outline-variant/10"
                     >
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <TrendingUp size={10} className="text-slate-600" />
-                        <p className="text-2xs text-slate-500 font-medium uppercase tracking-wide">{leg.bookName}</p>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <TrendingUp size={10} className="text-on-surface-variant" />
+                        <p className="text-xs text-on-surface-variant font-medium uppercase tracking-wide">{leg.bookName}</p>
                       </div>
-                      <p className="font-semibold text-white text-xs">{leg.outcome}</p>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className={`font-bold text-sm font-mono ${leg.odds > 0 ? 'text-green-400' : 'text-slate-300'}`}>
+                      <p className="font-headline font-bold text-on-surface text-sm">{leg.outcome}</p>
+                      <div className="flex justify-between items-center mt-2.5">
+                        <span className={`font-black font-headline text-base ${leg.odds > 0 ? 'text-secondary' : 'text-on-surface'}`}>
                           {leg.odds > 0 ? '+' : ''}{leg.odds}
                         </span>
-                        <span className="text-2xs text-slate-500">
-                          Stake: <span className="text-slate-300 font-medium">${leg.stake?.toFixed(2)}</span>
+                        <span className="text-xs text-on-surface-variant">
+                          Stake: <span className="text-on-surface font-bold">${leg.stake?.toFixed(2)}</span>
                         </span>
                       </div>
                     </div>
