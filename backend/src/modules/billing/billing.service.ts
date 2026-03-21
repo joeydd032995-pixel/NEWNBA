@@ -15,7 +15,7 @@ const STRIPE_STATUS_TO_SUBSCRIPTION: Record<string, SubscriptionStatus> = {
 @Injectable()
 export class BillingService {
   private readonly logger = new Logger(BillingService.name);
-  private readonly stripe: Stripe;
+  private readonly stripe: Stripe | null;
   private readonly frontendUrl: string;
   private readonly proPriceId: string;
   private readonly premiumPriceId: string;
@@ -24,15 +24,17 @@ export class BillingService {
     private config: ConfigService,
     private prisma: PrismaService,
   ) {
-    this.stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY', ''), {
-      apiVersion: '2026-02-25.clover',
-    });
+    const stripeKey = this.config.get<string>('STRIPE_SECRET_KEY', '');
+    this.stripe = stripeKey
+      ? new Stripe(stripeKey, { apiVersion: '2026-02-25.clover' })
+      : null;
     this.frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
     this.proPriceId = this.config.get<string>('STRIPE_PRO_PRICE_ID', '');
     this.premiumPriceId = this.config.get<string>('STRIPE_PREMIUM_PRICE_ID', '');
   }
 
   async createCheckoutSession(userId: string, userEmail: string, plan: 'PRO' | 'PREMIUM') {
+    if (!this.stripe) throw new BadRequestException('Billing is not configured');
     const priceId = plan === 'PRO' ? this.proPriceId : this.premiumPriceId;
     if (!priceId) throw new BadRequestException(`Price ID for ${plan} plan is not configured`);
 
@@ -69,6 +71,7 @@ export class BillingService {
   }
 
   async createPortalSession(userId: string) {
+    if (!this.stripe) throw new BadRequestException('Billing is not configured');
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { stripeCustomerId: true },
@@ -86,6 +89,7 @@ export class BillingService {
   }
 
   async handleWebhook(rawBody: Buffer, signature: string) {
+    if (!this.stripe) throw new BadRequestException('Billing is not configured');
     const secret = this.config.get<string>('STRIPE_WEBHOOK_SECRET', '');
     let event: Stripe.Event;
 
