@@ -45,9 +45,9 @@ export default function Layout({ children }: LayoutProps) {
         <div className="flex items-center gap-8">
           <span className="text-2xl font-black text-purple-400 tracking-tighter font-headline">NEWNBA</span>
           <div className="hidden md:flex gap-6 items-center">
-            <span className="font-headline font-bold tracking-tight text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer text-sm">Models</span>
-            <span className="font-headline font-bold tracking-tight text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer text-sm">Analytics</span>
-            <span className="font-headline font-bold tracking-tight text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer text-sm">Alerts</span>
+            <NavLink to="/models" className={({ isActive }) => `font-headline font-bold tracking-tight transition-colors text-sm ${isActive ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>Models</NavLink>
+            <NavLink to="/performance" className={({ isActive }) => `font-headline font-bold tracking-tight transition-colors text-sm ${isActive ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>Analytics</NavLink>
+            <NavLink to="/alerts" className={({ isActive }) => `font-headline font-bold tracking-tight transition-colors text-sm ${isActive ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>Alerts</NavLink>
           </div>
         </div>
         <div className="flex items-center gap-3">
