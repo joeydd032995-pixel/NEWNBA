@@ -33,16 +33,16 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-surface">
       {/* Background glow orbs */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full pointer-events-none opacity-25"
-           style={{ background: 'radial-gradient(circle, rgba(223,142,255,0.3) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+           style={{ background: 'radial-gradient(circle, rgba(232,145,58,0.3) 0%, transparent 70%)', filter: 'blur(60px)' }} />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full pointer-events-none opacity-20"
-           style={{ background: 'radial-gradient(circle, rgba(0,244,254,0.25) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+           style={{ background: 'radial-gradient(circle, rgba(74,222,128,0.25) 0%, transparent 70%)', filter: 'blur(60px)' }} />
 
       <div className="w-full max-w-sm relative animate-fade-in">
 
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-               style={{ background: 'linear-gradient(135deg, rgba(223,142,255,0.2), rgba(0,244,254,0.1))', border: '1px solid rgba(223,142,255,0.3)', boxShadow: '0 0 32px rgba(223,142,255,0.2)' }}>
+               style={{ background: 'linear-gradient(135deg, rgba(232,145,58,0.2), rgba(74,222,128,0.1))', border: '1px solid rgba(232,145,58,0.3)', boxShadow: '0 0 32px rgba(232,145,58,0.2)' }}>
             <span className="material-symbols-outlined text-primary" style={{ fontSize: '28px' }}>sports_basketball</span>
           </div>
           <h1 className="text-3xl font-black font-headline tracking-tighter text-on-surface">NEWNBA</h1>

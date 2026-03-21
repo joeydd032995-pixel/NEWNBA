@@ -108,11 +108,11 @@ function OverviewTab({ data }: { data: any }) {
             <XAxis dataKey="date" tick={{ fill: '#8b949e', fontSize: 11 }} interval="preserveStartEnd" />
             <YAxis tick={{ fill: '#8b949e', fontSize: 11 }} tickFormatter={v => `$${v}`} />
             <Tooltip
-              contentStyle={{ background: '#1a1d20', border: '1px solid rgba(223,142,255,0.15)', borderRadius: 10 }}
+              contentStyle={{ background: '#1a1d20', border: '1px solid rgba(232,145,58,0.15)', borderRadius: 10 }}
               formatter={(v: number) => [fmtUSD(Number(v)), 'Cum. P&L']}
             />
             <ReferenceLine y={0} stroke="#30363d" strokeDasharray="4 4" />
-            <Line type="monotone" dataKey="cumPnl" stroke="#df8eff" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="cumPnl" stroke="#e8913a" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -193,13 +193,13 @@ function ByTypeTab({ data }: { data: any }) {
               <XAxis dataKey="name" tick={{ fill: '#8b949e', fontSize: 11 }} />
               <YAxis tick={{ fill: '#8b949e', fontSize: 11 }} unit="%" domain={[0, 100]} />
               <Tooltip
-                contentStyle={{ background: '#1a1d20', border: '1px solid rgba(223,142,255,0.15)', borderRadius: 10 }}
+                contentStyle={{ background: '#1a1d20', border: '1px solid rgba(232,145,58,0.15)', borderRadius: 10 }}
                 formatter={(v: number) => [`${v}%`, 'Win Rate']}
               />
               <ReferenceLine y={52.4} stroke="#30363d" strokeDasharray="4 4"
                 label={{ value: 'BE', fill: '#8b949e', fontSize: 10 }} />
               <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
-                {rows.map((r, i) => <Cell key={i} fill={r.winRate >= 0.524 ? '#00f4fe' : '#ff716c'} />)}
+                {rows.map((r, i) => <Cell key={i} fill={r.winRate >= 0.524 ? '#4ade80' : '#ff716c'} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -242,7 +242,7 @@ function CalibrationTab({ data }: { data: any }) {
             <XAxis type="number" dataKey="predicted" name="Predicted %" domain={[0, 100]} unit="%" tick={{ fill: '#8b949e', fontSize: 11 }} />
             <YAxis type="number" dataKey="actual" name="Actual %" domain={[0, 100]} unit="%" tick={{ fill: '#8b949e', fontSize: 11 }} />
             <Tooltip
-              contentStyle={{ background: '#1a1d20', border: '1px solid rgba(223,142,255,0.15)', borderRadius: 10 }}
+              contentStyle={{ background: '#1a1d20', border: '1px solid rgba(232,145,58,0.15)', borderRadius: 10 }}
               formatter={(v: number, name: string) => [`${Number(v).toFixed(1)}%`, name]}
             />
             <ReferenceLine
@@ -251,7 +251,7 @@ function CalibrationTab({ data }: { data: any }) {
               strokeDasharray="4 4"
               label={{ value: 'Perfect', fill: '#8b949e', fontSize: 10, position: 'insideTopRight' }}
             />
-            <Scatter data={chartData.filter(d => d.actual !== null)} fill="#df8eff" />
+            <Scatter data={chartData.filter(d => d.actual !== null)} fill="#e8913a" />
           </ScatterChart>
         </ResponsiveContainer>
       </div>

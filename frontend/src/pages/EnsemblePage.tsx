@@ -1,48 +1,87 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { FlaskConical, Plus, Trash2, Wand2, X } from 'lucide-react'
+import { Plus, Trash2, X } from 'lucide-react'
 import { ensembleApi, analyticsApi } from '../lib/api'
 import toast from 'react-hot-toast'
 
+/* ── Strategy card data ──────────────────────────────────────────────────── */
 const STRATEGIES = [
-  { value: 'WEIGHTED_AVERAGE', label: 'Weighted Average', desc: 'Σ(weight × prob) / Σweight' },
-  { value: 'VOTING', label: 'Voting', desc: 'Majority vote with confidence weighting' },
-  { value: 'STACKING', label: 'Stacking', desc: 'Meta-learner on component predictions' },
-  { value: 'BOOSTING', label: 'Boosting', desc: 'Sequential emphasis on hard cases' },
+  {
+    value: 'WEIGHTED_AVERAGE',
+    label: 'Weighted Average',
+    desc: 'Linear blend of component predictions weighted by confidence.',
+    badge: 'POPULAR',
+    icon: 'balance',
+    formula: 'Sum(weight x prob) / Sum(weight)',
+  },
+  {
+    value: 'VOTING',
+    label: 'Voting',
+    desc: 'Majority vote with confidence-weighted ballots across models.',
+    badge: 'STANDARD',
+    icon: 'how_to_vote',
+    formula: 'Majority vote with confidence weighting',
+  },
+  {
+    value: 'STACKING',
+    label: 'Stacking',
+    desc: 'Meta-learner trained on component model predictions in logit space.',
+    badge: 'ADVANCED',
+    icon: 'stacks',
+    formula: 'Meta-learner on component predictions',
+  },
+  {
+    value: 'BOOSTING',
+    label: 'Boosting',
+    desc: 'Sequential correction weighting that emphasizes hard-to-predict cases.',
+    badge: 'HIGH TECH',
+    icon: 'rocket_launch',
+    formula: 'Sequential emphasis on hard cases',
+  },
 ]
 
+/* ── Ensemble Card (for listing) ─────────────────────────────────────────── */
 function EnsembleCard({ ensemble, onDelete, onOptimize }: any) {
+  const strat = STRATEGIES.find(s => s.value === ensemble.strategy) ?? STRATEGIES[0]
   return (
-    <div className="card">
+    <div className="card group hover:border-primary/30 transition-colors">
       <div className="flex items-start justify-between">
-        <div>
-          <h3 className="font-semibold text-white">{ensemble.name}</h3>
-          <p className="text-xs text-slate-500">{ensemble.description || 'Ensemble model'}</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center">
+            <span className="material-symbols-outlined text-primary" style={{ fontSize: 20 }}>{strat.icon}</span>
+          </div>
+          <div>
+            <h3 className="font-headline font-bold text-on-surface">{ensemble.name}</h3>
+            <p className="text-xs text-on-surface-variant">{ensemble.description || strat.label}</p>
+          </div>
         </div>
         <div className="flex gap-1">
-          <button onClick={() => onOptimize(ensemble.id)} title="Auto-optimize weights"
-            className="p-1.5 text-slate-500 hover:text-yellow-400"><Wand2 size={14} /></button>
-          <button onClick={() => onDelete(ensemble.id)} className="p-1.5 text-slate-500 hover:text-red-400">
+          <button
+            onClick={() => onOptimize(ensemble.id)}
+            title="Auto-optimize weights"
+            className="p-1.5 text-on-surface-variant hover:text-primary transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>auto_fix_high</span>
+          </button>
+          <button
+            onClick={() => onDelete(ensemble.id)}
+            className="p-1.5 text-on-surface-variant hover:text-error transition-colors"
+          >
             <Trash2 size={14} />
           </button>
         </div>
       </div>
 
-      <div className="mt-2">
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-          ensemble.strategy === 'STACKING' ? 'bg-purple-900/40 text-purple-400' :
-          ensemble.strategy === 'BOOSTING' ? 'bg-orange-900/40 text-orange-400' :
-          ensemble.strategy === 'VOTING' ? 'bg-neon-blue-950/40 text-neon-blue-400' :
-          'bg-green-900/40 text-green-400'
-        }`}>{ensemble.strategy}</span>
+      <div className="mt-3">
+        <span className="badge-yellow">{ensemble.strategy}</span>
       </div>
 
       <div className="mt-3 space-y-1.5">
-        <p className="text-xs text-slate-500 uppercase">Components ({ensemble.components?.length ?? 0})</p>
+        <p className="stat-label">Components ({ensemble.components?.length ?? 0})</p>
         {(ensemble.components ?? []).slice(0, 3).map((c: any) => (
           <div key={c.id} className="flex justify-between text-xs">
-            <span className="text-slate-300">{c.model?.name ?? 'Unknown'}</span>
-            <span className="text-slate-400">{(c.weight * 100).toFixed(0)}%</span>
+            <span className="text-on-surface">{c.model?.name ?? 'Unknown'}</span>
+            <span className="text-on-surface-variant font-mono">{(c.weight * 100).toFixed(0)}%</span>
           </div>
         ))}
       </div>
@@ -50,6 +89,7 @@ function EnsembleCard({ ensemble, onDelete, onOptimize }: any) {
   )
 }
 
+/* ── Create Ensemble Modal ───────────────────────────────────────────────── */
 function CreateEnsembleModal({ onClose, models }: any) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -77,57 +117,67 @@ function CreateEnsembleModal({ onClose, models }: any) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-900 border border-dark-600 rounded-xl w-full max-w-lg">
-        <div className="flex items-center justify-between p-4 border-b border-dark-600">
-          <h3 className="font-semibold text-white">Create Ensemble Model</h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18} /></button>
+    <div className="modal-backdrop">
+      <div className="bg-surface-container-low border border-outline-variant/15 rounded-2xl w-full max-w-lg shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary" style={{ fontSize: 18 }}>stacks</span>
+            <h3 className="font-headline font-bold text-on-surface">Create Ensemble Model</h3>
+          </div>
+          <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface transition-colors" aria-label="Close">
+            <X size={18} />
+          </button>
         </div>
-        <div className="p-4 space-y-4">
+
+        {/* Body */}
+        <div className="p-5 space-y-4">
           <div>
-            <label className="text-xs text-slate-400 block mb-1">Name</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} className="input-field" />
+            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">Name</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} className="input-field" placeholder="My Ensemble" />
           </div>
           <div>
-            <label className="text-xs text-slate-400 block mb-1">Strategy</label>
+            <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">Strategy</label>
             <div className="grid grid-cols-2 gap-2">
               {STRATEGIES.map(s => (
-                <label key={s.value} className={`flex flex-col gap-0.5 p-2 rounded-lg border cursor-pointer transition-colors ${
-                  strategy === s.value ? 'border-primary-500 bg-primary-500/10' : 'border-slate-700 hover:border-slate-600'
+                <label key={s.value} className={`flex flex-col gap-0.5 p-3 rounded-xl border cursor-pointer transition-colors ${
+                  strategy === s.value ? 'border-primary/50 bg-primary/8' : 'border-outline-variant/20 hover:border-outline-variant/40'
                 }`}>
                   <input type="radio" value={s.value} checked={strategy === s.value} onChange={() => setStrategy(s.value)} className="sr-only" />
-                  <span className="text-sm font-medium text-white">{s.label}</span>
-                  <span className="text-xs text-slate-500">{s.desc}</span>
+                  <span className="text-sm font-headline font-bold text-on-surface">{s.label}</span>
+                  <span className="text-[10px] text-on-surface-variant">{s.formula}</span>
                 </label>
               ))}
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs text-slate-400">Component Models</label>
-              <button onClick={addComponent} className="text-xs text-primary-400 hover:underline flex items-center gap-1">
+              <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Component Models</label>
+              <button onClick={addComponent} className="text-xs text-primary hover:underline flex items-center gap-1 font-semibold">
                 <Plus size={12} /> Add
               </button>
             </div>
             {components.length === 0 && (
-              <p className="text-xs text-slate-500">No components yet. Add models above.</p>
+              <p className="text-xs text-on-surface-variant">No components yet. Add models above.</p>
             )}
             {components.map((c, i) => (
               <div key={i} className="flex items-center gap-2 mb-2">
                 <select value={c.modelId} onChange={e => setComponents(comp => comp.map((item, idx) => idx === i ? { ...item, modelId: e.target.value } : item))}
-                  className="input-field py-1 flex-1 text-sm">
+                  className="input-field py-1.5 flex-1 text-sm">
                   {models?.map((m: any) => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
                 <input type="number" value={c.weight} step={0.1} min={0} max={1} onChange={e => updateWeight(i, Number(e.target.value))}
-                  className="input-field py-1 w-20 text-sm" />
-                <button onClick={() => setComponents(comp => comp.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-red-400">
+                  className="input-field py-1.5 w-20 text-sm" />
+                <button onClick={() => setComponents(comp => comp.filter((_, idx) => idx !== i))} className="text-on-surface-variant hover:text-error transition-colors">
                   <X size={14} />
                 </button>
               </div>
             ))}
           </div>
         </div>
-        <div className="p-4 border-t border-dark-600 flex gap-3">
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-outline-variant/10 flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
           <button onClick={() => createMutation.mutate({ name, description, strategy, components })}
             disabled={!name || components.length < 2 || createMutation.isPending}
@@ -140,6 +190,9 @@ function CreateEnsembleModal({ onClose, models }: any) {
   )
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+   Ensemble Page
+   ──────────────────────────────────────────────────────────────────────────── */
 export default function EnsemblePage() {
   const [showCreate, setShowCreate] = useState(false)
   const qc = useQueryClient()
@@ -162,34 +215,56 @@ export default function EnsemblePage() {
   const ensembleItems = ensembles?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <FlaskConical size={20} className="text-orange-400" /> Ensemble Models
-          </h1>
-          <p className="text-slate-400 text-sm">Combine multiple models for better predictions</p>
-        </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary flex items-center gap-2">
-          <Plus size={15} /> New Ensemble
-        </button>
+    <div className="space-y-8 animate-fade-in">
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div>
+        <h1 className="text-3xl font-black font-headline tracking-tight text-on-surface">
+          Ensemble Models
+        </h1>
+        <p className="text-sm text-on-surface-variant mt-1">
+          Combine multiple models for stronger, more resilient predictions
+        </p>
       </div>
 
-      {/* Strategy explainer */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* ── 4-col Strategy Cards ───────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {STRATEGIES.map(s => (
-          <div key={s.value} className="card text-sm">
-            <p className="font-medium text-white">{s.label}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{s.desc}</p>
+          <div key={s.value} className="card group hover:border-primary/30 transition-colors flex flex-col justify-between">
+            <div>
+              {/* Icon box */}
+              <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-primary" style={{ fontSize: 24 }}>{s.icon}</span>
+              </div>
+
+              {/* Name + description */}
+              <h3 className="text-sm font-black font-headline text-on-surface">{s.label}</h3>
+              <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed">{s.desc}</p>
+            </div>
+
+            {/* Badge + arrow */}
+            <div className="mt-4 pt-3 border-t border-outline-variant/15 flex items-center justify-between">
+              <span className="stat-label text-primary">{s.badge}</span>
+              <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" style={{ fontSize: 16 }}>
+                arrow_forward
+              </span>
+            </div>
           </div>
         ))}
       </div>
 
+      {/* ── Ensemble List or Empty State ──────────────────────────────────── */}
       {ensembleItems.length === 0 ? (
-        <div className="card text-center py-10">
-          <FlaskConical size={32} className="text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">No ensemble models yet</p>
-          <button onClick={() => setShowCreate(true)} className="btn-primary mt-3">Create first ensemble</button>
+        <div className="card p-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center mx-auto mb-4">
+            <span className="material-symbols-outlined text-outline-variant" style={{ fontSize: 32 }}>stacks</span>
+          </div>
+          <p className="text-on-surface font-headline font-bold text-lg mb-1">No ensemble models yet</p>
+          <p className="text-sm text-on-surface-variant mb-6 max-w-sm mx-auto">
+            Create your first ensemble to combine multiple models for stronger predictions.
+          </p>
+          <button onClick={() => setShowCreate(true)} className="btn-primary">
+            Create first ensemble
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -201,6 +276,7 @@ export default function EnsemblePage() {
         </div>
       )}
 
+      {/* ── Create Modal ───────────────────────────────────────────────────── */}
       {showCreate && (
         <CreateEnsembleModal onClose={() => setShowCreate(false)} models={models?.data ?? []} />
       )}
