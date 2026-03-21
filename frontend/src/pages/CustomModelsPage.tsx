@@ -83,7 +83,7 @@ function CreateModelModal({ onClose, presetModels }: any) {
   const createMutation = useMutation({
     mutationFn: (data: any) => analyticsApi.createModel(data),
     onSuccess: () => { toast.success('Model created!'); qc.invalidateQueries({ queryKey: ['custom-models'] }); onClose() },
-    onError: () => toast.error('Failed to create model'),
+    onError: (err: any) => toast.error(`Failed to create model: ${err?.response?.data?.message || err.message}`),
   })
 
   const loadPreset = (id: string) => {
