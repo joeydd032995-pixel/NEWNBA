@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* warm amber/orange theme - v2 */
 
 @layer base {
   html { @apply bg-surface text-on-surface; }
