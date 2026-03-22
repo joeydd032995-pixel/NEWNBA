@@ -53,7 +53,7 @@ function MomentumBar({
         {/* Home side */}
         <div
           className="transition-all duration-700"
-          style={{ background: 'linear-gradient(to right, rgba(223,142,255,0.7), rgba(0,244,254,0.7))', width: `${homePct}%` }}
+          style={{ background: 'linear-gradient(to right, rgba(232,145,58,0.7), rgba(74,222,128,0.7))', width: `${homePct}%` }}
         />
       </div>
       <div className="flex justify-between text-[10px] text-on-surface-variant/50 mt-0.5">

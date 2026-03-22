@@ -41,9 +41,9 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="bg-surface text-on-surface font-body min-h-screen">
       {/* Top Nav */}
-      <nav className="fixed top-0 w-full h-16 flex items-center justify-between px-6 z-50 bg-[#0c0e10]/60 backdrop-blur-xl shadow-2xl shadow-black/40 border-b border-outline-variant/10">
+      <nav className="fixed top-0 w-full h-14 flex items-center justify-between px-6 z-50 bg-[#0f0906]/80 backdrop-blur-xl shadow-2xl shadow-black/40 border-b border-outline-variant/10">
         <div className="flex items-center gap-8">
-          <span className="text-2xl font-black text-purple-400 tracking-tighter font-headline">NEWNBA</span>
+          <span className="text-xl font-black text-primary tracking-widest uppercase font-headline">Neon Observatory</span>
           <div className="hidden md:flex gap-6 items-center">
             <NavLink to="/models" className={({ isActive }) => `font-headline font-bold tracking-tight transition-colors text-sm ${isActive ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>Models</NavLink>
             <NavLink to="/performance" className={({ isActive }) => `font-headline font-bold tracking-tight transition-colors text-sm ${isActive ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>Analytics</NavLink>
@@ -51,20 +51,13 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-outline-variant/20">
+          <div className="hidden md:flex items-center gap-2 px-4 py-1.5 rounded-full bg-surface-container-high border border-outline-variant/20">
+            <span className="material-symbols-outlined text-primary" style={{ fontSize: '16px' }}>account_balance_wallet</span>
             <span className="text-primary font-bold font-headline text-sm">$2,450.00</span>
           </div>
           <NotificationCenter />
-          <button
-            onClick={toggleBetSlip}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-outline-variant/20 text-on-surface-variant hover:text-on-surface transition-colors text-sm"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>shopping_cart</span>
-            {items.length > 0 && (
-              <span className="w-5 h-5 bg-primary text-on-primary-container rounded-full text-xs flex items-center justify-center font-bold">
-                {items.length}
-              </span>
-            )}
+          <button className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-white/5 rounded-full transition-all">
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>settings</span>
           </button>
           <div className="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-primary/20 flex items-center justify-center text-primary text-sm font-bold font-headline cursor-pointer">
             {initials}
@@ -72,62 +65,53 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </nav>
 
-      {/* Sidebar (desktop) */}
-      <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-full w-64 bg-[#111416] z-40 pt-16 border-r border-outline-variant/10">
-        {/* User card */}
-        <div className="px-4 pt-4 mb-4">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-container-high/50">
-            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-headline font-bold text-sm shrink-0">
-              {initials}
-            </div>
-            <div className="min-w-0">
-              <p className="font-headline font-bold text-sm truncate text-on-surface">{user?.email}</p>
-              <p className="text-xs text-on-surface-variant capitalize">{user?.planType?.toLowerCase()} plan</p>
-            </div>
+      {/* Icon-only Sidebar (desktop) */}
+      <aside className="hidden lg:flex flex-col items-center fixed left-0 top-0 h-full w-16 bg-[#0f0906] z-40 pt-16 border-r border-outline-variant/10">
+        {/* User avatar */}
+        <div className="pt-4 pb-2">
+          <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-headline font-bold text-sm cursor-pointer">
+            {initials}
           </div>
         </div>
 
         {/* Nav items */}
-        <div className="flex-1 px-3 space-y-0.5 overflow-y-auto no-scrollbar">
+        <div className="flex-1 flex flex-col items-center gap-1 py-2 overflow-y-auto no-scrollbar w-full px-1.5">
           {navItems.map(({ to, label, icon }) => (
             <NavLink
               key={to}
               to={to}
               end={to === '/'}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all duration-150 ${
+                `flex flex-col items-center justify-center w-12 py-2 rounded-xl text-[9px] font-bold uppercase tracking-tight transition-all duration-150 relative ${
                   isActive
-                    ? 'bg-purple-500/10 text-purple-400 font-bold border-r-4 border-purple-500'
-                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                    ? 'text-primary bg-primary/10'
+                    : 'text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container-high'
                 }`
               }
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{icon}</span>
-              <span className="font-medium truncate">{label}</span>
+              {({ isActive }) => (
+                <>
+                  {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full" />}
+                  <span className="material-symbols-outlined" style={{ fontSize: '22px', fontVariationSettings: isActive ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" : undefined }}>{icon}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </div>
 
         {/* Bottom */}
-        <div className="mt-auto px-4 pt-4 border-t border-outline-variant/10 pb-6 space-y-3">
-          <button className="w-full py-2.5 bg-primary text-on-primary-container font-headline font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm">
-            Upgrade Plan
+        <div className="pb-4 flex flex-col items-center gap-2">
+          <button className="p-2.5 text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-colors">
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>help</span>
           </button>
-          <div className="space-y-0.5">
-            <button className="flex items-center gap-3 px-4 py-2 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors w-full text-sm">
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>help</span>
-              <span>Support</span>
-            </button>
-            <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-2 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors w-full text-sm">
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>logout</span>
-              <span>Logout</span>
-            </button>
-          </div>
+          <button onClick={handleLogout} className="p-2.5 text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-colors">
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>logout</span>
+          </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="lg:ml-64 pt-16 min-h-screen">
+      <main className="lg:ml-16 pt-14 min-h-screen">
         <TrialBanner />
         <div className="p-6 pb-24 lg:pb-8">
           {children}
@@ -135,24 +119,24 @@ export default function Layout({ children }: LayoutProps) {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 w-full h-20 bg-[#111416]/95 backdrop-blur-lg flex justify-around items-center px-4 z-50 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-outline-variant/10">
-        <NavLink to="/" end className={({ isActive }) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-colors ${isActive ? 'text-purple-400' : 'text-on-surface-variant'}`}>
-          <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>dashboard</span>
+      <nav className="lg:hidden fixed bottom-0 left-0 w-full h-20 bg-[#0f0906]/95 backdrop-blur-lg flex justify-around items-center px-4 z-50 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-outline-variant/10">
+        <NavLink to="/" end className={({ isActive }) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-colors ${isActive ? 'text-primary bg-primary/10' : 'text-on-surface-variant'}`}>
+          <span className="material-symbols-outlined" style={{ fontSize: '22px', fontVariationSettings: "'FILL' 1" }}>grid_view</span>
           <span className="font-body font-bold text-[10px] uppercase tracking-widest">Home</span>
         </NavLink>
-        <NavLink to="/ev-feed" className={({ isActive }) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-colors ${isActive ? 'text-purple-400' : 'text-on-surface-variant'}`}>
+        <NavLink to="/ev-feed" className={({ isActive }) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-colors ${isActive ? 'text-primary bg-primary/10' : 'text-on-surface-variant'}`}>
           <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>bolt</span>
           <span className="font-body font-bold text-[10px] uppercase tracking-widest">EV Feed</span>
         </NavLink>
-        <NavLink to="/expert-picks" className={({ isActive }) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-colors ${isActive ? 'text-purple-400 bg-purple-500/10' : 'text-on-surface-variant'}`}>
+        <NavLink to="/expert-picks" className={({ isActive }) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-colors ${isActive ? 'text-primary bg-primary/10' : 'text-on-surface-variant'}`}>
           <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>star</span>
           <span className="font-body font-bold text-[10px] uppercase tracking-widest">Experts</span>
         </NavLink>
-        <NavLink to="/bankroll" className={({ isActive }) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-colors ${isActive ? 'text-purple-400' : 'text-on-surface-variant'}`}>
+        <NavLink to="/bankroll" className={({ isActive }) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-colors ${isActive ? 'text-primary bg-primary/10' : 'text-on-surface-variant'}`}>
           <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>account_balance_wallet</span>
           <span className="font-body font-bold text-[10px] uppercase tracking-widest">Wallet</span>
         </NavLink>
-        <NavLink to="/alerts" className={({ isActive }) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-colors ${isActive ? 'text-purple-400' : 'text-on-surface-variant'}`}>
+        <NavLink to="/alerts" className={({ isActive }) => `flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-colors ${isActive ? 'text-primary bg-primary/10' : 'text-on-surface-variant'}`}>
           <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>person</span>
           <span className="font-body font-bold text-[10px] uppercase tracking-widest">Account</span>
         </NavLink>
@@ -195,7 +179,7 @@ function BetSlipDrawer() {
   if (!isOpen) return null
 
   return (
-    <div className="fixed right-0 top-16 bottom-0 w-80 bg-surface-container-low border-l border-outline-variant/10 flex flex-col z-40 shadow-2xl animate-slide-in">
+    <div className="fixed right-0 top-14 bottom-0 w-80 bg-surface-container-low border-l border-outline-variant/20 flex flex-col z-40 shadow-2xl animate-slide-in">
       <div className="h-14 flex items-center justify-between px-4 border-b border-outline-variant/10">
         <span className="font-headline font-bold text-on-surface">Bet Slip ({items.length})</span>
         <button onClick={clearAll} className="text-xs text-on-surface-variant hover:text-error transition-colors">Clear All</button>
@@ -208,7 +192,7 @@ function BetSlipDrawer() {
           </div>
         ) : (
           items.map(item => (
-            <div key={item.id} className="bg-surface-container-high rounded-xl p-4 border border-outline-variant/10">
+            <div key={item.id} className="bg-surface-container-high rounded-xl p-4 border border-outline-variant/20">
               <div className="flex justify-between items-start mb-3">
                 <div className="min-w-0 flex-1 mr-2">
                   <p className="font-headline font-bold text-sm text-on-surface truncate">{item.outcome}</p>
@@ -244,7 +228,7 @@ function BetSlipDrawer() {
             <span className="text-on-surface-variant">Potential Return</span>
             <span className="text-secondary font-headline font-bold">${potentialReturn().toFixed(2)}</span>
           </div>
-          <button className="w-full py-3 bg-primary text-on-primary-container font-headline font-bold rounded-xl hover:brightness-110 transition-all">
+          <button className="w-full py-3 bg-primary text-on-primary-container font-headline font-bold rounded-xl hover:brightness-110 transition-all uppercase tracking-wider">
             Place Bets
           </button>
         </div>
