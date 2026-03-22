@@ -1,21 +1,37 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateModelDto, UpdateModelDto } from './dto/analytics.dto';
 
 @Injectable()
 export class CustomModelService {
+  private readonly logger = new Logger(CustomModelService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateModelDto) {
-    return this.prisma.customModel.create({
-      data: {
-        userId,
-        name: dto.name,
-        description: dto.description,
-        weights: dto.weights,
-        isPublic: dto.isPublic ?? false,
-      },
-    });
+    this.logger.log(`Creating model for user ${userId}: name="${dto.name}", weights keys=[${Object.keys(dto.weights || {}).join(', ')}]`);
+    try {
+      const model = await this.prisma.customModel.create({
+        data: {
+          userId,
+          name: dto.name,
+          description: dto.description,
+          weights: dto.weights ?? {},
+          isPublic: dto.isPublic ?? false,
+        },
+      });
+      this.logger.log(`Model created successfully: id=${model.id}`);
+      return model;
+    } catch (error) {
+      this.logger.error(`Failed to create model: ${error.message}`, error.stack);
+      if (error.code === 'P2003') {
+        throw new BadRequestException('Invalid user reference');
+      }
+      if (error.code === 'P2002') {
+        throw new BadRequestException('A model with this name already exists');
+      }
+      throw new BadRequestException(`Model creation failed: ${error.message}`);
+    }
   }
 
   async findAll(userId: string) {

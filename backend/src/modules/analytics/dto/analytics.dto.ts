@@ -18,6 +18,7 @@ export class CreateModelDto {
   description?: string;
 
   @ApiProperty({ example: { efg: 0.4, ts: 0.3 } })
+  @IsObject()
   weights: Record<string, number>;
 
   @ApiProperty({ required: false, example: false })
@@ -39,6 +40,7 @@ export class UpdateModelDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @IsObject()
   weights?: Record<string, number>;
 
   @ApiProperty({ required: false })
