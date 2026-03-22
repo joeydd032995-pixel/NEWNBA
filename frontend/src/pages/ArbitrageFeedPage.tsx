@@ -72,11 +72,11 @@ export default function ArbitrageFeedPage() {
             <div
               key={arb.id}
               className="relative overflow-hidden rounded-xl border border-secondary/25 p-6 transition-all duration-200 hover:border-secondary/40"
-              style={{ background: 'linear-gradient(135deg, rgba(0,244,254,0.04) 0%, rgba(35,38,41,0.8) 100%)' }}
+              style={{ background: 'linear-gradient(135deg, rgba(74,222,128,0.04) 0%, rgba(35,38,41,0.8) 100%)' }}
             >
               {/* Subtle background gradient */}
               <div className="absolute inset-0 pointer-events-none"
-                   style={{ background: 'radial-gradient(ellipse at top right, rgba(0,244,254,0.06) 0%, transparent 70%)' }} />
+                   style={{ background: 'radial-gradient(ellipse at top right, rgba(74,222,128,0.06) 0%, transparent 70%)' }} />
 
               <div className="relative">
                 {/* Header row */}
