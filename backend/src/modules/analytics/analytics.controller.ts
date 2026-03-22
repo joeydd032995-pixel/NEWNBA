@@ -97,6 +97,7 @@ export class AnalyticsController {
   @Post('models')
   @RequiresPlan('PREMIUM')
   createModel(@Request() req, @Body() dto: CreateModelDto) {
+    this.logger.log(`POST /models — user=${req.user?.id}, plan=${req.user?.planType}, dto=${JSON.stringify(dto)}`);
     return this.customModelService.create(req.user.id, dto);
   }
 
