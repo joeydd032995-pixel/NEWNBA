@@ -7,7 +7,10 @@ echo "==========================================="
 # Check dependencies
 command -v node >/dev/null 2>&1 || { echo "❌ Node.js is required. Install from https://nodejs.org"; exit 1; }
 command -v docker >/dev/null 2>&1 || { echo "❌ Docker is required. Install from https://docker.com"; exit 1; }
-command -v docker-compose >/dev/null 2>&1 || { echo "❌ Docker Compose is required."; exit 1; }
+command -v docker-compose >/dev/null 2>&1 || command -v docker compose >/dev/null 2>&1 || { echo "❌ Docker Compose is required."; exit 1; }
+
+# Verify Docker daemon is running
+docker info >/dev/null 2>&1 || { echo "❌ Docker daemon is not running. Start it with: sudo dockerd or via Docker Desktop, then retry."; exit 1; }
 
 echo "✅ Dependencies found"
 
