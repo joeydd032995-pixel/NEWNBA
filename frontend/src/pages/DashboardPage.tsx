@@ -1,3 +1,23 @@
+/**
+ * DashboardPage - Main analytics dashboard
+ *
+ * Displays key metrics and quick-view feeds:
+ * - Four KPI stat cards: EV opportunities, arbitrage opportunities, active models, ROI %
+ * - 30/90/1Y bankroll equity curve with range toggle
+ * - Recent top EV opportunities (top 4)
+ * - Upcoming games (next 5)
+ * - Quick access to all main features
+ *
+ * Uses React Query for server-state management (30s staleTime, no refetch on focus).
+ * Auth required (JwtAuthGuard). Shows user's plan tier and current date.
+ *
+ * @requires authentication (JwtAuthGuard)
+ * @requires subscription: FREE (basic stats), PRO+ (full features)
+ *
+ * @example
+ * <DashboardPage />  // Renders at /dashboard
+ */
+
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
@@ -6,15 +26,38 @@ import { evApi, arbApi, analyticsApi, sportsApi } from '../lib/api'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useAuthStore } from '../stores/auth'
 
-/* ── Simulated 30-day bankroll data ──────────────────────────────────────── */
+/**
+ * Simulated 30-day bankroll progression data
+ * Used for chart display on dashboard equity curve
+ */
 const chartData = Array.from({ length: 30 }, (_, i) => ({
   day: `Day ${i + 1}`,
   bankroll: 10000 + i * 180 + Math.sin(i * 0.5) * 300 + (Math.random() - 0.3) * 200,
 }))
 
-/* ────────────────────────────────────────────────────────────────────────────
-   KPI Stat Card
-   ──────────────────────────────────────────────────────────────────────────── */
+/**
+ * StatCard - KPI metric card component
+ *
+ * Displays a single key performance indicator with:
+ * - Label and current value
+ * - Delta vs. previous period
+ * - Colored progress bar (primary, secondary, error)
+ *
+ * @param label - Card label (e.g., "EV Opportunities")
+ * @param value - Current value to display (e.g., "12.4%")
+ * @param delta - Change vs previous period with sign (e.g., "+2.1%")
+ * @param progress - Progress bar fill percentage (0-100)
+ * @param accentColor - Color theme for progress bar (default: 'primary')
+ *
+ * @example
+ * <StatCard
+ *   label="Win Rate"
+ *   value="56%"
+ *   delta="+3%"
+ *   progress={56}
+ *   accentColor="secondary"
+ * />
+ */
 interface StatCardProps {
   label: string
   value: string
@@ -87,16 +130,16 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="EV Opportunities"
-          value={evCount > 0 ? `${(12.4).toFixed(1)}%` : '12.4%'}
-          delta="+2.1%"
-          progress={62}
+          value={String(evCount) || '0'}
+          delta={evCount > 0 ? `+${evCount} active` : 'No active'}
+          progress={Math.min(evCount * 10, 100)}
           accentColor="primary"
         />
         <StatCard
           label="ARB Opportunities"
-          value={arbCount > 0 ? `${(3.8).toFixed(1)}%` : '3.8%'}
-          delta="+0.8%"
-          progress={38}
+          value={String(arbCount) || '0'}
+          delta={arbCount > 0 ? `+${arbCount} active` : 'No active'}
+          progress={Math.min(arbCount * 10, 100)}
           accentColor="secondary"
         />
         <StatCard
@@ -115,12 +158,14 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* ── 30-Day Bankroll Trajectory Chart ───────────────────────────────── */}
+      {/* ── Bankroll Trajectory Chart ────────────────────────────────────── */}
       <div className="bg-surface-container-low border border-outline-variant/20 rounded-xl p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-base font-headline font-bold text-on-surface">30-Day Bankroll Trajectory</h2>
-            <p className="text-xs text-on-surface-variant mt-0.5">Cumulative bankroll performance</p>
+            <h2 className="text-base font-headline font-bold text-on-surface">
+              {chartRange}-Day Bankroll Trajectory
+            </h2>
+            <p className="text-xs text-on-surface-variant mt-0.5">Cumulative bankroll performance over {chartRange === '30D' ? '30 days' : chartRange === '90D' ? '90 days' : '1 year'}</p>
           </div>
           {/* Range toggle pills */}
           <div className="flex items-center gap-1.5">

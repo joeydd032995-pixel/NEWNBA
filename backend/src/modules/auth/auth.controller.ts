@@ -15,11 +15,29 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
+  /**
+   * Authentication controller
+   *
+   * Public routes:
+   * - POST /auth/signup - Register new user (no auth required)
+   * - POST /auth/login - Authenticate with email/password (LocalAuthGuard)
+   * - POST /auth/refresh - Refresh tokens via httpOnly cookie (no JWT guard)
+   *
+   * Protected routes (require JWT):
+   * - POST /auth/logout - Clear session
+   * - GET /auth/profile - Get current user profile
+   */
   constructor(
     private authService: AuthService,
     private configService: ConfigService,
   ) {}
 
+  /**
+   * Register new user (PUBLIC)
+   *
+   * @param dto - { email, password, firstName?, lastName? }
+   * @returns User object with access/refresh tokens set in httpOnly cookies
+   */
   @Post('signup')
   @ApiOperation({ summary: 'Register new user' })
   async signup(@Body() dto: SignupDto, @Response({ passthrough: true }) res: Res) {
@@ -28,6 +46,15 @@ export class AuthController {
     return { user: result.user };
   }
 
+  /**
+   * Login with email and password (PUBLIC)
+   *
+   * Uses LocalAuthGuard (validates credentials via local strategy).
+   * Sets accessToken and refreshToken in httpOnly cookies.
+   *
+   * @param req.user - Validated user from LocalAuthGuard
+   * @returns User object
+   */
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -38,6 +65,15 @@ export class AuthController {
     return { user: result.user };
   }
 
+  /**
+   * Refresh access token using refreshToken cookie (PUBLIC)
+   *
+   * Reads refreshToken from httpOnly cookie, validates it,
+   * and issues new access/refresh tokens.
+   *
+   * @param req.cookies.refreshToken - Refresh token from httpOnly cookie
+   * @returns { message: 'Token refreshed' }
+   */
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token using httpOnly cookie' })
@@ -49,6 +85,15 @@ export class AuthController {
     return { message: 'Token refreshed' };
   }
 
+  /**
+   * Logout user and clear sessions (PROTECTED - requires JWT)
+   *
+   * Clears refresh token from database and clears auth cookies.
+   * Requires valid JWT access token.
+   *
+   * @param req.user.id - Current user ID from JWT payload
+   * @returns { message: 'Logged out successfully' }
+   */
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
@@ -60,6 +105,14 @@ export class AuthController {
     return { message: 'Logged out successfully' };
   }
 
+  /**
+   * Get current user profile (PROTECTED - requires JWT)
+   *
+   * Returns complete user object including plan type, subscription status, etc.
+   *
+   * @param req.user.id - Current user ID from JWT payload
+   * @returns User profile object
+   */
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiBearerAuth()

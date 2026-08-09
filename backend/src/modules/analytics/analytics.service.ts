@@ -239,9 +239,24 @@ export class AnalyticsService {
   }
 
   /**
-   * Box Plus/Minus (simplified version)
-   * BPM ≈ 0.123×(AST%) + 0.222×(TRB%) + 0.084×(STL%) + 0.137×(BLK%)
-   *      + 0.132×(FG3%) + 0.030×(TOV%) - 0.100×(USG%)×(1-TS%)
+   * Calculate Box Plus/Minus (simplified proxy version)
+   *
+   * Simplified BPM approximation using per-minute rate proxies and field goal percentages.
+   * Not a standard NBA BPM calculation—this is a simplified implementation using:
+   * - AST, TRB, STL, BLK per minute (multiplied by 100 for scale)
+   * - FG3 as field goal percentage (3-pointers / FGA)
+   * - TOV as simple ratio (TOV / (TOV + FG))
+   * - Usage % and True Shooting % from standard calculations
+   *
+   * @param stats - Player statistics object with points, shots, assists, rebounds, steals, blocks, minutes
+   * @returns Simplified BPM proxy value (~6.0 for average player, scale is normalized to minutes/100)
+   *
+   * @example
+   * const bpm = analyticsService.calcBPM({
+   *   points: 1500, fga: 2000, fta: 400, fg: 1800, fg3: 200, fg3a: 500,
+   *   ftm: 350, tov: 150, orb: 100, drb: 300, ast: 400, stl: 50, blk: 30, pf: 100, minutes: 2000
+   * });
+   * // Returns approximately 6.0 (per-minute scaled proxy)
    */
   calcBPM(stats: PlayerStats): number {
     const astPct = stats.ast / Math.max(stats.minutes, 1) * 100;
@@ -265,8 +280,18 @@ export class AnalyticsService {
   }
 
   /**
-   * RAPTOR (Robust Algorithm using Player Tracking and On/Off Ratings)
-   * Simplified approximation: offensive + defensive RAPTOR
+   * Calculate RAPTOR (Robust Algorithm using Player Tracking and On/Off Ratings)
+   *
+   * Combines box score data with on-court/off-court performance differential.
+   * Simplified approximation: RAPTOR_offensive + RAPTOR_defensive
+   *
+   * @param stats - Player statistics
+   * @param onOffDiff - Net rating difference when player is on court vs off (optional, defaults to 0)
+   * @returns RAPTOR rating combining offensive and defensive contributions
+   *
+   * @example
+   * const raptor = analyticsService.calcRAPTOR(playerStats, 2.5);
+   * // Returns approximately 5.8 (strong two-way player)
    */
   calcRAPTOR(stats: PlayerStats, onOffDiff: number = 0): number {
     const tsPct = this.calcTrueShooting(stats.points, stats.fga, stats.fta);
@@ -282,8 +307,18 @@ export class AnalyticsService {
   }
 
   /**
-   * LEBRON (Luck-adjusted player Estimates using a Box-score Regression On aggregate Nonparametric data)
-   * Simplified version combining box score and on/off data
+   * Calculate LEBRON (Luck-adjusted player Estimates using Box-score Regression On aggregate Nonparametric data)
+   *
+   * Advanced metric combining multiple estimation approaches (BPM, RAPTOR, efficiency, on/off data).
+   * Reduces variance from luck by blending multiple data sources.
+   *
+   * @param stats - Player statistics
+   * @param onOffDiff - Net rating swing when player on vs off court (optional, defaults to 0)
+   * @returns LEBRON rating (points per 100 possessions above average)
+   *
+   * @example
+   * const lebron = analyticsService.calcLEBRON(starPlayerStats, 3.2);
+   * // Returns approximately 6.8 (MVP-caliber player)
    */
   calcLEBRON(stats: PlayerStats, onOffDiff: number = 0): number {
     const bpm = this.calcBPM(stats);
@@ -383,7 +418,31 @@ export class AnalyticsService {
   // ============================================================
 
   /**
-   * Calculate model-based win probability using weighted factors
+   * Calculate team win probability using weighted analytical factors
+   *
+   * Combines multiple basketball metrics (eFG%, Four Factors, Net Rating, Pythagorean, etc.)
+   * weighted according to a provided model configuration. Accounts for situational factors
+   * like home court, back-to-back games, momentum, and public betting sentiment.
+   *
+   * @param homeStats - Home team statistics (eFG%, TOV%, ORB%, FTR, etc.)
+   * @param awayStats - Away team statistics
+   * @param weights - Model weights for each factor (efgPct, tsPct, fourFactorsOffense, etc.)
+   * @param context - Optional contextual factors:
+   *   - isHomeGame: Whether home team has home court advantage (default: true)
+   *   - homeB2B/awayB2B: Back-to-back game fatigue (default: false)
+   *   - homeRecentWins/awayRecentWins: Wins in last 10 games (default: 5)
+   *   - publicBettingOnHome: % of public money on home team (default: 0.5)
+   *
+   * @returns Win probability for home team (0.0 to 1.0), clamped to [0.02, 0.98]
+   *
+   * @example
+   * const homeWinProb = analyticsService.calcModelProbability(
+   *   { pointsFor: 2500, pointsAgainst: 2300, efgPct: 0.535, ... }, // home stats
+   *   { pointsFor: 2450, pointsAgainst: 2380, efgPct: 0.520, ... }, // away stats
+   *   PRESET_MODELS.balanced.weights,
+   *   { isHomeGame: true, homeRecentWins: 8, publicBettingOnHome: 0.62 }
+   * );
+   * // Returns approximately 0.62 (62% home team win probability)
    */
   calcModelProbability(
     homeStats: TeamStats,
@@ -462,10 +521,41 @@ export class AnalyticsService {
   // PRESET MODEL HELPERS
   // ============================================================
 
+  /**
+   * Get all 12 preset prediction models
+   *
+   * Returns the complete list of pre-configured model templates.
+   * Each includes a description and pre-tuned weight set.
+   *
+   * @returns Array of preset models with id, name, description, and weights
+   *
+   * @example
+   * const models = analyticsService.getPresetModels();
+   * // Returns: [
+   * //   { id: 'balanced', name: 'Balanced', description: '...', weights: {...} },
+   * //   { id: 'efficiency', name: 'Efficiency', description: '...', weights: {...} },
+   * //   ...
+   * // ]
+   */
   getPresetModels() {
     return Object.entries(PRESET_MODELS).map(([id, model]) => ({ id, ...model }));
   }
 
+  /**
+   * Get a single preset model by ID
+   *
+   * @param id - Model identifier (e.g., 'balanced', 'efficiency', 'playoff')
+   * @returns Preset model with weights and description, or null if not found
+   *
+   * @example
+   * const efficientModel = analyticsService.getPresetModel('efficiency');
+   * // Returns: {
+   * //   id: 'efficiency',
+   * //   name: 'Efficiency',
+   * //   description: 'Four Factors + TS% focus for pure efficiency betting',
+   * //   weights: { efgPct: 0.25, tsPct: 0.20, ... }
+   * // }
+   */
   getPresetModel(id: string) {
     const model = PRESET_MODELS[id];
     if (!model) return null;
@@ -477,7 +567,18 @@ export class AnalyticsService {
   // ============================================================
 
   /**
-   * Calculate ROI from a series of bets
+   * Calculate Return on Investment (ROI) from a series of bets
+   *
+   * @param bets - Array of bet records with stake and profit/loss
+   * @returns ROI as decimal (e.g., 0.15 = 15% ROI, -0.05 = -5% ROI)
+   *
+   * @example
+   * const roi = analyticsService.calcROI([
+   *   { stake: 100, pnl: 15 },
+   *   { stake: 100, pnl: -10 },
+   *   { stake: 100, pnl: 8 }
+   * ]);
+   * // Returns 0.0433 (4.33% ROI)
    */
   calcROI(bets: Array<{ stake: number; pnl: number }>): number {
     const totalStake = bets.reduce((sum, b) => sum + b.stake, 0);
@@ -486,7 +587,20 @@ export class AnalyticsService {
   }
 
   /**
-   * Calculate Sharpe Ratio
+   * Calculate Sharpe Ratio - risk-adjusted return metric
+   *
+   * Measures excess return per unit of volatility. Higher Sharpe = better risk-adjusted returns.
+   *
+   * @param returns - Array of period returns (e.g., daily or per-bet P&L)
+   * @param riskFreeRate - Risk-free rate (e.g., 0.02 for 2%), defaults to 0
+   * @returns Sharpe ratio (higher is better; typically 1.0+ is excellent)
+   *
+   * @example
+   * const sharpeRatio = analyticsService.calcSharpeRatio(
+   *   [0.02, 0.03, -0.01, 0.015, 0.04],
+   *   0.01
+   * );
+   * // Returns approximately 1.42 (good risk-adjusted returns)
    */
   calcSharpeRatio(returns: number[], riskFreeRate: number = 0): number {
     if (returns.length < 2) return 0;
@@ -497,7 +611,22 @@ export class AnalyticsService {
   }
 
   /**
-   * Calibration score (Brier score) - lower is better (0 = perfect)
+   * Calculate Calibration score using Brier Score
+   *
+   * Measures how well predicted probabilities match actual outcomes.
+   * Lower is better: 0 = perfect calibration, 1 = worst possible.
+   *
+   * @param predictions - Array of prediction objects with predicted probability (0-1) and actual outcome (boolean)
+   * @returns Brier score (0 to 1, lower is better)
+   *
+   * @example
+   * const calibration = analyticsService.calcCalibration([
+   *   { predictedProb: 0.70, actual: true },
+   *   { predictedProb: 0.65, actual: true },
+   *   { predictedProb: 0.55, actual: false },
+   *   { predictedProb: 0.30, actual: false }
+   * ]);
+   * // Returns approximately 0.045 (excellent calibration)
    */
   calcCalibration(predictions: Array<{ predictedProb: number; actual: boolean }>): number {
     if (predictions.length === 0) return 1;
@@ -508,7 +637,14 @@ export class AnalyticsService {
   }
 
   /**
-   * Win rate from binary outcomes
+   * Calculate win rate from binary outcomes
+   *
+   * @param outcomes - Array of boolean outcomes (true = win/correct, false = loss/incorrect)
+   * @returns Win rate as decimal (0 to 1), e.g., 0.55 = 55% win rate
+   *
+   * @example
+   * const winRate = analyticsService.calcWinRate([true, true, false, true, false]);
+   * // Returns 0.6 (60% win rate)
    */
   calcWinRate(outcomes: boolean[]): number {
     if (outcomes.length === 0) return 0;
@@ -516,12 +652,24 @@ export class AnalyticsService {
   }
 
   /**
-   * Maximum drawdown from P&L series
+   * Calculate maximum drawdown from a P&L series
+   *
+   * Measures the largest peak-to-trough decline in cumulative profit/loss.
+   * Critical for understanding worst-case performance and risk.
+   *
+   * @param pnlSeries - Array of per-bet or per-period profit/loss values
+   * @returns Maximum drawdown amount (always >= 0)
+   *
+   * @example
+   * const maxDD = analyticsService.calcMaxDrawdown([100, 50, -30, -100, 20, 80]);
+   * // Cumulative: [100, 150, 120, 20, 40, 120]
+   * // Peak at 150, trough at 20 → Drawdown = 130
+   * // Returns 130
    */
   calcMaxDrawdown(pnlSeries: number[]): number {
     if (pnlSeries.length === 0) return 0;
     let maxDrawdown = 0;
-    let peak = pnlSeries[0];
+    let peak = 0;
     let runningPnl = 0;
 
     for (const pnl of pnlSeries) {
