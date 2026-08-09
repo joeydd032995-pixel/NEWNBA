@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
+import { OriginGuard } from './common/guards/origin.guard';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
@@ -52,6 +54,14 @@ import { BillingModule } from './modules/billing/billing.module';
     BankrollModule,
     NotificationsModule,
     BillingModule,
+  ],
+  providers: [
+    // Applies to every route (state-changing methods only — GET/HEAD/OPTIONS
+    // no-op). See origin.guard.ts for why this is needed: production cookies
+    // are `sameSite: 'none'` (frontend and backend are on different domains),
+    // which makes cross-site CSRF via bare HTML form-posts possible unless the
+    // request's Origin is validated server-side.
+    { provide: APP_GUARD, useClass: OriginGuard },
   ],
 })
 export class AppModule {}

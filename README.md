@@ -900,3 +900,11 @@ Key env vars in `.env`:
 | `LOG_LEVEL` | debug | Winston logger level |
 
 See `.env.example` for all options.
+
+### Odds API Cost Notes
+
+`syncOdds` (in `backend/src/services/background-jobs/jobs.service.ts`) is the only job that calls The Odds API. Each run makes one call for base markets (moneyline/spread/totals) plus one additional per-event call for player-prop markets, so total request volume scales with both sync frequency and how many games are active.
+
+At a 30-minute interval (the current default), estimated usage is **~13,000–23,000 requests/month** depending on schedule density — comfortably within a 100k/month plan. At the previous 5-minute interval (6x more frequent), estimated usage under the same event-density assumptions scales to **~78,000–138,000 requests/month**, which risked exceeding a 100k plan and would otherwise require a much larger (5M+) tier. If you change this interval, re-estimate using: `requests/month ≈ (runs/month) × (1 + avg. active events per run)`.
+
+Manual sync endpoints (`POST /api/admin/jobs/sync-odds`, `sync-nba-stats`, `sync-bdl-stats`) also count against this quota — they're guarded (`JwtAuthGuard` + `ThrottlerGuard`) to prevent unauthenticated or unbounded triggering, but repeated manual triggering by an authenticated user is still additional usage on top of the cron-driven estimate above.

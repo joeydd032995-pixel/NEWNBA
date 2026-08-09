@@ -114,18 +114,27 @@ export class JobsService implements OnModuleInit {
   }
 
   /**
-   * Every 5 minutes: sync live NBA odds from the Odds API when a key is available.
-   * Falls back to simulated odds movement in dev when no key is configured.
+   * Every 30 minutes: sync live NBA odds from the Odds API when a key is available.
+   * Falls back to simulated odds movement in non-production environments when no
+   * key is configured. In production, a missing/invalid key means the sync is
+   * skipped entirely rather than writing fabricated odds data — this app surfaces
+   * betting decisions to real users, so silently faking data in prod would be a
+   * correctness/trust issue, not just a dev-convenience gap.
+   *
+   * Interval chosen to keep Odds API usage (base odds + per-event player-props calls)
+   * comfortably within a 100k-requests/month plan — see README's Odds API cost notes.
    */
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron('*/30 * * * *')
   async syncOdds() {
     if (this.isOddsSyncRunning) return;
     this.isOddsSyncRunning = true;
     try {
       if (this.oddsApi.isEnabled) {
         await this.fetchAndPersistLiveOdds();
-      } else {
+      } else if (process.env.NODE_ENV !== 'production') {
         await this.simulateOddsMovement();
+      } else {
+        this.logger.warn('Odds sync skipped: ODDS_API_KEY not configured in production — refusing to write simulated odds data.');
       }
     } catch (e) {
       const status = e?.response?.status;
