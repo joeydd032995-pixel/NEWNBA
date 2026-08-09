@@ -114,10 +114,13 @@ export class JobsService implements OnModuleInit {
   }
 
   /**
-   * Every 5 minutes: sync live NBA odds from the Odds API when a key is available.
+   * Every 30 minutes: sync live NBA odds from the Odds API when a key is available.
    * Falls back to simulated odds movement in dev when no key is configured.
+   *
+   * Interval chosen to keep Odds API usage (base odds + per-event player-props calls)
+   * comfortably within a 100k-requests/month plan — see README's Odds API cost notes.
    */
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron('*/30 * * * *')
   async syncOdds() {
     if (this.isOddsSyncRunning) return;
     this.isOddsSyncRunning = true;

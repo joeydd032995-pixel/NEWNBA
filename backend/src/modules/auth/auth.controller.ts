@@ -123,7 +123,17 @@ export class AuthController {
   // ─── Helpers ───────────────────────────────────────────────
 
   private cookieOptions() {
-    return { httpOnly: true, secure: IS_PROD, sameSite: 'lax' as const, path: '/' };
+    // Frontend (Vercel) and backend (Railway) are hosted on different top-level
+    // domains in production, making this a cross-site relationship. `sameSite: 'lax'`
+    // cookies are not sent on cross-site fetch/axios requests (only top-level
+    // navigations), so production must use `sameSite: 'none'`, which in turn requires
+    // `secure: true` (HTTPS-only) — both Vercel and Railway serve over HTTPS by default.
+    return {
+      httpOnly: true,
+      secure: IS_PROD,
+      sameSite: (IS_PROD ? 'none' : 'lax') as 'none' | 'lax',
+      path: '/',
+    };
   }
 
   private setTokenCookies(res: Res, accessToken: string, refreshToken: string) {

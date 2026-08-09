@@ -900,3 +900,9 @@ Key env vars in `.env`:
 | `LOG_LEVEL` | debug | Winston logger level |
 
 See `.env.example` for all options.
+
+### Odds API Cost Notes
+
+`syncOdds` (in `backend/src/services/background-jobs/jobs.service.ts`) is the only job that calls The Odds API. Each run makes one call for base markets (moneyline/spread/totals) plus one additional per-event call for player-prop markets, so total request volume scales with both sync frequency and how many games are active.
+
+At a 30-minute interval (the current default), estimated usage is **~13,000–23,000 requests/month** depending on schedule density — comfortably within a 100k/month plan. At the previous 5-minute interval, estimated usage was **~35,000–140,000+ requests/month**, which risked exceeding a 100k plan and would otherwise require a much larger (5M+) tier. If you change this interval, re-estimate using: `requests/month ≈ (runs/month) × (1 + avg. active events per run)`.
