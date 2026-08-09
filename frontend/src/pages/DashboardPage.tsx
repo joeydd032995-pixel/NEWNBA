@@ -1,3 +1,24 @@
+/**
+ * DashboardPage - Main analytics dashboard
+ *
+ * Displays key metrics and quick-view feeds:
+ * - EV and arbitrage opportunity counts
+ * - 30/90/1Y bankroll equity curve
+ * - Recent top EV opportunities (top 5)
+ * - Recent top arbitrage opportunities (top 5)
+ * - Upcoming games (next 5)
+ * - Quick access to all main features
+ *
+ * Uses React Query for server-state management (30s staleTime, no refetch on focus).
+ * Auth required (JwtAuthGuard). Shows user's plan tier and current date.
+ *
+ * @requires authentication (JwtAuthGuard)
+ * @requires subscription: FREE (basic stats), PRO+ (full features)
+ *
+ * @example
+ * <DashboardPage />  // Renders at /dashboard
+ */
+
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
@@ -6,15 +27,38 @@ import { evApi, arbApi, analyticsApi, sportsApi } from '../lib/api'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useAuthStore } from '../stores/auth'
 
-/* ── Simulated 30-day bankroll data ──────────────────────────────────────── */
+/**
+ * Simulated 30-day bankroll progression data
+ * Used for chart display on dashboard equity curve
+ */
 const chartData = Array.from({ length: 30 }, (_, i) => ({
   day: `Day ${i + 1}`,
   bankroll: 10000 + i * 180 + Math.sin(i * 0.5) * 300 + (Math.random() - 0.3) * 200,
 }))
 
-/* ────────────────────────────────────────────────────────────────────────────
-   KPI Stat Card
-   ──────────────────────────────────────────────────────────────────────────── */
+/**
+ * StatCard - KPI metric card component
+ *
+ * Displays a single key performance indicator with:
+ * - Label and current value
+ * - Delta vs. previous period
+ * - Colored progress bar (primary, secondary, error)
+ *
+ * @param label - Card label (e.g., "EV Opportunities")
+ * @param value - Current value to display (e.g., "12.4%")
+ * @param delta - Change vs previous period with sign (e.g., "+2.1%")
+ * @param progress - Progress bar fill percentage (0-100)
+ * @param accentColor - Color theme for progress bar (default: 'primary')
+ *
+ * @example
+ * <StatCard
+ *   label="Win Rate"
+ *   value="56%"
+ *   delta="+3%"
+ *   progress={56}
+ *   accentColor="secondary"
+ * />
+ */
 interface StatCardProps {
   label: string
   value: string
