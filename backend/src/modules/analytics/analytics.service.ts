@@ -239,21 +239,24 @@ export class AnalyticsService {
   }
 
   /**
-   * Calculate Box Plus/Minus (simplified version)
+   * Calculate Box Plus/Minus (simplified proxy version)
    *
-   * Estimates a player's impact on team scoring relative to average.
-   * Formula: BPM ≈ 0.123×(AST%) + 0.222×(TRB%) + 0.084×(STL%) + 0.137×(BLK%)
-   *               + 0.132×(FG3%) + 0.030×(TOV%) - 0.100×(USG%)×(1-TS%)
+   * Simplified BPM approximation using per-minute rate proxies and field goal percentages.
+   * Not a standard NBA BPM calculation—this is a simplified implementation using:
+   * - AST, TRB, STL, BLK per minute (multiplied by 100 for scale)
+   * - FG3 as field goal percentage (3-pointers / FGA)
+   * - TOV as simple ratio (TOV / (TOV + FG))
+   * - Usage % and True Shooting % from standard calculations
    *
-   * @param stats - Player statistics object with points, shots, assists, rebounds, steals, blocks
-   * @returns BPM rating (positive = above average, negative = below average)
+   * @param stats - Player statistics object with points, shots, assists, rebounds, steals, blocks, minutes
+   * @returns Simplified BPM proxy value (~6.0 for average player, scale is normalized to minutes/100)
    *
    * @example
    * const bpm = analyticsService.calcBPM({
    *   points: 1500, fga: 2000, fta: 400, fg: 1800, fg3: 200, fg3a: 500,
    *   ftm: 350, tov: 150, orb: 100, drb: 300, ast: 400, stl: 50, blk: 30, pf: 100, minutes: 2000
    * });
-   * // Returns approximately 3.5 (above average player)
+   * // Returns approximately 6.0 (per-minute scaled proxy)
    */
   calcBPM(stats: PlayerStats): number {
     const astPct = stats.ast / Math.max(stats.minutes, 1) * 100;
@@ -666,7 +669,7 @@ export class AnalyticsService {
   calcMaxDrawdown(pnlSeries: number[]): number {
     if (pnlSeries.length === 0) return 0;
     let maxDrawdown = 0;
-    let peak = pnlSeries[0];
+    let peak = 0;
     let runningPnl = 0;
 
     for (const pnl of pnlSeries) {

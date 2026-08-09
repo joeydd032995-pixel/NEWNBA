@@ -277,9 +277,25 @@ export const analyticsApi = {
  */
 export const evApi = {
   /**
-   * Get paginated EV opportunities feed
-   * @param {object} params - Filters: minEV (0.05 = 5%), sport ('nba'), limit (50)
-   * @returns {Promise<AxiosResponse>} Array of EV metrics with market/event details
+   * Get limited EV opportunities feed
+   *
+   * Returns recent positive EV betting opportunities with optional filtering.
+   * Results include market details, team/player info, and public betting splits.
+   * Uses 30-second cache to balance freshness vs. performance.
+   *
+   * @param {object} [params] - Optional filter object
+   * @param {number} [params.minEV] - Minimum EV percentage (e.g., 0.05 for 5%), default 0
+   * @param {string} [params.sport] - Filter by sport slug (e.g., 'nba', 'nfl')
+   * @param {number} [params.limit] - Maximum results to return, default 50
+   * @returns {Promise<AxiosResponse>} Array of EVMetric objects with market/event enrichment
+   *
+   * @example
+   * // Fetch top NBA EV opportunities above 5%
+   * const { data } = await evApi.getFeed({
+   *   sport: 'nba',
+   *   minEV: 0.05,
+   *   limit: 25
+   * })
    */
   getFeed: (params?: any) => api.get('/ev/feed', { params }),
 
@@ -297,9 +313,24 @@ export const evApi = {
  */
 export const arbApi = {
   /**
-   * Get paginated arbitrage opportunities feed
-   * @param {object} params - Filters: minProfit (0.02 = 2%), sport ('nba'), limit (50)
-   * @returns {Promise<AxiosResponse>} Array of arbitrage opportunities
+   * Get limited arbitrage opportunities feed
+   *
+   * Returns cross-book arbitrage opportunities where probability-weighted stakes
+   * guarantee profit (ROI > 0). Includes optimal stake sizing per book.
+   *
+   * @param {object} [params] - Optional filter object
+   * @param {number} [params.minProfit] - Minimum profit percentage (e.g., 0.02 for 2%), default 0
+   * @param {string} [params.sport] - Filter by sport slug (e.g., 'nba', 'nfl')
+   * @param {number} [params.limit] - Maximum results to return, default 50
+   * @returns {Promise<AxiosResponse>} Array of arbitrage opportunities with optimal stakes
+   *
+   * @example
+   * // Fetch high-profit arbitrage (>2%) for NBA
+   * const { data } = await arbApi.getFeed({
+   *   sport: 'nba',
+   *   minProfit: 0.02,
+   *   limit: 10
+   * })
    */
   getFeed: (params?: any) => api.get('/arbitrage/feed', { params }),
 

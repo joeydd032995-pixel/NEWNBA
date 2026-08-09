@@ -32,8 +32,8 @@ This branch (`stable/working-v1`) represents a verified working baseline as of M
 | `cache-manager-redis-store` v3 incompatible with `cache-manager` v5 — switched to in-memory cache | `app.module.ts` |
 | EV feed empty-array cache hit masked real DB results | `ev/ev.service.ts` |
 | `minEV` filter applied to dollar `ev` field instead of `evPct` | `ev/ev.service.ts` |
-| Player props sync used invalid `player_props` market key (→ 422) | `odds-api.service.ts`, `jobs.service.ts` |
-| No rate-limit handling between per-event Odds API calls (→ 429) | `odds-api.service.ts`, `jobs.service.ts` |
+| Player props sync used invalid `player_props` market key (→ 422) | `odds-api.service.ts`, `services/background-jobs/jobs.service.ts` |
+| No rate-limit handling between per-event Odds API calls (→ 429) | `odds-api.service.ts`, `services/background-jobs/jobs.service.ts` |
 | EV Feed UI showed hardcoded demo data instead of API results | `EVFeedPage.tsx` |
 
 **Startup:** `docker-compose up` — services start in dependency order (postgres → redis → nba-data → backend → frontend).
@@ -426,7 +426,7 @@ interface BankrollState {
 
 Centralized axios instance with:
 - **JWT auto-refresh**: On 401, calls `/auth/refresh` and retries original request
-- **Namespaced exports**: `authApi.login()`, `sportsApi.getTeams()`, `evApi.getEVFeed()`, etc.
+- **Namespaced exports**: `authApi.login()`, `sportsApi.getTeams()`, `evApi.getFeed()`, etc.
 - **Base URL**: Reads from `import.meta.env.VITE_API_URL` (.env)
 - **Interceptors**: 
   - Request: Adds JWT token from httpOnly cookie (auto)
@@ -840,7 +840,7 @@ async evaluateLineMovementAlerts(
 }
 ```
 
-**2. Call from background job** (`backend/src/jobs.service.ts`):
+**2. Call from background job** (`backend/src/services/background-jobs/jobs.service.ts`):
 ```typescript
 @Cron(CronExpression.EVERY_5_MINUTES)
 async evaluateAlerts() {

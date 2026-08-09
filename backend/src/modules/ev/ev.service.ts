@@ -9,7 +9,7 @@ import { AnalyticsService } from '../analytics/analytics.service';
  *
  * Calculates positive expected value opportunities by comparing true probabilities
  * (derived from best-available odds across books) with book odds.
- * Identifies and persists arbitrage-free EV opportunities for user consumption.
+ * Identifies and persists positive-EV opportunities for user consumption.
  */
 @Injectable()
 export class EVService {
@@ -115,21 +115,21 @@ export class EVService {
   }
 
   /**
-   * Get paginated, filtered EV feed for user dashboard
+   * Get limited, filtered EV feed for user dashboard
    *
    * Returns recent positive EV opportunities with optional filtering by sport, minimum EV threshold,
-   * and result limit. Results are cached for 30 seconds and enriched with public betting splits
+   * and result limit (default 50). Results are cached for 30 seconds and enriched with public betting splits
    * (e.g., "62% of bettors on Home Team"). Cache is cleared on background scans to ensure
    * fresh data is returned after each odds update cycle.
    *
    * @param filters - Optional filter object:
    *   - sport?: string - Filter by sport slug (e.g., 'nba', 'nfl')
    *   - minEV?: number - Minimum EV % threshold (e.g., 0.05 for 5%)
-   *   - marketType?: string - Filter by market type (e.g., 'moneyline', 'spread')
+   *   - marketType?: string - Currently documented for future use; filtering not yet implemented
    *   - limit?: number - Maximum results to return (default: 50)
    *
    * @returns Array of EVMetric objects enriched with market/event details and public betting splits
-   * @throws No exceptions thrown; database errors are logged and result in empty array
+   * @throws No exceptions thrown; Prisma and cache errors are handled internally and logged
    *
    * @example
    * const feed = await evService.getEVFeed({
@@ -236,7 +236,8 @@ export class EVService {
       }
     }
 
-    // Invalidate all EV feed cache variants so next request reflects fresh data
+    // WARNING: Clears ALL caches (EV feed, odds, models, leaderboard, etc.), not just EV feed.
+    // This may impact other feeds' performance. Consider implementing selective cache invalidation.
     await this.cache.reset().catch(() => null);
     return results;
   }
