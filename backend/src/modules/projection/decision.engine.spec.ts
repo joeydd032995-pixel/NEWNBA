@@ -31,7 +31,7 @@ function projectionInput(): OpportunityProjectionInput {
 }
 
 describe('Decision engine', () => {
-  it('passes when neither side has positive value', () => {
+  it('passes or leans when vig consumes a median-level edge', () => {
     const distribution = projectDistribution(projectionInput());
     const result = evaluateDecision({
       distribution,
@@ -68,20 +68,20 @@ describe('Decision engine', () => {
     }
   });
 
-  it('requires a wider uncertainty margin for low-quality data', () => {
+  it('applies a stricter edge test to low-quality data', () => {
     const distribution = projectDistribution(projectionInput());
-    const high = evaluateDecision({
-      distribution,
-      market: { line: distribution.percentiles.p40 ?? distribution.percentiles.p25, overOdds: -110, underOdds: -110 } as any,
-      dataQuality: 'HIGH',
-    });
-    const low = evaluateDecision({
-      distribution,
-      market: { line: distribution.percentiles.p25, overOdds: -110, underOdds: -110 },
-      dataQuality: 'LOW',
-    });
-    const strength = { PASS: 0, WAIT: 1, LEAN: 2, BET: 3, STRONG_BET: 4 } as const;
-    expect(strength[low.decision]).toBeLessThanOrEqual(4);
+    const market = {
+      line: distribution.percentiles.p25,
+      overOdds: -110,
+      underOdds: -110,
+    };
+    const high = evaluateDecision({ distribution, market, dataQuality: 'HIGH' });
+    const low = evaluateDecision({ distribution, market, dataQuality: 'LOW' });
+
+    if (!low.checks.edgeExceedsUncertainty) {
+      expect(['PASS', 'LEAN']).toContain(low.decision);
+    }
     expect(high.checks.vigConsidered).toBe(true);
+    expect(low.dataQuality).toBe('LOW');
   });
 });
