@@ -1,0 +1,57 @@
+name: Opportunity-First Frontend and Sidecar CI
+
+on:
+  push:
+    branches:
+      - agent/opportunity-first
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+  production-sidecar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install sidecar dependencies
+        working-directory: nba-data
+        run: pip install -r requirements.txt
+      - name: Compile production sidecar modules
+        run: >-
+          python -m py_compile
+          nba-data/main.py
+          nba-data/production_app.py
+          nba-data/official_injury_service.py
+          nba-data/opportunity_routes.py
+      - name: Import production app
+        working-directory: nba-data
+        run: python -c "from production_app import app; print(app.title)"
+
+  compose-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate merged Docker Compose configuration
+        run: docker compose config >/tmp/compose.yml
