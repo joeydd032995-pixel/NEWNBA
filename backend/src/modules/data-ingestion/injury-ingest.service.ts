@@ -20,6 +20,7 @@ interface InjuryPayload {
     return_eta?: string | null;
     source?: string;
     source_tier?: SourceTier;
+    data_quality?: 'LOW' | 'MEDIUM' | 'HIGH';
     reported_at?: string | null;
     report_url?: string;
   }>;
@@ -48,7 +49,6 @@ export class InjuryIngestService {
     try {
       const payload = await this.fetchBestAvailableInjuryPayload();
       const injuries = payload.injuries ?? [];
-      const touchedPlayers = new Set<string>();
 
       for (const item of injuries) {
         const playerName = item.player_name?.trim() ?? '';
@@ -64,6 +64,11 @@ export class InjuryIngestService {
         const status = this.norm.normalizeInjuryStatus(rawStatus) as InjuryStatus;
         const source = item.source ?? payload.source ?? 'unknown';
         const sourceTier = item.source_tier ?? payload.source_tier ?? tierForSource(source);
+        if (sourceTier === 'SIMULATED' || source.toLowerCase().includes('simulated')) {
+          this.logger.warn(`Rejected simulated injury evidence for ${playerName}`);
+          continue;
+        }
+        const dataQuality = item.data_quality ?? payload.data_quality ?? qualityForTier(sourceTier);
         const reportedAt = parseReportTimestamp(
           item.reported_at ?? payload.reported_at ?? payload.fetched_at,
         );
@@ -77,6 +82,8 @@ export class InjuryIngestService {
             description: item.description ?? null,
             returnEta: item.return_eta ?? null,
             source,
+            sourceTier,
+            dataQuality,
             reportedAt,
           },
           update: {
@@ -84,10 +91,11 @@ export class InjuryIngestService {
             description: item.description ?? null,
             returnEta: item.return_eta ?? null,
             source,
+            sourceTier,
+            dataQuality,
             updatedAt: new Date(),
           },
         });
-        touchedPlayers.add(player.id);
         upserted++;
 
         if (player.teamId) {
@@ -126,6 +134,7 @@ export class InjuryIngestService {
       ...fallback.data,
       source: fallback.data?.source ?? 'espn',
       source_tier: fallback.data?.source_tier ?? 'TIER_3_REPORTING',
+      data_quality: fallback.data?.data_quality ?? 'MEDIUM',
     };
   }
 
@@ -142,12 +151,16 @@ export class InjuryIngestService {
     });
     if (!recentReports.length) return;
 
-    const observations = recentReports.map((report, index) => ({
-      value: report.status as AvailabilityStatus,
-      source: report.source ?? 'unknown',
-      tier: index === 0 ? newestTier : tierForSource(report.source ?? 'unknown'),
-      updatedAt: report.reportedAt,
-    }));
+    const observations = recentReports
+      .filter((report) => report.sourceTier !== 'SIMULATED')
+      .map((report, index) => ({
+        value: report.status as AvailabilityStatus,
+        source: report.source ?? 'unknown',
+        tier: (report.sourceTier as SourceTier | null) ?? (index === 0 ? newestTier : tierForSource(report.source ?? 'unknown')),
+        updatedAt: report.reportedAt,
+      }));
+    if (!observations.length) return;
+
     const assessment = assessAvailability(observations, now);
     const upcomingEvents = await this.prisma.event.findMany({
       where: {
@@ -195,6 +208,7 @@ export class InjuryIngestService {
       where: {
         reportedAt: { gte: since },
         status: { in: ['OUT', 'DOUBTFUL', 'GTD', 'QUESTIONABLE'] },
+        NOT: { sourceTier: 'SIMULATED' },
       },
       select: { playerId: true, status: true, description: true },
       orderBy: { reportedAt: 'desc' },
@@ -207,7 +221,11 @@ export class InjuryIngestService {
   ): Promise<{ status: InjuryStatus; description: string | null } | null> {
     const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
     return this.prisma.injuryReport.findFirst({
-      where: { playerId, reportedAt: { gte: since } },
+      where: {
+        playerId,
+        reportedAt: { gte: since },
+        NOT: { sourceTier: 'SIMULATED' },
+      },
       orderBy: { reportedAt: 'desc' },
       select: { status: true, description: true },
     }) as any;
@@ -218,6 +236,12 @@ function parseReportTimestamp(value?: string | null): Date {
   if (!value) return new Date();
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function qualityForTier(tier: SourceTier): 'LOW' | 'MEDIUM' | 'HIGH' {
+  if (tier === 'TIER_1_OFFICIAL') return 'HIGH';
+  if (tier === 'TIER_2_HIGH_QUALITY' || tier === 'TIER_3_REPORTING') return 'MEDIUM';
+  return 'LOW';
 }
 
 function tierForSource(source: string): SourceTier {

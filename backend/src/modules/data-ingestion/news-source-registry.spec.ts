@@ -1,4 +1,5 @@
 import {
+  classifyReportingSource,
   compareReportingSources,
   resolveReportingClaim,
   validateReporterRegistry,
@@ -9,6 +10,51 @@ describe('reporting source hierarchy', () => {
     expect(compareReportingSources('OFFICIAL_NBA', 'NATIONAL_REPORTER')).toBeGreaterThan(0);
     expect(compareReportingSources('OFFICIAL_TEAM', 'BEAT_REPORTER')).toBeGreaterThan(0);
     expect(compareReportingSources('NATIONAL_REPORTER', 'AGGREGATOR')).toBeGreaterThan(0);
+  });
+
+  it('classifies official NBA evidence as Tier 1 / high quality', () => {
+    expect(classifyReportingSource({ source: 'official_nba' })).toEqual({
+      sourceKey: 'official_nba',
+      sourceClass: 'OFFICIAL_NBA',
+      sourceTier: 'TIER_1_OFFICIAL',
+      dataQuality: 'HIGH',
+    });
+  });
+
+  it('keeps unnamed ESPN headline feeds at aggregator / Tier 3', () => {
+    expect(classifyReportingSource({ source: 'espn' })).toEqual({
+      sourceKey: 'espn',
+      sourceClass: 'AGGREGATOR',
+      sourceTier: 'TIER_3_REPORTING',
+      dataQuality: 'MEDIUM',
+    });
+  });
+
+  it('can identify a named ESPN reporter but does not promote them to official', () => {
+    expect(classifyReportingSource({ source: 'espn', reporterName: 'Reporter A' })).toEqual({
+      sourceKey: 'reporter a',
+      sourceClass: 'NATIONAL_REPORTER',
+      sourceTier: 'TIER_3_REPORTING',
+      dataQuality: 'MEDIUM',
+    });
+  });
+
+  it('refuses to trust an arbitrary source that merely claims a Tier-1 label', () => {
+    expect(classifyReportingSource({ source: 'mystery-feed', sourceTier: 'TIER_1_OFFICIAL' })).toEqual({
+      sourceKey: 'mystery-feed',
+      sourceClass: 'UNKNOWN',
+      sourceTier: 'LOW_PRIORITY',
+      dataQuality: 'LOW',
+    });
+  });
+
+  it('never promotes simulated reporting evidence', () => {
+    expect(classifyReportingSource({ source: 'simulated-news', sourceClass: 'OFFICIAL_NBA' })).toEqual({
+      sourceKey: 'simulated-news',
+      sourceClass: 'UNKNOWN',
+      sourceTier: 'LOW_PRIORITY',
+      dataQuality: 'LOW',
+    });
   });
 
   it('lets a higher-tier official claim override a lower-tier conflict', () => {

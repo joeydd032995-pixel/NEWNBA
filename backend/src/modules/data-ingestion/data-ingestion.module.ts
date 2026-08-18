@@ -11,6 +11,7 @@ import { OpportunityDataIngestionJob } from '../../services/background-jobs/oppo
 import { RotationReplacementJob } from '../../services/background-jobs/rotation-replacement.job';
 import { RefereeAssignmentJob } from '../../services/background-jobs/referee-assignment.job';
 import { ScheduleEnvironmentJob } from '../../services/background-jobs/schedule-environment.job';
+import { ExactStatLineSyncJob } from '../../services/background-jobs/exact-statline-sync.job';
 
 @Module({
   imports: [PrismaModule, NbaDataModule],
@@ -25,6 +26,7 @@ import { ScheduleEnvironmentJob } from '../../services/background-jobs/schedule-
     RotationReplacementJob,
     RefereeAssignmentJob,
     ScheduleEnvironmentJob,
+    ExactStatLineSyncJob,
   ],
   exports: [
     DataIngestionService,
@@ -32,6 +34,7 @@ import { ScheduleEnvironmentJob } from '../../services/background-jobs/schedule-
     InjuryIngestService,
     NewsIngestService,
     PublicBettingService,
+    ExactStatLineSyncJob,
   ],
 })
 export class DataIngestionModule {}

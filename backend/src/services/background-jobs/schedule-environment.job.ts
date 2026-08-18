@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../modules/prisma/prisma.service';
+import { NbaDataService, NbaOfficialArenaRow } from '../nba-data/nba-data.service';
 
 export interface TeamScheduleContext {
   restDays: number | null;
@@ -19,8 +20,8 @@ interface ScheduleRow {
 
 /**
  * Compute schedule-density context exclusively from persisted NBA events.
- * No arena/travel/OT values are synthesized here; those fields remain untouched
- * until verified upstream inputs exist.
+ * No travel/altitude/time-zone values are synthesized here. Arena identity is
+ * separately fetched from current first-party NBA team profiles when available.
  */
 export function deriveTeamScheduleContext(
   teamId: string,
@@ -55,9 +56,7 @@ export function deriveTeamScheduleContext(
   return {
     restDays,
     backToBack: hoursSincePrevious <= 36,
-    // Includes tonight's game: two prior games in the previous 4 days => 3-in-4.
     threeInFour: gamesWithin(4) >= 2,
-    // Includes tonight's game: three prior games in the previous 6 days => 4-in-6.
     fourInSix: gamesWithin(6) >= 3,
     previousEventId: previous.id,
   };
@@ -68,7 +67,10 @@ export class ScheduleEnvironmentJob {
   private readonly logger = new Logger(ScheduleEnvironmentJob.name);
   private running = false;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly nbaData?: NbaDataService,
+  ) {}
 
   /** Refresh rest-density inputs every six hours and before the normal evening slate. */
   @Cron('12 */6 * * *')
@@ -78,12 +80,15 @@ export class ScheduleEnvironmentJob {
     try {
       const horizon = new Date(now.getTime() + 48 * 60 * 60_000);
       const historyStart = new Date(now.getTime() - 8 * 24 * 60 * 60_000);
-      const [upcoming, history] = await Promise.all([
+      const [upcoming, history, arenaByTeam] = await Promise.all([
         this.prisma.event.findMany({
           where: {
             status: 'SCHEDULED',
             startTime: { gte: now, lte: horizon },
             sport: { slug: 'nba' },
+          },
+          include: {
+            homeTeam: { select: { abbreviation: true } },
           },
           orderBy: { startTime: 'asc' },
         }),
@@ -100,6 +105,7 @@ export class ScheduleEnvironmentJob {
             awayTeamId: true,
           },
         }),
+        this.loadOfficialArenaMap(),
       ]);
 
       let updated = 0;
@@ -110,8 +116,13 @@ export class ScheduleEnvironmentJob {
           home.restDays === null || away.restDays === null
             ? 0
             : (home.restDays - away.restDays) * 24;
+        const officialArena = arenaByTeam.get(event.homeTeam.abbreviation.toUpperCase()) ?? null;
 
         const data = {
+          ...(officialArena ? {
+            arenaName: officialArena.arena,
+            arenaCity: officialArena.city,
+          } : {}),
           homeRestDays: home.restDays,
           awayRestDays: away.restDays,
           homeBackToBack: home.backToBack,
@@ -121,7 +132,12 @@ export class ScheduleEnvironmentJob {
           homeFourInSix: home.fourInSix,
           awayFourInSix: away.fourInSix,
           restAdvantageHours,
-          source: 'newnba_event_schedule_derivation',
+          // Mixed provenance is explicit. Do not label the whole environment
+          // row Tier 1 because schedule-density fields are derived locally.
+          source: officialArena
+            ? 'newnba_event_schedule_derivation+nba_team_profile'
+            : 'newnba_event_schedule_derivation',
+          sourceTier: null,
           calculatedAt: now,
         };
 
@@ -141,5 +157,20 @@ export class ScheduleEnvironmentJob {
     } finally {
       this.running = false;
     }
+  }
+
+  private async loadOfficialArenaMap(): Promise<Map<string, NbaOfficialArenaRow>> {
+    const result = new Map<string, NbaOfficialArenaRow>();
+    if (!this.nbaData?.isEnabled) return result;
+    try {
+      const payload = await this.nbaData.getOfficialArenas();
+      for (const row of payload.arenas ?? []) {
+        if (!row.arena || !row.city || row.data_quality === 'LOW') continue;
+        result.set(row.team_abbr.toUpperCase(), row);
+      }
+    } catch (error) {
+      this.logger.warn(`Official NBA arena profiles unavailable: ${(error as Error).message}`);
+    }
+    return result;
   }
 }

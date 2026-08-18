@@ -139,6 +139,29 @@ export interface NbaRefereeAssignments {
   source_url?: string;
 }
 
+export interface NbaOfficialArenaRow {
+  team_abbr: string;
+  team_id: number;
+  arena: string | null;
+  city: string | null;
+  source: 'nba_team_profile';
+  source_tier: 'TIER_1_OFFICIAL';
+  data_quality: 'LOW' | 'MEDIUM' | 'HIGH';
+  source_url?: string;
+  fetched_at: string;
+  error?: string;
+}
+
+export interface NbaOfficialArenas {
+  arenas: NbaOfficialArenaRow[];
+  source: 'nba_team_profiles';
+  source_tier: 'TIER_1_OFFICIAL';
+  data_quality: 'LOW' | 'MEDIUM' | 'HIGH';
+  fetched_at: string;
+  successful: number;
+  expected: number;
+}
+
 @Injectable()
 export class NbaDataService {
   private readonly logger = new Logger(NbaDataService.name);
@@ -213,6 +236,13 @@ export class NbaDataService {
   async getOfficialRefereeAssignments(): Promise<NbaRefereeAssignments> {
     const { data } = await this.http.get<NbaRefereeAssignments>('/referees/official', {
       timeout: 20_000,
+    });
+    return data;
+  }
+
+  async getOfficialArenas(): Promise<NbaOfficialArenas> {
+    const { data } = await this.http.get<NbaOfficialArenas>('/arenas/official', {
+      timeout: 90_000,
     });
     return data;
   }

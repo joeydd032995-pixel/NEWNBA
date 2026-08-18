@@ -3,7 +3,7 @@ name: Opportunity-First Frontend and Sidecar CI
 on:
   push:
     branches:
-      - agent/opportunity-first
+      - agent/opportunity-priority-2
   pull_request:
     branches:
       - main
@@ -44,7 +44,12 @@ jobs:
           nba-data/main.py
           nba-data/production_app.py
           nba-data/official_injury_service.py
+          nba-data/official_referee_service.py
+          nba-data/official_arena_service.py
           nba-data/opportunity_routes.py
+      - name: Test official arena parser
+        working-directory: nba-data
+        run: python -m unittest -q test_official_arena_service.py
       - name: Import production app
         working-directory: nba-data
         run: python -c "from production_app import app; print(app.title)"

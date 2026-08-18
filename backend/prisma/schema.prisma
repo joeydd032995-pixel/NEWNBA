@@ -617,22 +617,36 @@ model BetSlip {
   id String @id @default(uuid())
   userId String
   name String?
+  structure WagerStructure @default(SINGLE_BATCH)
   totalOdds Float?
   totalStake Float @default(0)
+  ticketStake Float?
+  settlementPayout Float?
+  settlementProfitLoss Float?
+  settledAt DateTime?
   status BetSlipStatus @default(OPEN)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user User @relation(fields: [userId], references: [id])
   items BetSlipItem[]
   @@index([userId])
+  @@index([structure])
+  @@index([status])
   @@map("bet_slips")
+}
+
+enum WagerStructure {
+  SINGLE_BATCH
+  PARLAY
 }
 
 enum BetSlipStatus {
   OPEN
   SUBMITTED
+  SETTLED
   WON
   LOST
+  PUSH
   VOID
 }
 
@@ -656,6 +670,10 @@ model BetSlipItem {
   decisionClass DecisionClass?
   propStatType PropStatType?
   seasonPhase SeasonPhase?
+  settlementStatus LegSettlementStatus @default(PENDING)
+  actualValue Float?
+  settlementSource String?
+  settledAt DateTime?
   recommendedAt DateTime @default(now())
   closedAt DateTime?
   isLocked Boolean @default(false)
@@ -671,7 +689,16 @@ model BetSlipItem {
   @@index([propStatType])
   @@index([confidenceBucket])
   @@index([seasonPhase])
+  @@index([settlementStatus])
   @@map("bet_slip_items")
+}
+
+enum LegSettlementStatus {
+  PENDING
+  WIN
+  LOSS
+  PUSH
+  VOID
 }
 
 enum BetDirection {
@@ -730,6 +757,16 @@ enum SourceTier {
   TIER_3_REPORTING
   LOW_PRIORITY
   SIMULATED
+}
+
+enum ReportingSourceClass {
+  OFFICIAL_NBA
+  OFFICIAL_TEAM
+  COACH_DIRECT
+  NATIONAL_REPORTER
+  BEAT_REPORTER
+  AGGREGATOR
+  UNKNOWN
 }
 
 model WagerProjectionSnapshot {
@@ -819,6 +856,8 @@ model InjuryReport {
   description String?
   returnEta String?
   source String? @default("espn")
+  sourceTier SourceTier?
+  dataQuality DataQualityLevel?
   reportedAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -827,6 +866,7 @@ model InjuryReport {
   @@index([playerId])
   @@index([status])
   @@index([reportedAt])
+  @@index([sourceTier])
   @@map("injury_reports")
 }
 
@@ -837,6 +877,10 @@ model NewsItem {
   summary String?
   url String?
   source String? @default("espn")
+  sourceKey String?
+  sourceTier SourceTier?
+  sourceClass ReportingSourceClass?
+  dataQuality DataQualityLevel?
   playerId String?
   teamId String?
   publishedAt DateTime
@@ -846,6 +890,8 @@ model NewsItem {
   @@index([playerId])
   @@index([teamId])
   @@index([publishedAt])
+  @@index([sourceTier])
+  @@index([sourceClass])
   @@map("news_items")
 }
 
@@ -1161,12 +1207,12 @@ model PlayerShotProfile {
   atb3Attempts Float @default(0)
   atb3Frequency Float @default(0)
   atb3Efficiency Float @default(0)
-  catchShootAttempts Float @default(0)
-  catchShootFrequency Float @default(0)
-  catchShootEfficiency Float @default(0)
-  pullupAttempts Float @default(0)
-  pullupFrequency Float @default(0)
-  pullupEfficiency Float @default(0)
+  catchShootAttempts Float?
+  catchShootFrequency Float?
+  catchShootEfficiency Float?
+  pullupAttempts Float?
+  pullupFrequency Float?
+  pullupEfficiency Float?
   expectedEfg Float @default(0)
   source String
   sourceTier SourceTier

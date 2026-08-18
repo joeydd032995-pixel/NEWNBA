@@ -7,6 +7,14 @@ export type ReportingSourceClass =
   | 'AGGREGATOR'
   | 'UNKNOWN';
 
+export type ReportingSourceTier =
+  | 'TIER_1_OFFICIAL'
+  | 'TIER_2_HIGH_QUALITY'
+  | 'TIER_3_REPORTING'
+  | 'LOW_PRIORITY';
+
+export type ReportingDataQuality = 'LOW' | 'MEDIUM' | 'HIGH';
+
 export interface ReportingSourceRegistryEntry {
   key: string;
   displayName: string;
@@ -33,6 +41,13 @@ export interface ReportingResolution<T = string> {
   reason: string;
 }
 
+export interface ReportingSourceAssessment {
+  sourceKey: string;
+  sourceClass: ReportingSourceClass;
+  sourceTier: ReportingSourceTier;
+  dataQuality: ReportingDataQuality;
+}
+
 const SOURCE_RANK: Record<ReportingSourceClass, number> = {
   OFFICIAL_NBA: 600,
   OFFICIAL_TEAM: 550,
@@ -43,11 +58,102 @@ const SOURCE_RANK: Record<ReportingSourceClass, number> = {
   UNKNOWN: 100,
 };
 
+const ALLOWED_SOURCE_CLASSES = new Set<ReportingSourceClass>([
+  'OFFICIAL_NBA',
+  'OFFICIAL_TEAM',
+  'COACH_DIRECT',
+  'NATIONAL_REPORTER',
+  'BEAT_REPORTER',
+  'AGGREGATOR',
+  'UNKNOWN',
+]);
+
 export function compareReportingSources(
   a: ReportingSourceClass,
   b: ReportingSourceClass,
 ): number {
   return SOURCE_RANK[a] - SOURCE_RANK[b];
+}
+
+/**
+ * Classify raw reporting metadata without promoting an unidentified feed.
+ * Explicit upstream source_class is honored only when it is a known class.
+ * The current ESPN headline feed is an aggregator unless a named reporter is
+ * supplied, so it remains Tier 3 rather than being treated as first-party news.
+ */
+export function classifyReportingSource(input: {
+  source?: string | null;
+  sourceKey?: string | null;
+  sourceClass?: string | null;
+  sourceTier?: string | null;
+  reporterName?: string | null;
+}): ReportingSourceAssessment {
+  const source = (input.source ?? 'unknown').trim().toLowerCase();
+  const sourceKey = (input.sourceKey ?? input.reporterName ?? source).trim().toLowerCase() || 'unknown';
+  const explicitClass = (input.sourceClass ?? '').toUpperCase() as ReportingSourceClass;
+
+  if (source.includes('simulated') || sourceKey.includes('simulated')) {
+    return {
+      sourceKey,
+      sourceClass: 'UNKNOWN',
+      sourceTier: 'LOW_PRIORITY',
+      dataQuality: 'LOW',
+    };
+  }
+
+  if (ALLOWED_SOURCE_CLASSES.has(explicitClass)) {
+    return assessmentForClass(sourceKey, explicitClass);
+  }
+
+  if (
+    source.includes('official_nba') ||
+    source === 'nba' ||
+    source.includes('nba.com') ||
+    sourceKey.includes('official_nba')
+  ) {
+    return assessmentForClass(sourceKey, 'OFFICIAL_NBA');
+  }
+  if (source.includes('official_team') || sourceKey.includes('official_team')) {
+    return assessmentForClass(sourceKey, 'OFFICIAL_TEAM');
+  }
+  if (source.includes('coach_direct') || sourceKey.includes('coach_direct')) {
+    return assessmentForClass(sourceKey, 'COACH_DIRECT');
+  }
+  if (input.reporterName && source.includes('espn')) {
+    return assessmentForClass(sourceKey, 'NATIONAL_REPORTER');
+  }
+  if (source.includes('beat_reporter') || sourceKey.includes('beat_reporter')) {
+    return assessmentForClass(sourceKey, 'BEAT_REPORTER');
+  }
+  if (source.includes('national_reporter') || sourceKey.includes('national_reporter')) {
+    return assessmentForClass(sourceKey, 'NATIONAL_REPORTER');
+  }
+  if (source.includes('espn') || source.includes('aggregator')) {
+    return assessmentForClass(sourceKey, 'AGGREGATOR');
+  }
+
+  // Do not trust an arbitrary upstream source_tier claim when its identity is
+  // unknown. Unknown sources must earn promotion through an explicit registry.
+  return assessmentForClass(sourceKey, 'UNKNOWN');
+}
+
+function assessmentForClass(
+  sourceKey: string,
+  sourceClass: ReportingSourceClass,
+): ReportingSourceAssessment {
+  switch (sourceClass) {
+    case 'OFFICIAL_NBA':
+    case 'OFFICIAL_TEAM':
+    case 'COACH_DIRECT':
+      return { sourceKey, sourceClass, sourceTier: 'TIER_1_OFFICIAL', dataQuality: 'HIGH' };
+    case 'NATIONAL_REPORTER':
+    case 'BEAT_REPORTER':
+      return { sourceKey, sourceClass, sourceTier: 'TIER_3_REPORTING', dataQuality: 'MEDIUM' };
+    case 'AGGREGATOR':
+      return { sourceKey, sourceClass, sourceTier: 'TIER_3_REPORTING', dataQuality: 'MEDIUM' };
+    default:
+      return { sourceKey, sourceClass: 'UNKNOWN', sourceTier: 'LOW_PRIORITY', dataQuality: 'LOW' };
+  }
 }
 
 /**

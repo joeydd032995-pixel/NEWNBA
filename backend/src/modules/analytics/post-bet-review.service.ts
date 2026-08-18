@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { LegSettlementStatus } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { attributePostBetProcess } from './post-bet-attribution';
@@ -18,11 +19,12 @@ export class PostBetReviewService {
       const items = await this.prisma.betSlipItem.findMany({
         where: {
           postBetReview: null,
-          betSlip: { status: { in: ['WON', 'LOST', 'VOID'] } },
+          settlementStatus: { not: LegSettlementStatus.PENDING },
           marketId: { not: null },
         },
         include: {
           betSlip: true,
+          projectionSnapshot: true,
           market: {
             include: {
               player: true,
@@ -47,23 +49,33 @@ export class PostBetReviewService {
               },
             },
           }).catch(() => null),
-          this.findActualStatLine(
-            market.player.id,
-            market.event.startTime,
-          ),
+          this.prisma.statLine.findFirst({
+            where: {
+              playerId: market.player.id,
+              eventId: market.event.id,
+            },
+            orderBy: { createdAt: 'desc' },
+          }),
         ]);
 
-        const expectedMinutes = rotation?.minutesMedian ?? null;
+        // Recommendation-time snapshot is authoritative when present. Rotation
+        // rows are a fallback only for older tracked wagers without a snapshot.
+        const expectedMinutes = item.projectionSnapshot?.minutesMedian ?? rotation?.minutesMedian ?? null;
+        const minutesFloor = item.projectionSnapshot?.minutesFloor ?? rotation?.minutesFloor ?? null;
+        const minutesCeiling = item.projectionSnapshot?.minutesCeiling ?? rotation?.minutesCeiling ?? null;
         const actualMinutes = actualStatLine?.minutes ?? null;
-        const expectedUsage = null; // Only persist when a pregame usage projection becomes first-class on the wager.
-        const actualUsage = actualStatLine?.usgPct || null;
-        const expectedPace = null; // GameEnvironment currently stores schedule/rest, not a pregame pace projection.
+
+        // Usage and game pace remain null until they are stored as immutable
+        // recommendation-time fields; do not reconstruct them from later data.
+        const expectedUsage = null;
+        const actualUsage = actualStatLine?.usgPct ?? null;
+        const expectedPace = null;
         const actualPace = null;
 
         const attribution = attributePostBetProcess({
           expectedMinutes,
-          minutesFloor: rotation?.minutesFloor ?? null,
-          minutesCeiling: rotation?.minutesCeiling ?? null,
+          minutesFloor,
+          minutesCeiling,
           actualMinutes,
           expectedUsage,
           actualUsage,
@@ -72,6 +84,10 @@ export class PostBetReviewService {
           clvPrice: item.clvPrice,
           clvLine: item.clvLine,
         });
+
+        const outcomeContext = `Leg settlement: ${item.settlementStatus}${
+          item.actualValue !== null ? `; actual value ${item.actualValue}` : ''
+        }.`;
 
         await this.prisma.postBetReview.create({
           data: {
@@ -90,13 +106,13 @@ export class PostBetReviewService {
             marketTimingError: attribution.marketTimingError,
             varianceDominated: attribution.varianceDominated,
             primaryError: attribution.primaryError,
-            notes: attribution.notes.join(' '),
+            notes: `${outcomeContext} ${attribution.notes.join(' ')}`.trim(),
           },
         });
         created++;
       }
 
-      if (created > 0) this.logger.log(`Post-bet review: ${created} process reviews created`);
+      if (created > 0) this.logger.log(`Post-bet review: ${created} exact-event process reviews created`);
       return created;
     } catch (error) {
       this.logger.error(`Post-bet review failed: ${(error as Error).message}`);
@@ -114,21 +130,13 @@ export class PostBetReviewService {
         betSlipItem: {
           include: {
             book: true,
+            projectionSnapshot: true,
             market: {
               include: { player: true, event: { include: { homeTeam: true, awayTeam: true } } },
             },
           },
         },
       },
-    });
-  }
-
-  private async findActualStatLine(playerId: string, eventStart: Date) {
-    const start = new Date(eventStart.getTime() - 12 * 60 * 60 * 1000);
-    const end = new Date(eventStart.getTime() + 36 * 60 * 60 * 1000);
-    return this.prisma.statLine.findFirst({
-      where: { playerId, gameDate: { gte: start, lte: end } },
-      orderBy: { gameDate: 'asc' },
     });
   }
 }

@@ -1,9 +1,6 @@
 name: Opportunity-First CI
 
 on:
-  push:
-    branches:
-      - agent/opportunity-first
   pull_request:
     branches:
       - main
@@ -50,13 +47,36 @@ jobs:
       - name: Generate Prisma client
         working-directory: backend
         run: npx prisma generate
-      - name: Materialize frozen main baseline
+      - name: Materialize current main baseline
         working-directory: backend
         run: |
-          git show origin/main:backend/prisma/schema.prisma > /tmp/newnba-baseline.prisma
-          npx prisma db push --schema /tmp/newnba-baseline.prisma --skip-generate
-          npx prisma migrate resolve --applied 20260818000000_baseline_main
-      - name: Apply additive migrations
+          set -euo pipefail
+
+          git worktree add --detach /tmp/newnba-main origin/main
+          trap 'git worktree remove /tmp/newnba-main --force >/dev/null 2>&1 || true' EXIT
+
+          cp /tmp/newnba-main/backend/prisma/schema.prisma /tmp/newnba-main-baseline.prisma
+          npx prisma db push --schema /tmp/newnba-main-baseline.prisma --skip-generate
+
+          # The database now exactly matches current main. Mark every migration
+          # already present on main as applied so migrate deploy exercises only
+          # additive migrations introduced by this PR.
+          find /tmp/newnba-main/backend/prisma/migrations \
+            -mindepth 2 -maxdepth 2 -type f -name migration.sql -print \
+            | sed 's#/migration.sql$##' \
+            | xargs -r -n1 basename \
+            | sort -u \
+            > /tmp/main-migrations.txt
+
+          test -s /tmp/main-migrations.txt
+          while IFS= read -r migration; do
+            [ -n "$migration" ] || continue
+            npx prisma migrate resolve --applied "$migration"
+          done < /tmp/main-migrations.txt
+
+          git worktree remove /tmp/newnba-main --force
+          trap - EXIT
+      - name: Apply PR additive migrations
         working-directory: backend
         run: npx prisma migrate deploy
       - name: Run backend tests

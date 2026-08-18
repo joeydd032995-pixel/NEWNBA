@@ -5,193 +5,114 @@ describe('ParlayService', () => {
   let prismaStub: any;
   let analyticsStub: any;
 
-  const makeMarket = (marketType: string, propStatType: string | null, odds: number[], outcomes: string[]) => ({
-    id: `market-${marketType}`,
-    marketType,
-    propStatType,
-    description: null,
-    player: null,
-    marketOdds: outcomes.map((outcome, i) => ({
-      id: `mo-${i}`,
-      outcome,
-      odds: odds[i],
-      line: null,
-      book: { name: 'DraftKings' },
-    })),
-  });
-
   beforeEach(() => {
     prismaStub = {
-      event: {
-        findUnique: jest.fn().mockResolvedValue(null),
-      },
-      market: {
-        findUnique: jest.fn().mockResolvedValue(null),
-      },
+      event: { findUnique: jest.fn().mockResolvedValue(null) },
+      market: { findUnique: jest.fn().mockResolvedValue(null) },
     };
-
     analyticsStub = {
       removeVig: jest.fn().mockReturnValue([0.52, 0.48]),
-      calcEV: jest.fn().mockReturnValue({
-        ev: 2.0,
-        evPct: 2.0,
-        kellyFraction: 0.02,
-        impliedProb: 0.52,
-        isPositiveEV: true,
-      }),
+      calcEV: jest.fn((probability: number, odds: number) => ({
+        ev: probability,
+        evPct: probability - 0.5,
+        kellyFraction: 0,
+        impliedProb: 0.5,
+        isPositiveEV: probability > 0.5,
+        odds,
+      })),
     };
-
     service = new ParlayService(prismaStub, analyticsStub);
   });
 
   describe('getEventMarkets', () => {
     it('returns null when event not found', async () => {
-      prismaStub.event.findUnique.mockResolvedValue(null);
-
-      const result = await service.getEventMarkets('nonexistent');
-
-      expect(result).toBeNull();
+      expect(await service.getEventMarkets('missing')).toBeNull();
     });
 
-    it('filters out markets with no odds (empty outcomes)', async () => {
-      const event = {
+    it('keeps the best sportsbook price for each exact outcome and line', async () => {
+      prismaStub.event.findUnique.mockResolvedValue({
         id: 'event-1',
-        homeTeamId: 'team-h',
-        awayTeamId: 'team-a',
-        startTime: new Date(),
+        homeTeamId: 'home',
+        awayTeamId: 'away',
+        startTime: new Date('2026-01-01T00:00:00Z'),
         homeTeam: { abbreviation: 'LAL' },
         awayTeam: { abbreviation: 'BOS' },
-        markets: [
-          {
-            id: 'market-1',
-            marketType: 'MONEYLINE',
-            propStatType: null,
-            description: null,
-            player: null,
-            marketOdds: [],  // no odds → should be filtered out
-          },
-          {
-            id: 'market-2',
-            marketType: 'SPREAD',
-            propStatType: null,
-            description: null,
-            player: null,
-            marketOdds: [
-              { outcome: 'home', odds: -110, line: -3.5, book: { name: 'DraftKings' } },
-            ],
-          },
-        ],
-      };
-      prismaStub.event.findUnique.mockResolvedValue(event);
+        markets: [{
+          id: 'market-1',
+          marketType: 'PLAYER_PROP',
+          propStatType: 'POINTS',
+          description: 'Player points',
+          player: { id: 'p1', name: 'Player', teamId: 'home', team: { abbreviation: 'LAL' } },
+          marketOdds: [
+            { id: 'o1', outcome: 'Over', odds: -115, line: 24.5, bookId: 'b1', book: { name: 'Book A', slug: 'book-a' } },
+            { id: 'o2', outcome: 'over', odds: -105, line: 24.5, bookId: 'b2', book: { name: 'Book B', slug: 'book-b' } },
+            { id: 'o3', outcome: 'over', odds: 120, line: 25.5, bookId: 'b1', book: { name: 'Book A', slug: 'book-a' } },
+          ],
+        }],
+      });
 
       const result = await service.getEventMarkets('event-1');
-
       expect(result!.legs).toHaveLength(1);
-      expect(result!.legs[0].marketType).toBe('SPREAD');
-    });
-
-    it('collapses to best odds per outcome', async () => {
-      const event = {
-        id: 'event-1',
-        homeTeamId: 'team-h',
-        awayTeamId: 'team-a',
-        startTime: new Date(),
-        homeTeam: { abbreviation: 'LAL' },
-        awayTeam: { abbreviation: 'BOS' },
-        markets: [
-          {
-            id: 'market-1',
-            marketType: 'MONEYLINE',
-            propStatType: null,
-            description: null,
-            player: null,
-            marketOdds: [
-              { outcome: 'home', odds: -110, line: null, book: { name: 'DraftKings' } },
-              { outcome: 'home', odds: -105, line: null, book: { name: 'FanDuel' } },  // better
-            ],
-          },
-        ],
-      };
-      prismaStub.event.findUnique.mockResolvedValue(event);
-
-      const result = await service.getEventMarkets('event-1');
-
-      const homeOutcome = result!.legs[0].outcomes.find((o: any) => o.outcome === 'home');
-      expect(homeOutcome.odds).toBe(-105);
+      expect(result!.legs[0].outcomes).toHaveLength(2);
+      expect(result!.legs[0].outcomes).toEqual(expect.arrayContaining([
+        expect.objectContaining({ line: 24.5, odds: -105, bookId: 'b2', outcome: 'over' }),
+        expect.objectContaining({ line: 25.5, odds: 120, bookId: 'b1', outcome: 'over' }),
+      ]));
     });
   });
 
-  describe('analyzeSGP', () => {
-    it('throws when fewer than 2 legs provided', async () => {
-      await expect(
-        service.analyzeSGP('event-1', [{ marketId: 'market-1', outcome: 'home' }]),
-      ).rejects.toThrow('SGP requires at least 2 legs');
-    });
-
-    it('throws when event not found', async () => {
-      prismaStub.event.findUnique.mockResolvedValue(null);
-
-      await expect(
-        service.analyzeSGP('nonexistent', [
-          { marketId: 'market-1', outcome: 'home' },
-          { marketId: 'market-2', outcome: 'over' },
-        ]),
-      ).rejects.toThrow('Event not found');
-    });
-  });
-
-  describe('correlation matrix rules (via computeCorrelation indirectly)', () => {
-    // Test the pure correlation rules by using analyzeSGP end-to-end with mocked data
-
-    const makeEvent = () => ({
-      id: 'event-1',
-      homeTeamId: 'team-h',
-      awayTeamId: 'team-a',
-      homeTeam: { id: 'team-h', abbreviation: 'LAL' },
-      awayTeam: { id: 'team-a', abbreviation: 'BOS' },
-    });
-
-    const makeMoneylineMarket = (id: string, odds: number, outcome: string) => ({
+  describe('analyzeParlay', () => {
+    const market = (id: string, eventId: string, outcome = 'home') => ({
       id,
+      eventId,
       marketType: 'MONEYLINE',
       propStatType: null,
-      description: null,
-      player: null,
+      event: {
+        id: eventId,
+        homeTeam: { abbreviation: `${eventId}-H` },
+        awayTeam: { abbreviation: `${eventId}-A` },
+      },
       marketOdds: [
-        { id: `${id}-mo`, outcome, odds, line: null, book: { name: 'DraftKings' } },
-        { id: `${id}-mo2`, outcome: outcome === 'home' ? 'away' : 'home', odds: -120, line: null, book: { name: 'DraftKings' } },
+        { id: `${id}-1`, outcome, odds: -110, line: null, bookId: 'book-1', book: { name: 'Book', slug: 'book' } },
+        { id: `${id}-2`, outcome: outcome === 'home' ? 'away' : 'home', odds: -110, line: null, bookId: 'book-1', book: { name: 'Book', slug: 'book' } },
       ],
     });
 
-    it('detects negative correlation between ML_HOME and ML_AWAY', async () => {
-      prismaStub.event.findUnique.mockResolvedValue(makeEvent());
-      prismaStub.market.findUnique
-        .mockResolvedValueOnce(makeMoneylineMarket('m1', -110, 'home'))
-        .mockResolvedValueOnce(makeMoneylineMarket('m2', -110, 'away'));
-
-      const result = await service.analyzeSGP('event-1', [
-        { marketId: 'm1', outcome: 'home' },
-        { marketId: 'm2', outcome: 'away' },
-      ]);
-
-      // ML_HOME + ML_AWAY = -0.99 correlation → corr prob (%) should be much lower than indep prob (%)
-      expect(result.corrProb).toBeLessThan(result.indepProb);
+    it('requires at least two legs', async () => {
+      await expect(service.analyzeParlay([{ marketId: 'm1', outcome: 'home' }]))
+        .rejects.toThrow('Need at least 2 legs');
     });
 
-    it('corr prob is clamped to [0.001, 0.999]', async () => {
-      prismaStub.event.findUnique.mockResolvedValue(makeEvent());
+    it('withholds independent EV when any legs share an event', async () => {
       prismaStub.market.findUnique
-        .mockResolvedValueOnce(makeMoneylineMarket('m1', -110, 'home'))
-        .mockResolvedValueOnce(makeMoneylineMarket('m2', -110, 'away'));
+        .mockResolvedValueOnce(market('m1', 'event-1'))
+        .mockResolvedValueOnce(market('m2', 'event-1'));
 
-      const result = await service.analyzeSGP('event-1', [
+      const result = await service.analyzeParlay([
         { marketId: 'm1', outcome: 'home' },
-        { marketId: 'm2', outcome: 'away' },
+        { marketId: 'm2', outcome: 'home' },
       ]);
 
-      // corrProb is returned as a percentage (0-100) clamped from [0.001, 0.999] → [0.1, 99.9]
-      expect(result.corrProb).toBeGreaterThanOrEqual(0.001 * 100 - 1);
-      expect(result.corrProb).toBeLessThanOrEqual(0.999 * 100 + 1);
+      expect(result.trueProb).toBeNull();
+      expect(result.evPct).toBeNull();
+      expect(result.probabilityModel).toBe('UNMODELED_SAME_EVENT_DEPENDENCE');
+      expect(result.warning).toContain('/parlay/sgp/analyze');
+    });
+
+    it('uses only cross-event independent no-vig baselines for standard parlays', async () => {
+      prismaStub.market.findUnique
+        .mockResolvedValueOnce(market('m1', 'event-1'))
+        .mockResolvedValueOnce(market('m2', 'event-2'));
+
+      const result = await service.analyzeParlay([
+        { marketId: 'm1', outcome: 'home' },
+        { marketId: 'm2', outcome: 'home' },
+      ]);
+
+      expect(result.probabilityModel).toBe('CROSS_EVENT_INDEPENDENT_MARKET_NO_VIG_BASELINE');
+      expect(result.trueProb).not.toBeNull();
+      expect(result.evPct).not.toBeNull();
+      expect(result.legs.every((leg) => leg.probabilitySource === 'MARKET_NO_VIG_BASELINE')).toBe(true);
     });
   });
 });
