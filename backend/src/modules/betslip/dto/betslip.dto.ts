@@ -1,24 +1,24 @@
-import { IsBoolean, IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsNumber, IsOptional, IsIn } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateBetSlipDto {
-  @ApiProperty({ example: "Tonight's picks" })
+  @ApiProperty({ example: 'Tonight\'s picks' })
   @IsString()
   name: string;
 }
 
 export class AddItemDto {
-  @ApiPropertyOptional()
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   marketId?: string;
 
-  @ApiPropertyOptional()
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   eventId?: string;
 
-  @ApiPropertyOptional({ description: 'Book.id for the exact sportsbook used at recommendation time' })
+  @ApiProperty({ required: false, description: 'Sportsbook ID used for this exact wager' })
   @IsOptional()
   @IsString()
   bookId?: string;
@@ -27,55 +27,64 @@ export class AddItemDto {
   @IsString()
   outcome: string;
 
-  @ApiProperty({ example: -110, description: 'Exact recommendation price' })
+  @ApiProperty({ example: -110 })
   @IsNumber()
   odds: number;
 
-  @ApiPropertyOptional({ example: 23.5, description: 'Exact recommendation line' })
+  @ApiProperty({ required: false, example: 25.5, description: 'Exact line at recommendation time' })
   @IsOptional()
   @IsNumber()
   recommendedLine?: number;
 
-  @ApiPropertyOptional({ enum: ['OVER', 'UNDER', 'HOME', 'AWAY', 'YES', 'NO', 'OTHER'] })
+  @ApiProperty({ required: false, enum: ['OVER', 'UNDER', 'HOME', 'AWAY', 'YES', 'NO', 'OTHER'] })
   @IsOptional()
   @IsIn(['OVER', 'UNDER', 'HOME', 'AWAY', 'YES', 'NO', 'OTHER'])
-  direction?: 'OVER' | 'UNDER' | 'HOME' | 'AWAY' | 'YES' | 'NO' | 'OTHER';
+  direction?: string;
 
-  @ApiPropertyOptional({ enum: ['LOW', 'MODERATE', 'HIGH'] })
+  @ApiProperty({ required: false, enum: ['LOW', 'MODERATE', 'HIGH'] })
   @IsOptional()
   @IsIn(['LOW', 'MODERATE', 'HIGH'])
-  confidenceBucket?: 'LOW' | 'MODERATE' | 'HIGH';
+  confidenceBucket?: string;
 
-  @ApiPropertyOptional({ enum: ['PASS', 'WAIT', 'LEAN', 'BET', 'STRONG_BET'] })
+  @ApiProperty({ required: false, enum: ['PASS', 'WAIT', 'LEAN', 'BET', 'STRONG_BET'] })
   @IsOptional()
   @IsIn(['PASS', 'WAIT', 'LEAN', 'BET', 'STRONG_BET'])
-  decisionClass?: 'PASS' | 'WAIT' | 'LEAN' | 'BET' | 'STRONG_BET';
+  decisionClass?: string;
 
-  @ApiPropertyOptional({
-    enum: ['POINTS', 'REBOUNDS', 'ASSISTS', 'STEALS', 'BLOCKS', 'THREES', 'MINUTES', 'PRA', 'PR', 'PA', 'RA'],
+  @ApiProperty({
+    required: false,
+    enum: [
+      'POINTS', 'REBOUNDS', 'ASSISTS', 'STEALS', 'BLOCKS', 'THREES',
+      'TURNOVERS', 'STOCKS', 'DOUBLE_DOUBLE', 'TRIPLE_DOUBLE', 'MINUTES',
+      'PRA', 'PR', 'PA', 'RA',
+    ],
   })
   @IsOptional()
-  @IsString()
+  @IsIn([
+    'POINTS', 'REBOUNDS', 'ASSISTS', 'STEALS', 'BLOCKS', 'THREES',
+    'TURNOVERS', 'STOCKS', 'DOUBLE_DOUBLE', 'TRIPLE_DOUBLE', 'MINUTES',
+    'PRA', 'PR', 'PA', 'RA',
+  ])
   propStatType?: string;
 
-  @ApiPropertyOptional({ enum: ['PRESEASON', 'REGULAR_SEASON', 'PLAY_IN', 'PLAYOFFS', 'FINALS'] })
+  @ApiProperty({ required: false, enum: ['PRESEASON', 'REGULAR_SEASON', 'PLAY_IN', 'PLAYOFFS', 'FINALS'] })
   @IsOptional()
   @IsIn(['PRESEASON', 'REGULAR_SEASON', 'PLAY_IN', 'PLAYOFFS', 'FINALS'])
-  seasonPhase?: 'PRESEASON' | 'REGULAR_SEASON' | 'PLAY_IN' | 'PLAYOFFS' | 'FINALS';
+  seasonPhase?: string;
 
-  @ApiPropertyOptional({ example: 0.5 })
+  @ApiProperty({ required: false, example: 50 })
   @IsOptional()
   @IsNumber()
   stake?: number;
 
-  @ApiPropertyOptional({ example: 0.042, description: 'Expected value as a decimal fraction' })
+  @ApiProperty({ required: false, example: 4.2 })
   @IsOptional()
   @IsNumber()
   ev?: number;
 }
 
 export class CloseBetItemDto {
-  @ApiPropertyOptional({ example: 24.5 })
+  @ApiProperty({ required: false, example: 26.5 })
   @IsOptional()
   @IsNumber()
   closingLine?: number;
@@ -86,12 +95,12 @@ export class CloseBetItemDto {
 }
 
 export class UpdateSlipDto {
-  @ApiPropertyOptional({ example: 'Updated name' })
+  @ApiProperty({ required: false, example: 'Updated name' })
   @IsOptional()
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ example: 2 })
+  @ApiProperty({ required: false, example: 200 })
   @IsOptional()
   @IsNumber()
   totalStake?: number;
