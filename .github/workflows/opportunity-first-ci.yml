@@ -55,6 +55,7 @@ jobs:
         run: |
           git show origin/main:backend/prisma/schema.prisma > /tmp/newnba-baseline.prisma
           npx prisma db push --schema /tmp/newnba-baseline.prisma --skip-generate
+          npx prisma migrate resolve --applied 20260818000000_baseline_main
       - name: Apply additive migrations
         working-directory: backend
         run: npx prisma migrate deploy
