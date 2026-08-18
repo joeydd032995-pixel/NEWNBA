@@ -217,7 +217,7 @@ model Market {
   isActive     Boolean @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  event PublicBettingSplit[] @ignore
+  event        Event @relation(fields: [eventId], references: [id])
   sport        Sport @relation(fields: [sportId], references: [id])
   player       Player? @relation(fields: [playerId], references: [id])
   marketOdds   MarketOdds[]
@@ -226,7 +226,6 @@ model Market {
   publicBettingSplits PublicBettingSplit[]
   expertPicks  ExpertPick[]
   betSlipItems BetSlipItem[]
-  eventRelation Event @relation(fields: [eventId], references: [id], map: "markets_eventId_fkey")
   @@index([eventId])
   @@index([sportId])
   @@index([playerId])
