@@ -52,6 +52,8 @@ export interface OpportunityProjectionInput {
   expectedPace?: number;
   playerOpportunityShare?: number;
   expectedPossessions?: number;
+  baselinePpp?: number;
+  expectedPpp?: number;
 
   uncertainty: UncertaintyInputs;
   scripts: GameScriptInput[];
@@ -96,9 +98,11 @@ export interface ProjectionDistribution {
   opportunityEquation: {
     expectedMinutes: number;
     opportunityRatePerMinute: number;
+    opportunityRateSource: 'PER_MINUTE' | 'POSSESSION_SHARE';
     conversionRate: number;
     contextAdjustment: number;
     paceAdjustment: number;
+    pppAdjustment: number;
   };
 }
 
