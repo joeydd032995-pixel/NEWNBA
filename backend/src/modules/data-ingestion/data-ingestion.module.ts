@@ -8,6 +8,7 @@ import { InjuryIngestService } from './injury-ingest.service';
 import { NewsIngestService } from './news-ingest.service';
 import { PublicBettingService } from './public-betting.service';
 import { OpportunityDataIngestionJob } from '../../services/background-jobs/opportunity-data-ingestion.job';
+import { RotationReplacementJob } from '../../services/background-jobs/rotation-replacement.job';
 
 @Module({
   imports: [PrismaModule, NbaDataModule],
@@ -19,6 +20,7 @@ import { OpportunityDataIngestionJob } from '../../services/background-jobs/oppo
     NewsIngestService,
     PublicBettingService,
     OpportunityDataIngestionJob,
+    RotationReplacementJob,
   ],
   exports: [
     DataIngestionService,
