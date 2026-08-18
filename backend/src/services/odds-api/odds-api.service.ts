@@ -13,7 +13,8 @@ export interface OddsApiSport {
 
 export interface OddsApiOutcome {
   name: string;
-  price: number; // American odds
+  description?: string;
+  price: number;
   point?: number;
 }
 
@@ -65,12 +66,6 @@ export class OddsApiService {
     return data;
   }
 
-  /**
-   * Fetch odds for a given sport.
-   * @param sportKey e.g. 'basketball_nba'
-   * @param markets comma-separated market keys: 'h2h', 'spreads', 'totals'
-   * @param regions comma-separated regions: 'us', 'eu', 'uk', 'au'
-   */
   async getOdds(
     sportKey: string,
     markets = 'h2h,spreads,totals',
@@ -101,9 +96,6 @@ export class OddsApiService {
     }
   }
 
-  /**
-   * List upcoming events for a sport (without odds).
-   */
   async getSportEvents(sportKey: string): Promise<Array<{ id: string; home_team: string; away_team: string; commence_time: string }>> {
     this.assertEnabled();
     try {
@@ -119,7 +111,8 @@ export class OddsApiService {
   }
 
   /**
-   * Fetch odds for a specific event.
+   * Fetch odds for one event. The v4 event-odds endpoint returns one event
+   * object, not an array; keep this contract distinct from getOdds().
    */
   async getEventOdds(
     sportKey: string,
@@ -129,19 +122,18 @@ export class OddsApiService {
   ): Promise<OddsApiEvent | null> {
     this.assertEnabled();
     try {
-      const { data } = await this.http.get<OddsApiEvent[]>(
+      const { data } = await this.http.get<OddsApiEvent>(
         `/sports/${sportKey}/events/${eventId}/odds`,
         { params: { apiKey: this.apiKey, regions, markets, oddsFormat: 'american' } },
       );
-      return data[0] ?? null;
+      return data ?? null;
     } catch (e) {
       const status = e?.response?.status;
       if (status === 422) {
-        // 422 = event doesn't support these markets (normal for many events)
         this.logger.debug(`Event ${eventId} has no available markets for: ${markets}`);
       } else if (status === 429) {
         this.logger.warn(`Rate limited fetching event odds for ${eventId} — backing off`);
-        throw e; // re-throw so caller can stop the loop
+        throw e;
       } else {
         this.logger.warn(`Failed to fetch event odds for ${eventId}: ${e.message}`);
       }
