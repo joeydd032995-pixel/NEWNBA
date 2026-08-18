@@ -3,17 +3,25 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BetSlipStatus } from '@prisma/client';
 import { AddItemDto, CloseBetItemDto, UpdateSlipDto } from './dto/betslip.dto';
 import { calculateClv } from '../analytics/clv';
+import { WagerProjectionSnapshotService } from './wager-projection-snapshot.service';
 
 @Injectable()
 export class BetslipService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly projectionSnapshots: WagerProjectionSnapshotService,
+  ) {}
 
   async findAll(userId: string) {
     return this.prisma.betSlip.findMany({
       where: { userId },
       include: {
         items: {
-          include: { book: true, postBetReview: true },
+          include: {
+            book: true,
+            postBetReview: true,
+            projectionSnapshot: true,
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -25,7 +33,11 @@ export class BetslipService {
       where: { id },
       include: {
         items: {
-          include: { book: true, postBetReview: true },
+          include: {
+            book: true,
+            postBetReview: true,
+            projectionSnapshot: true,
+          },
         },
       },
     });
@@ -72,8 +84,20 @@ export class BetslipService {
       },
       include: { book: true },
     });
+
+    // Player-prop items receive an immutable Opportunity-First snapshot when a
+    // defensible projection exists. Non-prop bets and insufficient-data props
+    // keep their existing behavior; snapshot capture deliberately fails open.
+    await this.projectionSnapshots.captureForItem(item.id);
     await this.recalcTotals(id);
-    return item;
+
+    return this.prisma.betSlipItem.findUnique({
+      where: { id: item.id },
+      include: {
+        book: true,
+        projectionSnapshot: true,
+      },
+    });
   }
 
   async captureClosingMarket(
@@ -103,7 +127,11 @@ export class BetslipService {
         clvPrice: clv.priceClv,
         closedAt: new Date(),
       },
-      include: { book: true, postBetReview: true },
+      include: {
+        book: true,
+        postBetReview: true,
+        projectionSnapshot: true,
+      },
     });
   }
 
@@ -135,7 +163,14 @@ export class BetslipService {
     return this.prisma.betSlip.update({
       where: { id },
       data: { status: BetSlipStatus.SUBMITTED },
-      include: { items: { include: { book: true } } },
+      include: {
+        items: {
+          include: {
+            book: true,
+            projectionSnapshot: true,
+          },
+        },
+      },
     });
   }
 
