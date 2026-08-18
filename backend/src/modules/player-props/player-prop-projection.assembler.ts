@@ -75,7 +75,7 @@ export class PlayerPropProjectionAssembler {
         where: { playerId: params.playerId },
         orderBy: { gameDate: 'desc' },
         take: mode === 'DEEP' ? 20 : 10,
-      }).catch(() => []),
+      }),
       this.prisma.market.findFirst({
         where: { eventId: params.eventId, marketType: 'SPREAD', isActive: true },
         include: { marketOdds: { where: { isOpen: true }, take: 8 } },
@@ -83,7 +83,7 @@ export class PlayerPropProjectionAssembler {
       this.prisma.injuryReplacementProjection.findMany({
         where: { eventId: params.eventId, replacementPlayerId: params.playerId },
         orderBy: { projectedAt: 'desc' },
-      }).catch(() => []),
+      }),
     ]);
 
     if (statLines.length < 3) return null;
@@ -127,7 +127,7 @@ export class PlayerPropProjectionAssembler {
     };
 
     let distribution: ProjectionDistribution;
-    let opportunitySource = params.statType;
+    let opportunitySource: string = params.statType;
 
     switch (params.statType) {
       case PropStatType.POINTS:
@@ -455,8 +455,6 @@ function buildGameScripts(spread: number | null): OpportunityProjectionInput['sc
 }
 
 function spreadToBlowoutProbability(absSpread: number): number {
-  // Transparent spread-derived proxy pending calibration against historical NBA
-  // fourth-quarter starter-minute loss. It is model inference, never source data.
   return clamp(0.05 + absSpread * 0.018, 0.05, 0.36);
 }
 
