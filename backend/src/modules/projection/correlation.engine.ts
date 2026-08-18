@@ -1,4 +1,4 @@
-import { ProjectionDistribution } from './projection.types';
+import { ProjectionDistribution, ProjectionStat } from './projection.types';
 import { clamp, mean, percentile, sampleStandardNormal, seededRandom, stdDev } from './projection.math';
 
 /**
@@ -14,6 +14,7 @@ export function combineCorrelatedDistributions(
   correlationMatrix: number[][],
   seed: number,
   trials = 10_000,
+  compositeStat: ProjectionStat = 'PRA',
 ): ProjectionDistribution {
   if (distributions.length < 2) throw new Error('At least two component distributions are required');
   validateCorrelationMatrix(correlationMatrix, distributions.length);
@@ -25,7 +26,7 @@ export function combineCorrelatedDistributions(
 
   for (let trial = 0; trial < trials; trial++) {
     const independent = distributions.map(() => sampleStandardNormal(rng));
-    const correlated = lower.map((row, i) =>
+    const correlated = lower.map((row) =>
       row.reduce((sum, coefficient, j) => sum + coefficient * independent[j], 0),
     );
 
@@ -44,7 +45,7 @@ export function combineCorrelatedDistributions(
   );
 
   return {
-    stat: 'POINTS', // caller may relabel composite outputs such as PRA/PR/PA/RA
+    stat: compositeStat,
     trials,
     seed,
     mean: mean(samples),
@@ -61,20 +62,29 @@ export function combineCorrelatedDistributions(
     },
     samples,
     uncertainty: {
-      minutes: 0,
-      opportunity: 0,
-      conversion: 0,
-      context: 0,
-      pace: 0,
+      minutes: mean(distributions.map((distribution) => distribution.uncertainty.minutes)),
+      opportunity: mean(distributions.map((distribution) => distribution.uncertainty.opportunity)),
+      conversion: mean(distributions.map((distribution) => distribution.uncertainty.conversion)),
+      context: mean(distributions.map((distribution) => distribution.uncertainty.context)),
+      pace: mean(distributions.map((distribution) => distribution.uncertainty.pace)),
       total: componentUncertainty,
     },
     pointEstimate: distributions.reduce((sum, distribution) => sum + distribution.pointEstimate, 0),
     opportunityEquation: {
       expectedMinutes: mean(distributions.map((distribution) => distribution.opportunityEquation.expectedMinutes)),
-      opportunityRatePerMinute: 0,
-      conversionRate: 0,
-      contextAdjustment: 1,
+      opportunityRatePerMinute: distributions.reduce(
+        (sum, distribution) => sum + distribution.opportunityEquation.opportunityRatePerMinute,
+        0,
+      ),
+      opportunityRateSource: distributions.every(
+        (distribution) => distribution.opportunityEquation.opportunityRateSource === 'POSSESSION_SHARE',
+      )
+        ? 'POSSESSION_SHARE'
+        : 'PER_MINUTE',
+      conversionRate: mean(distributions.map((distribution) => distribution.opportunityEquation.conversionRate)),
+      contextAdjustment: mean(distributions.map((distribution) => distribution.opportunityEquation.contextAdjustment)),
       paceAdjustment: mean(distributions.map((distribution) => distribution.opportunityEquation.paceAdjustment)),
+      pppAdjustment: mean(distributions.map((distribution) => distribution.opportunityEquation.pppAdjustment)),
     },
   };
 }
@@ -121,6 +131,33 @@ export function correlatedJointProbability(
   return hits / trials;
 }
 
+export function empiricalCorrelationMatrix(series: number[][]): number[][] {
+  if (series.length < 2) throw new Error('At least two series are required');
+  const length = series[0].length;
+  if (length < 3 || series.some((values) => values.length !== length)) {
+    throw new Error('Empirical series must be aligned and contain at least three samples');
+  }
+  return series.map((a, i) => series.map((b, j) => (i === j ? 1 : pearson(a, b))));
+}
+
+export function pearson(a: number[], b: number[]): number {
+  if (a.length !== b.length || a.length < 3) return 0;
+  const meanA = mean(a);
+  const meanB = mean(b);
+  let numerator = 0;
+  let denomA = 0;
+  let denomB = 0;
+  for (let i = 0; i < a.length; i++) {
+    const da = a[i] - meanA;
+    const db = b[i] - meanB;
+    numerator += da * db;
+    denomA += da * da;
+    denomB += db * db;
+  }
+  if (denomA === 0 || denomB === 0) return 0;
+  return clamp(numerator / Math.sqrt(denomA * denomB), -0.95, 0.95);
+}
+
 function validateCorrelationMatrix(matrix: number[][], size: number): void {
   if (matrix.length !== size || matrix.some((row) => row.length !== size)) {
     throw new Error('Correlation matrix dimensions do not match distributions');
@@ -164,7 +201,6 @@ function cholesky(matrix: number[][], jitter: number): number[][] {
   return lower;
 }
 
-// Abramowitz-Stegun approximation; deterministic and sufficient for copula ranks.
 function normalCdf(x: number): number {
   const sign = x < 0 ? -1 : 1;
   const abs = Math.abs(x) / Math.sqrt(2);
