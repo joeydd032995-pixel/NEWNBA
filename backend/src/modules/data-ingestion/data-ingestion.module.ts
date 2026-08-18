@@ -1,27 +1,30 @@
 import { Module } from '@nestjs/common';
-import { DataIngestionService } from './data-ingestion.service';
+import { PrismaModule } from '../prisma/prisma.module';
+import { NbaDataModule } from '../../services/nba-data/nba-data.module';
 import { DataIngestionController } from './data-ingestion.controller';
+import { DataIngestionService } from './data-ingestion.service';
 import { NormalizationService } from './normalization.service';
 import { InjuryIngestService } from './injury-ingest.service';
 import { NewsIngestService } from './news-ingest.service';
 import { PublicBettingService } from './public-betting.service';
-import { PrismaModule } from '../prisma/prisma.module';
+import { OpportunityDataIngestionJob } from '../../services/background-jobs/opportunity-data-ingestion.job';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, NbaDataModule],
+  controllers: [DataIngestionController],
   providers: [
     DataIngestionService,
     NormalizationService,
     InjuryIngestService,
     NewsIngestService,
     PublicBettingService,
+    OpportunityDataIngestionJob,
   ],
-  controllers: [DataIngestionController],
   exports: [
     DataIngestionService,
+    NormalizationService,
     InjuryIngestService,
     NewsIngestService,
-    NormalizationService,
     PublicBettingService,
   ],
 })
