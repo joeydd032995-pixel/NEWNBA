@@ -157,8 +157,8 @@ function BetSlipDrawer() {
       {items.length > 0 && (
         <div className="p-4 border-t border-outline-variant/10">
           <div className="flex justify-between text-sm mb-1.5"><span className="text-on-surface-variant">Recorded Stake</span><span className="text-on-surface font-bold">${totalStake().toFixed(2)}</span></div>
-          <div className="flex justify-between text-sm mb-2"><span className="text-on-surface-variant">Legacy combined return</span><span className="text-secondary font-headline font-bold">${potentialReturn().toFixed(2)}</span></div>
-          <p className="text-[10px] text-on-surface-variant mb-3">This records wagers for CLV/performance tracking. It does not place an order with a sportsbook.</p>
+          <div className="flex justify-between text-sm mb-2"><span className="text-on-surface-variant">Potential singles return</span><span className="text-secondary font-headline font-bold">${potentialReturn().toFixed(2)}</span></div>
+          <p className="text-[10px] text-on-surface-variant mb-3">Each item is tracked as an independently staked wager. This records wagers for CLV/performance tracking and does not place an order with a sportsbook.</p>
           <button onClick={submitTrackedSlip} disabled={submitting} className="w-full py-3 bg-primary text-on-primary-container font-headline font-bold rounded-xl hover:brightness-110 transition-all uppercase tracking-wider disabled:opacity-50">{submitting ? 'Saving…' : 'Track Wagers'}</button>
         </div>
       )}
