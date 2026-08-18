@@ -37,8 +37,18 @@ model User {
   @@map("users")
 }
 
-enum PlanType { FREE PRO PREMIUM }
-enum SubscriptionStatus { TRIALING ACTIVE EXPIRED CANCELED }
+enum PlanType {
+  FREE
+  PRO
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  EXPIRED
+  CANCELED
+}
 
 model Sport {
   id        String   @id @default(uuid())
@@ -192,7 +202,13 @@ model Event {
   @@map("events")
 }
 
-enum EventStatus { SCHEDULED LIVE FINAL POSTPONED CANCELLED }
+enum EventStatus {
+  SCHEDULED
+  LIVE
+  FINAL
+  POSTPONED
+  CANCELLED
+}
 
 model Book {
   id        String @id @default(uuid())
@@ -233,14 +249,42 @@ model Market {
 }
 
 enum MarketType {
-  MONEYLINE SPREAD TOTAL TEAM_TOTAL
-  FIRST_HALF_MONEYLINE FIRST_HALF_SPREAD FIRST_HALF_TOTAL FIRST_HALF_TEAM_TOTAL
-  FIRST_QUARTER_MONEYLINE FIRST_QUARTER_SPREAD FIRST_QUARTER_TOTAL FIRST_QUARTER_TEAM_TOTAL
-  PLAYER_PROP PLAYER_PROP_ALTERNATE DERIVATIVE TEAM_PROP FUTURES PARLAY
+  MONEYLINE
+  SPREAD
+  TOTAL
+  TEAM_TOTAL
+  FIRST_HALF_MONEYLINE
+  FIRST_HALF_SPREAD
+  FIRST_HALF_TOTAL
+  FIRST_HALF_TEAM_TOTAL
+  FIRST_QUARTER_MONEYLINE
+  FIRST_QUARTER_SPREAD
+  FIRST_QUARTER_TOTAL
+  FIRST_QUARTER_TEAM_TOTAL
+  PLAYER_PROP
+  PLAYER_PROP_ALTERNATE
+  DERIVATIVE
+  TEAM_PROP
+  FUTURES
+  PARLAY
 }
 
 enum PropStatType {
-  POINTS REBOUNDS ASSISTS STEALS BLOCKS THREES TURNOVERS STOCKS DOUBLE_DOUBLE TRIPLE_DOUBLE MINUTES PRA PR PA RA
+  POINTS
+  REBOUNDS
+  ASSISTS
+  STEALS
+  BLOCKS
+  THREES
+  TURNOVERS
+  STOCKS
+  DOUBLE_DOUBLE
+  TRIPLE_DOUBLE
+  MINUTES
+  PRA
+  PR
+  PA
+  RA
 }
 
 model MarketOdds {
@@ -397,7 +441,12 @@ model EnsembleModel {
   @@map("ensemble_models")
 }
 
-enum EnsembleStrategy { WEIGHTED_AVERAGE VOTING STACKING BOOSTING }
+enum EnsembleStrategy {
+  WEIGHTED_AVERAGE
+  VOTING
+  STACKING
+  BOOSTING
+}
 
 model EnsembleComponent {
   id String @id @default(uuid())
@@ -437,7 +486,13 @@ model OptimizationRun {
   @@map("optimization_runs")
 }
 
-enum OptimizationStatus { PENDING RUNNING COMPLETED FAILED CANCELLED }
+enum OptimizationStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
 
 model OptimizationCandidate {
   id String @id @default(uuid())
@@ -481,7 +536,12 @@ model ABTest {
   @@map("ab_tests")
 }
 
-enum ABTestStatus { DRAFT RUNNING COMPLETED PAUSED }
+enum ABTestStatus {
+  DRAFT
+  RUNNING
+  COMPLETED
+  PAUSED
+}
 
 model ABTestResult {
   id String @id @default(uuid())
@@ -526,7 +586,14 @@ model Alert {
   @@map("alerts")
 }
 
-enum AlertType { EV_THRESHOLD ARBITRAGE LINE_MOVEMENT INJURY CONTRARIAN CUSTOM }
+enum AlertType {
+  EV_THRESHOLD
+  ARBITRAGE
+  LINE_MOVEMENT
+  INJURY
+  CONTRARIAN
+  CUSTOM
+}
 
 model Notification {
   id String @id @default(uuid())
@@ -561,7 +628,13 @@ model BetSlip {
   @@map("bet_slips")
 }
 
-enum BetSlipStatus { OPEN SUBMITTED WON LOST VOID }
+enum BetSlipStatus {
+  OPEN
+  SUBMITTED
+  WON
+  LOST
+  VOID
+}
 
 model BetSlipItem {
   id String @id @default(uuid())
@@ -601,14 +674,63 @@ model BetSlipItem {
   @@map("bet_slip_items")
 }
 
-enum BetDirection { OVER UNDER HOME AWAY YES NO OTHER }
-enum ConfidenceBucket { LOW MODERATE HIGH }
-enum DecisionClass { PASS WAIT LEAN BET STRONG_BET }
-enum NewsDecisionClass { BET_NOW WAIT PASS }
-enum SeasonPhase { PRESEASON REGULAR_SEASON PLAY_IN PLAYOFFS FINALS }
-enum AnalysisMode { FAST STANDARD DEEP }
-enum DataQualityLevel { LOW MEDIUM HIGH }
-enum SourceTier { TIER_1_OFFICIAL TIER_2_HIGH_QUALITY TIER_3_REPORTING LOW_PRIORITY SIMULATED }
+enum BetDirection {
+  OVER
+  UNDER
+  HOME
+  AWAY
+  YES
+  NO
+  OTHER
+}
+
+enum ConfidenceBucket {
+  LOW
+  MODERATE
+  HIGH
+}
+
+enum DecisionClass {
+  PASS
+  WAIT
+  LEAN
+  BET
+  STRONG_BET
+}
+
+enum NewsDecisionClass {
+  BET_NOW
+  WAIT
+  PASS
+}
+
+enum SeasonPhase {
+  PRESEASON
+  REGULAR_SEASON
+  PLAY_IN
+  PLAYOFFS
+  FINALS
+}
+
+enum AnalysisMode {
+  FAST
+  STANDARD
+  DEEP
+}
+
+enum DataQualityLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SourceTier {
+  TIER_1_OFFICIAL
+  TIER_2_HIGH_QUALITY
+  TIER_3_REPORTING
+  LOW_PRIORITY
+  SIMULATED
+}
 
 model WagerProjectionSnapshot {
   id String @id @default(uuid())
@@ -681,7 +803,14 @@ model OddsSnapshot {
   @@map("odds_snapshots")
 }
 
-enum InjuryStatus { OUT DOUBTFUL QUESTIONABLE PROBABLE GTD ACTIVE }
+enum InjuryStatus {
+  OUT
+  DOUBTFUL
+  QUESTIONABLE
+  PROBABLE
+  GTD
+  ACTIVE
+}
 
 model InjuryReport {
   id String @id @default(uuid())
@@ -765,7 +894,13 @@ model RefereeAssignment {
   @@map("referee_assignments")
 }
 
-enum RefereeRole { CREW_CHIEF REFEREE UMPIRE CREW ALTERNATE }
+enum RefereeRole {
+  CREW_CHIEF
+  REFEREE
+  UMPIRE
+  CREW
+  ALTERNATE
+}
 
 model RefereeMetric {
   id String @id @default(uuid())
@@ -838,8 +973,21 @@ model GameLineup {
   @@map("game_lineups")
 }
 
-enum LineupType { EXPECTED_STARTERS OFFICIAL_STARTERS OPENING CLOSING SMALL_BALL DOUBLE_BIG BENCH_HEAVY }
-enum LineupStatus { PROJECTED CONFIRMED SUPERSEDED }
+enum LineupType {
+  EXPECTED_STARTERS
+  OFFICIAL_STARTERS
+  OPENING
+  CLOSING
+  SMALL_BALL
+  DOUBLE_BIG
+  BENCH_HEAVY
+}
+
+enum LineupStatus {
+  PROJECTED
+  CONFIRMED
+  SUPERSEDED
+}
 
 model GameLineupPlayer {
   id String @id @default(uuid())
@@ -888,9 +1036,31 @@ model RotationProjection {
   @@map("rotation_projections")
 }
 
-enum PlayerRotationRole { PRIMARY_CREATOR SECONDARY_CREATOR SCORING_SPECIALIST CONNECTOR RIM_BIG STRETCH_BIG DEFENSIVE_SPECIALIST BENCH_SCORER ROTATION_PLAYER END_OF_BENCH }
-enum StarterStatus { CONFIRMED_STARTER EXPECTED_STARTER BENCH UNKNOWN }
-enum AvailabilityConstraint { NONE POSSIBLE CONFIRMED }
+enum PlayerRotationRole {
+  PRIMARY_CREATOR
+  SECONDARY_CREATOR
+  SCORING_SPECIALIST
+  CONNECTOR
+  RIM_BIG
+  STRETCH_BIG
+  DEFENSIVE_SPECIALIST
+  BENCH_SCORER
+  ROTATION_PLAYER
+  END_OF_BENCH
+}
+
+enum StarterStatus {
+  CONFIRMED_STARTER
+  EXPECTED_STARTER
+  BENCH
+  UNKNOWN
+}
+
+enum AvailabilityConstraint {
+  NONE
+  POSSIBLE
+  CONFIRMED
+}
 
 model CoachRotationTendency {
   id String @id @default(uuid())
@@ -1033,7 +1203,19 @@ model PlayerPlayTypeStat {
   @@map("player_play_type_stats")
 }
 
-enum PlayType { PICK_AND_ROLL_BALL_HANDLER PICK_AND_ROLL_ROLL_MAN ISOLATION POST_UP HANDOFF TRANSITION HALF_COURT SPOT_UP CUT OFF_SCREEN PUTBACK }
+enum PlayType {
+  PICK_AND_ROLL_BALL_HANDLER
+  PICK_AND_ROLL_ROLL_MAN
+  ISOLATION
+  POST_UP
+  HANDOFF
+  TRANSITION
+  HALF_COURT
+  SPOT_UP
+  CUT
+  OFF_SCREEN
+  PUTBACK
+}
 
 model TeamDefensiveSchemeStat {
   id String @id @default(uuid())
@@ -1228,8 +1410,30 @@ model PostBetReview {
   @@map("post_bet_reviews")
 }
 
-enum ProcessGrade { CORRECT MOSTLY_CORRECT MIXED MOSTLY_INCORRECT INCORRECT }
-enum ErrorAttributionType { MINUTES_PROJECTION USAGE_PROJECTION INJURY_INFORMATION ROTATION MATCHUP PACE EFFICIENCY MARKET_TIMING PRICE VARIANCE FOUL_TROUBLE BLOWOUT IN_GAME_INJURY UNEXPECTED_COACHING }
+enum ProcessGrade {
+  CORRECT
+  MOSTLY_CORRECT
+  MIXED
+  MOSTLY_INCORRECT
+  INCORRECT
+}
+
+enum ErrorAttributionType {
+  MINUTES_PROJECTION
+  USAGE_PROJECTION
+  INJURY_INFORMATION
+  ROTATION
+  MATCHUP
+  PACE
+  EFFICIENCY
+  MARKET_TIMING
+  PRICE
+  VARIANCE
+  FOUL_TROUBLE
+  BLOWOUT
+  IN_GAME_INJURY
+  UNEXPECTED_COACHING
+}
 
 model PerformanceSlice {
   id String @id @default(uuid())
@@ -1257,7 +1461,14 @@ model PerformanceSlice {
   @@map("performance_slices")
 }
 
-enum PerformanceDimension { CONFIDENCE PROP_TYPE DIRECTION SEASON_PHASE MARKET_TYPE SPORTSBOOK }
+enum PerformanceDimension {
+  CONFIDENCE
+  PROP_TYPE
+  DIRECTION
+  SEASON_PHASE
+  MARKET_TYPE
+  SPORTSBOOK
+}
 
 model ExpertPick {
   id String @id @default(uuid())
