@@ -8,6 +8,7 @@ coordinates, time zones, travel distance or altitude from city/arena names.
 from __future__ import annotations
 
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from html import unescape
 from typing import Any
@@ -34,8 +35,6 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; NEWNBA/2.0; +opportunity-first)",
 }
 
-# SSR team pages contain visible labels in document order. We strip markup and
-# match bounded labels rather than parsing arbitrary JSON blobs.
 CITY_ARENA_RE = re.compile(
     r"\bCity\s+(?P<city>.+?)\s+Arena\s+(?P<arena>.+?)\s+(?:G-League|G League|Governor\(s\)|General Manager|Head Coach)\b",
     re.I | re.S,
@@ -107,8 +106,35 @@ def fetch_team_arena(team_abbr: str, team_id: int, timeout: int = 15) -> dict[st
         }
 
 
-def get_official_arenas(timeout: int = 15) -> dict[str, Any]:
-    arenas = [fetch_team_arena(abbr, team_id, timeout) for abbr, team_id in TEAM_IDS.items()]
+def get_official_arenas(timeout: int = 15, workers: int = 8) -> dict[str, Any]:
+    arenas_by_team: dict[str, dict[str, Any]] = {}
+    # Bound concurrency so the endpoint completes well inside the backend's
+    # request timeout without opening an excessive number of connections.
+    with ThreadPoolExecutor(max_workers=max(1, min(workers, 10))) as executor:
+        futures = {
+            executor.submit(fetch_team_arena, abbr, team_id, timeout): abbr
+            for abbr, team_id in TEAM_IDS.items()
+        }
+        for future in as_completed(futures):
+            abbr = futures[future]
+            try:
+                arenas_by_team[abbr] = future.result()
+            except Exception as exc:  # defensive: one team must not fail the batch
+                arenas_by_team[abbr] = {
+                    "team_abbr": abbr,
+                    "team_id": TEAM_IDS[abbr],
+                    "arena": None,
+                    "city": None,
+                    "source": "nba_team_profile",
+                    "source_tier": "TIER_1_OFFICIAL",
+                    "data_quality": "LOW",
+                    "source_url": PROFILE_URL.format(team_id=TEAM_IDS[abbr]),
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                    "error": str(exc),
+                }
+
+    # Preserve stable team order for deterministic API/test output.
+    arenas = [arenas_by_team[abbr] for abbr in TEAM_IDS]
     successful = [row for row in arenas if row.get("arena") and row.get("city")]
     return {
         "arenas": arenas,
