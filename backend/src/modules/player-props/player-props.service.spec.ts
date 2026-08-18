@@ -9,7 +9,10 @@ describe('PlayerPropsService', () => {
 
   beforeEach(() => {
     prismaStub = {
-      statLine: { findMany: jest.fn().mockResolvedValue([]) },
+      statLine: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn().mockResolvedValue({ season: '2025-26' }),
+      },
       player:   { findUnique: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]) },
       market:   { findUnique: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]) },
       team:     { findMany: jest.fn().mockResolvedValue([]) },
@@ -224,6 +227,7 @@ describe('PlayerPropsService', () => {
         event: { id: 'e1', homeTeamId: 'team1', awayTeamId: 'team2', homeTeam: {}, awayTeam: {} },
         marketOdds: [{ line: 25.5, isOpen: true }],
       });
+      prismaStub.statLine.findFirst.mockResolvedValue({ season: '2025-26' });
       prismaStub.statLine.findMany.mockResolvedValue([
         { points: 30, rebounds: 5, assists: 5, steals: 1, blocks: 1, fg3m: 2, minutes: 36 },
         { points: 20, rebounds: 5, assists: 5, steals: 1, blocks: 1, fg3m: 2, minutes: 36 },
