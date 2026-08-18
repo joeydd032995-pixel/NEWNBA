@@ -265,7 +265,9 @@ export class OpportunityDataIngestionJob {
 
   private async syncTeamLineups(team: any, nbaTeamId: number, season: string): Promise<void> {
     const dataset = await this.nbaData.getTeamLineups(nbaTeamId, season, 0);
-    const playerByName = new Map(team.players.map((player: any) => [normalizeName(player.name), player]));
+    const playerByName = new Map<string, { id: string; name: string }>(
+      team.players.map((player: { id: string; name: string }) => [normalizeName(player.name), player]),
+    );
 
     for (const row of dataset.rows) {
       const lineupKey = stringField(row, ['group_id', 'lineup_id']);
@@ -308,8 +310,10 @@ export class OpportunityDataIngestionJob {
 
   private async syncTeamOnOff(team: any, nbaTeamId: number, season: string): Promise<void> {
     const dataset = await this.nbaData.getTeamOnOff(nbaTeamId, season, 0);
-    const playerByName = new Map(team.players.map((player: any) => [normalizeName(player.name), player]));
-    const paired = new Map<string, { on?: any; off?: any; player: any }>();
+    const playerByName = new Map<string, { id: string; name: string }>(
+      team.players.map((player: { id: string; name: string }) => [normalizeName(player.name), player]),
+    );
+    const paired = new Map<string, { on?: any; off?: any; player: { id: string; name: string } }>();
 
     for (const row of dataset.rows) {
       const playerName = stringField(row, ['vs_player_name', 'player_name', 'player']);
