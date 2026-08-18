@@ -29,7 +29,7 @@ describe('BetslipService', () => {
   });
 
   describe('findAll', () => {
-    it('filters and sorts betslips by user', async () => {
+    it('filters and sorts betslips by user with tracking details', async () => {
       const userId = 'user-123';
       const slips = [
         {
@@ -53,7 +53,14 @@ describe('BetslipService', () => {
 
       expect(prismaStub.betSlip.findMany).toHaveBeenCalledWith({
         where: { userId },
-        include: { items: true },
+        include: {
+          items: {
+            include: {
+              book: true,
+              postBetReview: true,
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       });
       expect(result).toEqual(slips);
@@ -85,7 +92,6 @@ describe('BetslipService', () => {
 
       await service.addItem('slip-1', 'user-1', dto);
 
-      // recalcTotals calls betSlip.update with totalStake
       expect(prismaStub.betSlip.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ totalStake: 50 }),
@@ -95,8 +101,8 @@ describe('BetslipService', () => {
 
     it('calculates parlay odds as product of decimal odds', async () => {
       const slip = { id: 'slip-1', userId: 'user-1', status: 'OPEN', items: [] };
-      const existingItem = { odds: 110, stake: 25 }; // decimal = 2.10
-      const newItem = { marketId: 'market-2', outcome: 'away', odds: -110, stake: 25 }; // decimal = 1.9091
+      const existingItem = { odds: 110, stake: 25 };
+      const newItem = { marketId: 'market-2', outcome: 'away', odds: -110, stake: 25 };
 
       prismaStub.betSlip.findUnique.mockResolvedValue(slip);
       prismaStub.betSlipItem.create.mockResolvedValue({ id: 'item-2', betSlipId: 'slip-1', ...newItem });
@@ -105,7 +111,6 @@ describe('BetslipService', () => {
 
       await service.addItem('slip-1', 'user-1', newItem);
 
-      // parlay odds = 2.10 × 1.9091 ≈ 4.009 — verify update was called with totalOdds
       const updateCall = prismaStub.betSlip.update.mock.calls[0][0];
       expect(updateCall.data.totalOdds).toBeCloseTo(2.1 * (100 / 110 + 1), 1);
     });
@@ -124,9 +129,10 @@ describe('BetslipService', () => {
   });
 
   describe('removeItem', () => {
-    it('throws NotFoundException when item not found on slip', async () => {
-      const slip = { id: 'slip-1', userId: 'user-1', items: [] };
+    it('throws NotFoundException when item not found on an open slip', async () => {
+      const slip = { id: 'slip-1', userId: 'user-1', status: 'OPEN', items: [] };
       prismaStub.betSlip.findUnique.mockResolvedValue(slip);
+      prismaStub.betSlipItem.findUnique.mockResolvedValue(null);
 
       await expect(
         service.removeItem('slip-1', 'item-999', 'user-1'),
@@ -174,7 +180,7 @@ describe('BetslipService', () => {
       prismaStub.betSlip.findUnique.mockResolvedValue(slip);
       prismaStub.betSlip.delete.mockResolvedValue(slip);
 
-      const result = await service.remove('slip-1', 'user-1');
+      await service.remove('slip-1', 'user-1');
 
       expect(prismaStub.betSlip.delete).toHaveBeenCalled();
     });
@@ -193,8 +199,6 @@ describe('BetslipService', () => {
         totalOdds: null,
       });
 
-      // This is a private method, but we can test it indirectly through public methods
-      // or through a helper test if needed
       expect(slip.items.length).toBe(0);
     });
   });
