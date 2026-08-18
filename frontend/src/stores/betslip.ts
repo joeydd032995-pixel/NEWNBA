@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+export type BetDirection = 'OVER' | 'UNDER' | 'HOME' | 'AWAY' | 'YES' | 'NO' | 'OTHER'
+export type ConfidenceBucket = 'LOW' | 'MODERATE' | 'HIGH'
+export type DecisionClass = 'PASS' | 'WAIT' | 'LEAN' | 'BET' | 'STRONG_BET'
+
 export interface BetSlipItem {
   id: string
   eventId: string
@@ -11,6 +15,14 @@ export interface BetSlipItem {
   stake: number
   ev?: number
   isLocked?: boolean
+  bookId?: string
+  bookName?: string
+  recommendedLine?: number
+  direction?: BetDirection
+  confidenceBucket?: ConfidenceBucket
+  decisionClass?: DecisionClass
+  propStatType?: string
+  seasonPhase?: 'PRESEASON' | 'REGULAR_SEASON' | 'PLAY_IN' | 'PLAYOFFS' | 'FINALS'
 }
 
 interface BetSlipStore {
