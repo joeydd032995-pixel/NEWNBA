@@ -1,0 +1,5 @@
+services:
+  nba-data:
+    build:
+      context: ./nba-data
+      dockerfile: Dockerfile.prod
