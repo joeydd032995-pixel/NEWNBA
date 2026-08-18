@@ -16,6 +16,7 @@ import EnsemblePage from './pages/EnsemblePage'
 import ABTestingPage from './pages/ABTestingPage'
 import AlertsPage from './pages/AlertsPage'
 import PlayerPropsPage from './pages/PlayerPropsPage'
+import OpportunityFirstPage from './pages/OpportunityFirstPage'
 import ExpertPicksPage from './pages/ExpertPicksPage'
 import LiveBettingPage from './pages/LiveBettingPage'
 import ParlayBuilderPage from './pages/ParlayBuilderPage'
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="/ev-feed" element={<PlanRoute requiredPlan="PRO" featureName="EV Feed"><EVFeedPage /></PlanRoute>} />
         <Route path="/arbitrage" element={<PlanRoute requiredPlan="PRO" featureName="Arbitrage"><ArbitrageFeedPage /></PlanRoute>} />
         <Route path="/player-props" element={<PlanRoute requiredPlan="PRO" featureName="Player Props"><PlayerPropsPage /></PlanRoute>} />
+        <Route path="/opportunity" element={<PlanRoute requiredPlan="PRO" featureName="Opportunity-First Intelligence"><OpportunityFirstPage /></PlanRoute>} />
         <Route path="/expert-picks" element={<PlanRoute requiredPlan="PRO" featureName="Expert Picks"><ExpertPicksPage /></PlanRoute>} />
         <Route path="/live" element={<PlanRoute requiredPlan="PRO" featureName="Live Betting"><LiveBettingPage /></PlanRoute>} />
         <Route path="/parlay" element={<PlanRoute requiredPlan="PRO" featureName="Parlay Builder"><ParlayBuilderPage /></PlanRoute>} />

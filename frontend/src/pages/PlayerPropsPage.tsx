@@ -221,11 +221,12 @@ export default function PlayerPropsPage() {
   const handleAddToSlip = (e: React.MouseEvent, row: any, outcome: any) => {
     e.stopPropagation()
     addItem({
-      id: `${row.marketId}-${outcome.outcome}-${outcome.bookSlug}`,
+      eventId: row.event.id,
+      marketId: row.marketId,
       outcome: `${row.player.name} ${outcome.outcome.toUpperCase()} ${row.line} ${row.statType}`,
       eventName: `${row.event.away} @ ${row.event.home}`,
       odds: outcome.odds,
-      stake: 10,
+      ev: outcome.evPct,
     })
     toast.success('Added to bet slip')
   }

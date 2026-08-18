@@ -12,6 +12,7 @@ const navItems = [
   { to: '/parlay', label: 'Parlay Builder', icon: 'layers' },
   { to: '/bankroll', label: 'Bankroll', icon: 'account_balance_wallet' },
   { to: '/player-props', label: 'Player Props', icon: 'person_search' },
+  { to: '/opportunity', label: 'Opportunity', icon: 'query_stats' },
   { to: '/expert-picks', label: 'Expert Picks', icon: 'star' },
   { to: '/arbitrage', label: 'Arbitrage', icon: 'balance' },
   { to: '/models', label: 'Custom Models', icon: 'architecture' },
@@ -46,6 +47,7 @@ export default function Layout({ children }: LayoutProps) {
           <span className="text-xl font-black text-primary tracking-widest uppercase font-headline">Neon Observatory</span>
           <div className="hidden md:flex gap-6 items-center">
             <NavLink to="/models" className={({ isActive }) => `font-headline font-bold tracking-tight transition-colors text-sm ${isActive ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>Models</NavLink>
+            <NavLink to="/opportunity" className={({ isActive }) => `font-headline font-bold tracking-tight transition-colors text-sm ${isActive ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>Intelligence</NavLink>
             <NavLink to="/performance" className={({ isActive }) => `font-headline font-bold tracking-tight transition-colors text-sm ${isActive ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>Analytics</NavLink>
             <NavLink to="/alerts" className={({ isActive }) => `font-headline font-bold tracking-tight transition-colors text-sm ${isActive ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>Alerts</NavLink>
           </div>

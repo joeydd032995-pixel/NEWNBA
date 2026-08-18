@@ -5,31 +5,38 @@ describe('PlayerPropsService', () => {
   let service: PlayerPropsService;
   let prismaStub: any;
   let analyticsStub: any;
+  let projectionAssemblerStub: any;
 
   beforeEach(() => {
     prismaStub = {
-      statLine: { findMany: jest.fn().mockResolvedValue([]) },
+      statLine: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn().mockResolvedValue({ season: '2025-26' }),
+      },
       player:   { findUnique: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]) },
       market:   { findUnique: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]) },
       team:     { findMany: jest.fn().mockResolvedValue([]) },
       event:    { findMany: jest.fn().mockResolvedValue([]) },
       injuryReport: { findFirst: jest.fn().mockResolvedValue(null) },
       newsItem:     { findMany: jest.fn().mockResolvedValue([]) },
+      playerAvailabilityProjection: { findUnique: jest.fn().mockResolvedValue(null) },
     } as any;
 
     analyticsStub = {
       calcEV: jest.fn().mockReturnValue({ ev: 0.05, evPct: 5, kellyFraction: 0.02 }),
     } as any;
 
-    service = new PlayerPropsService(prismaStub, analyticsStub);
-  });
+    projectionAssemblerStub = {
+      assemble: jest.fn().mockResolvedValue(null),
+    } as any;
 
-  // ─── computeStatValue ────────────────────────────────────────────────────
+    service = new PlayerPropsService(prismaStub, analyticsStub, projectionAssemblerStub);
+  });
 
   describe('computeStatValue', () => {
     const sl = {
       points: 25, rebounds: 8, assists: 6, steals: 2, blocks: 1,
-      fg3m: 3, minutes: 34,
+      turnovers: 4, fg3m: 3, minutes: 34,
     };
 
     it('returns points for POINTS', () => {
@@ -54,6 +61,14 @@ describe('PlayerPropsService', () => {
 
     it('returns fg3m for THREES', () => {
       expect(service.computeStatValue(sl, PropStatType.THREES)).toBe(3);
+    });
+
+    it('returns turnovers for TURNOVERS', () => {
+      expect(service.computeStatValue(sl, PropStatType.TURNOVERS)).toBe(4);
+    });
+
+    it('returns steals plus blocks for STOCKS', () => {
+      expect(service.computeStatValue(sl, PropStatType.STOCKS)).toBe(3);
     });
 
     it('returns minutes for MINUTES', () => {
@@ -81,8 +96,6 @@ describe('PlayerPropsService', () => {
     });
   });
 
-  // ─── getHitRate ──────────────────────────────────────────────────────────
-
   describe('getHitRate', () => {
     it('returns default rate of 0.5 when no stat lines exist', async () => {
       prismaStub.statLine.findMany.mockResolvedValue([]);
@@ -98,7 +111,6 @@ describe('PlayerPropsService', () => {
         { points: 15, rebounds: 0, assists: 0, steals: 0, blocks: 0, fg3m: 0, minutes: 0 },
       ];
       prismaStub.statLine.findMany.mockResolvedValue(statLines);
-      // line = 20 → hits at 25 and 22 → 2/4 = 0.5
       const result = await service.getHitRate('p1', PropStatType.POINTS, 20, 4, 'over');
       expect(result.hits).toBe(2);
       expect(result.total).toBe(4);
@@ -113,7 +125,6 @@ describe('PlayerPropsService', () => {
         { points: 15, rebounds: 0, assists: 0, steals: 0, blocks: 0, fg3m: 0, minutes: 0 },
       ];
       prismaStub.statLine.findMany.mockResolvedValue(statLines);
-      // line = 20 → under hits at 18 and 15 → 2/4 = 0.5
       const result = await service.getHitRate('p1', PropStatType.POINTS, 20, 4, 'under');
       expect(result.hits).toBe(2);
       expect(result.total).toBe(4);
@@ -129,8 +140,6 @@ describe('PlayerPropsService', () => {
       expect(result.rate).toBe(1);
     });
   });
-
-  // ─── getPlayersWithProps ─────────────────────────────────────────────────
 
   describe('getPlayersWithProps', () => {
     it('returns players with active prop markets', async () => {
@@ -151,8 +160,6 @@ describe('PlayerPropsService', () => {
     });
   });
 
-  // ─── getCheatSheet ───────────────────────────────────────────────────────
-
   describe('getCheatSheet', () => {
     it('returns null when player does not exist', async () => {
       prismaStub.player.findUnique.mockResolvedValue(null);
@@ -167,7 +174,6 @@ describe('PlayerPropsService', () => {
         id: 'p1', name: 'LeBron James', position: 'F', teamId: 'team1',
         team: homeTeam,
       });
-      // Minimal stat lines — player is home team, opponent is away team
       prismaStub.statLine.findMany.mockResolvedValue([
         {
           points: 28, rebounds: 0, assists: 0, steals: 0, blocks: 0, fg3m: 0, minutes: 35,
@@ -186,7 +192,6 @@ describe('PlayerPropsService', () => {
           },
         },
       ]);
-      // teams for defense tiers
       prismaStub.team.findMany.mockResolvedValue([homeTeam, awayTeam]);
 
       const result = await service.getCheatSheet('p1', PropStatType.POINTS, 20);
@@ -198,8 +203,6 @@ describe('PlayerPropsService', () => {
       expect(result!.seasonAvg).toBeGreaterThan(0);
     });
   });
-
-  // ─── getAnalyzerData ─────────────────────────────────────────────────────
 
   describe('getAnalyzerData', () => {
     it('returns null when market does not exist', async () => {
@@ -224,14 +227,12 @@ describe('PlayerPropsService', () => {
         event: { id: 'e1', homeTeamId: 'team1', awayTeamId: 'team2', homeTeam: {}, awayTeam: {} },
         marketOdds: [{ line: 25.5, isOpen: true }],
       });
-      // Season stat lines
+      prismaStub.statLine.findFirst.mockResolvedValue({ season: '2025-26' });
       prismaStub.statLine.findMany.mockResolvedValue([
         { points: 30, rebounds: 5, assists: 5, steals: 1, blocks: 1, fg3m: 2, minutes: 36 },
         { points: 20, rebounds: 5, assists: 5, steals: 1, blocks: 1, fg3m: 2, minutes: 36 },
       ]);
-      // H2H events and H2H stats
       prismaStub.event.findMany.mockResolvedValue([{ id: 'e1' }]);
-      // Teams for defensive ranking
       prismaStub.team.findMany.mockResolvedValue([
         { id: 'team1' }, { id: 'team2' },
       ]);

@@ -1,0 +1,10 @@
+-- NEWNBA migration baseline
+--
+-- This migration intentionally contains no DDL. It represents the exact schema
+-- already present on `main` at commit 63e2cfe46cf8026e272ccd5790dbbdcfa70f7f45.
+-- Existing deployments must mark this migration as applied once with:
+--
+--   npx prisma migrate resolve --applied 20260818000000_baseline_main
+--
+-- after confirming their database matches the frozen main schema. All later
+-- migrations are additive Opportunity-First changes.

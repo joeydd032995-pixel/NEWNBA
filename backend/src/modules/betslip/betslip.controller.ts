@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BetslipService } from './betslip.service';
-import { CreateBetSlipDto, AddItemDto, UpdateSlipDto } from './dto/betslip.dto';
+import { CreateBetSlipDto, AddItemDto, CloseBetItemDto, UpdateSlipDto } from './dto/betslip.dto';
 
 @ApiTags('Bet Slip')
 @ApiBearerAuth()
@@ -29,6 +29,16 @@ export class BetslipController {
   @Post(':id/items')
   addItem(@Param('id') id: string, @Body() dto: AddItemDto, @Request() req) {
     return this.betslipService.addItem(id, req.user.id, dto);
+  }
+
+  @Patch(':id/items/:itemId/closing-market')
+  captureClosingMarket(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() dto: CloseBetItemDto,
+    @Request() req,
+  ) {
+    return this.betslipService.captureClosingMarket(id, itemId, req.user.id, dto);
   }
 
   @Delete(':id/items/:itemId')

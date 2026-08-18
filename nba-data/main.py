@@ -1,36 +1,58 @@
 """
-NBA Data Sidecar — wraps nba_api (stats.nba.com) with a FastAPI HTTP interface.
-The NestJS backend calls this service to get real player game logs, season stats,
-and today's scoreboard without needing a paid API key.
+NBA Data Sidecar
+================
 
-Rate limiting: stats.nba.com enforces ~600ms between requests. All endpoints cache
-responses for 5 minutes to keep calls minimal when the NestJS backend polls repeatedly.
+FastAPI wrapper around nba_api / stats.nba.com plus explicitly lower-tier
+fallback feeds. The service follows three integrity rules:
+
+1. NBA season values are resolved dynamically; no historical season is silently
+   treated as the current season.
+2. Missing upstream fields remain missing. Endpoints return raw normalized rows
+   and explicit availability metadata instead of fabricating zero-valued data.
+3. Source provenance is explicit. stats.nba.com data is Tier 1 official; ESPN
+   injury/news endpoints are fallback reporting only until the official NBA
+   injury-report adapter replaces them in Phase 4.
 """
 
-import time
+import importlib
 import logging
-import requests as _requests
-from datetime import datetime, timedelta
-from typing import Optional, Any
+import time
+from datetime import datetime, timezone
+from typing import Any, Optional
 
-from fastapi import FastAPI, Query, HTTPException
+import requests as _requests
+from fastapi import FastAPI, HTTPException, Query
 from nba_api.stats.endpoints import (
     commonallplayers,
+    commonplayerinfo,
+    leaguedashplayerstats,
     playergamelogs,
     scoreboardv2,
-    leaguedashplayerstats,
-    commonplayerinfo,
 )
-from nba_api.stats.static import players as nba_players_static
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="NBA Data Service", version="1.0.0")
+app = FastAPI(title="NBA Data Service", version="2.0.0")
 
-# ─── Simple in-memory cache ──────────────────────────────────────────────────
 _cache: dict[str, tuple[Any, float]] = {}
-CACHE_TTL = 300  # 5 minutes
+CACHE_TTL = 300
+
+
+def current_nba_season(now: Optional[datetime] = None) -> str:
+    """Return the NBA season containing *now* in ``YYYY-YY`` form.
+
+    NBA regular seasons begin in the fall. July-September are treated as the
+    upcoming season beginning that calendar year, while January-June belong to
+    the season that began in the prior calendar year.
+    """
+    dt = now or datetime.now(timezone.utc)
+    start_year = dt.year if dt.month >= 7 else dt.year - 1
+    return f"{start_year}-{str(start_year + 1)[-2:]}"
+
+
+def _resolve_season(season: Optional[str]) -> str:
+    return season or current_nba_season()
 
 
 def _cache_get(key: str) -> Any | None:
@@ -50,29 +72,69 @@ def _safe_float(val: Any, default: float = 0.0) -> float:
     try:
         if val is None or val == "":
             return default
-        # Handle "MM:SS" minutes format
         if isinstance(val, str) and ":" in val:
-            parts = val.split(":")
-            return float(parts[0]) + float(parts[1]) / 60
+            minutes, seconds = val.split(":", 1)
+            return float(minutes) + float(seconds) / 60
         return float(val)
     except (ValueError, TypeError):
         return default
 
 
-# ─── Endpoints ───────────────────────────────────────────────────────────────
+def _iso_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _rows_from_endpoint(endpoint: Any) -> list[dict[str, Any]]:
+    """Normalize every result set into row dictionaries without inventing fields."""
+    payload = endpoint.get_dict()
+    result: list[dict[str, Any]] = []
+    for result_set in payload.get("resultSets", []):
+        name = result_set.get("name", "unknown")
+        headers = [str(h).lower() for h in result_set.get("headers", [])]
+        for row in result_set.get("rowSet", []):
+            normalized = dict(zip(headers, row))
+            normalized["_result_set"] = name
+            result.append(normalized)
+    return result
+
+
+def _load_endpoint(module_name: str, class_name: str):
+    """Load optional nba_api endpoint classes lazily for graceful degradation."""
+    try:
+        module = importlib.import_module(f"nba_api.stats.endpoints.{module_name}")
+        return getattr(module, class_name)
+    except (ImportError, AttributeError) as exc:
+        raise HTTPException(
+            status_code=501,
+            detail={
+                "error": f"nba_api endpoint {class_name} unavailable in installed version",
+                "source": "stats.nba.com",
+                "source_tier": "TIER_1_OFFICIAL",
+                "data_quality": "LOW",
+                "reason": str(exc),
+            },
+        ) from exc
+
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+    return {
+        "status": "ok",
+        "timestamp": _iso_now(),
+        "current_season": current_nba_season(),
+        "version": app.version,
+    }
+
+
+@app.get("/season/current")
+def get_current_season():
+    return {"season": current_nba_season(), "resolved_at": _iso_now()}
 
 
 @app.get("/players/active")
-def get_active_players():
-    """
-    Returns all active NBA players with their nba_api ID, name, and team.
-    Cached for 5 minutes.
-    """
-    cache_key = "active_players"
+def get_active_players(season: Optional[str] = Query(default=None)):
+    resolved_season = _resolve_season(season)
+    cache_key = f"active_players:{resolved_season}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
@@ -81,7 +143,7 @@ def get_active_players():
         all_players = commonallplayers.CommonAllPlayers(
             is_only_current_season=1,
             league_id="00",
-            season="2024-25",
+            season=resolved_season,
         )
         time.sleep(0.6)
         rows = all_players.get_dict()["resultSets"][0]
@@ -96,26 +158,23 @@ def get_active_players():
                 "team_city": d.get("team_city", ""),
                 "team_name": d.get("team_name", ""),
                 "is_active": True,
+                "season": resolved_season,
             })
         _cache_set(cache_key, result)
-        logger.info(f"Fetched {len(result)} active players")
         return result
-    except Exception as e:
-        logger.error(f"Error fetching active players: {e}")
-        raise HTTPException(status_code=503, detail=f"nba_api error: {str(e)}")
+    except Exception as exc:
+        logger.error("Error fetching active players: %s", exc)
+        raise HTTPException(status_code=503, detail=f"nba_api error: {exc}") from exc
 
 
 @app.get("/players/{nba_id}/game-logs")
 def get_player_game_logs(
     nba_id: int,
-    season: str = Query(default="2024-25"),
+    season: Optional[str] = Query(default=None),
     last_n: int = Query(default=20, ge=1, le=82),
 ):
-    """
-    Returns the last N game logs for a player in a given season.
-    Maps all stat fields to the format expected by the NestJS StatLine model.
-    """
-    cache_key = f"game_logs:{nba_id}:{season}:{last_n}"
+    resolved_season = _resolve_season(season)
+    cache_key = f"game_logs:{nba_id}:{resolved_season}:{last_n}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
@@ -123,7 +182,7 @@ def get_player_game_logs(
     try:
         logs = playergamelogs.PlayerGameLogs(
             player_id_nullable=nba_id,
-            season_nullable=season,
+            season_nullable=resolved_season,
             last_n_games_nullable=last_n,
         )
         time.sleep(0.6)
@@ -147,7 +206,7 @@ def get_player_game_logs(
                 "game_id": d.get("game_id"),
                 "game_date": d.get("game_date"),
                 "matchup": d.get("matchup", ""),
-                "season": season,
+                "season": resolved_season,
                 "points": pts,
                 "rebounds": _safe_float(d.get("reb")),
                 "assists": _safe_float(d.get("ast")),
@@ -168,22 +227,18 @@ def get_player_game_logs(
                 "ts_pct": round(ts_pct, 4),
                 "efg_pct": round(efg_pct, 4),
                 "usg_pct": _safe_float(d.get("usg_pct")),
-                "bpm": 0.0,  # not available in game logs; populated from season stats
+                "bpm": 0.0,
             })
         _cache_set(cache_key, result)
-        logger.info(f"Fetched {len(result)} game logs for player {nba_id}")
         return result
-    except Exception as e:
-        logger.error(f"Error fetching game logs for {nba_id}: {e}")
-        raise HTTPException(status_code=503, detail=f"nba_api error: {str(e)}")
+    except Exception as exc:
+        logger.error("Error fetching game logs for %s: %s", nba_id, exc)
+        raise HTTPException(status_code=503, detail=f"nba_api error: {exc}") from exc
 
 
 @app.get("/games/today")
 def get_today_games():
-    """
-    Returns today's NBA scoreboard: game matchups, scores, status.
-    """
-    cache_key = f"today_games:{datetime.utcnow().strftime('%Y-%m-%d')}"
+    cache_key = f"today_games:{datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
@@ -196,10 +251,8 @@ def get_today_games():
         )
         time.sleep(0.6)
         data = board.get_dict()
-        # ResultSet 0 = GameHeader, ResultSet 1 = LineScore
         game_header = data["resultSets"][0]
         line_score = data["resultSets"][1]
-
         gh_headers = [h.lower() for h in game_header["headers"]]
         ls_headers = [h.lower() for h in line_score["headers"]]
 
@@ -221,11 +274,10 @@ def get_today_games():
         scores: dict[str, dict] = {}
         for row in line_score["rowSet"]:
             d = dict(zip(ls_headers, row))
-            gid = d.get("game_id")
-            if gid not in scores:
-                scores[gid] = {}
-            # team_abbreviation tells us home vs away
-            scores[gid][d.get("team_abbreviation", "")] = {
+            game_id = d.get("game_id")
+            if game_id not in scores:
+                scores[game_id] = {}
+            scores[game_id][d.get("team_abbreviation", "")] = {
                 "pts": d.get("pts"),
                 "reb": d.get("reb"),
                 "ast": d.get("ast"),
@@ -234,30 +286,27 @@ def get_today_games():
         result = {"games": games, "scores": scores}
         _cache_set(cache_key, result)
         return result
-    except Exception as e:
-        logger.error(f"Error fetching today's games: {e}")
-        raise HTTPException(status_code=503, detail=f"nba_api error: {str(e)}")
+    except Exception as exc:
+        logger.error("Error fetching today's games: %s", exc)
+        raise HTTPException(status_code=503, detail=f"nba_api error: {exc}") from exc
 
 
 @app.get("/players/season-stats")
 def get_season_stats(
-    season: str = Query(default="2024-25"),
+    season: Optional[str] = Query(default=None),
     per_mode: str = Query(default="PerGame"),
 ):
-    """
-    Returns per-game season averages for all NBA players.
-    Useful for syncing season-level stats like USG%, BPM approximation, etc.
-    """
-    cache_key = f"season_stats:{season}:{per_mode}"
+    resolved_season = _resolve_season(season)
+    cache_key = f"season_stats:{resolved_season}:{per_mode}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
 
     try:
         stats = leaguedashplayerstats.LeagueDashPlayerStats(
-            season=season,
-            per_mode_simple=per_mode,
-            measure_type_simple_defense="Base",
+            season=resolved_season,
+            per_mode_detailed=per_mode,
+            measure_type_detailed_defense="Base",
         )
         time.sleep(0.6)
         rows = stats.get_dict()["resultSets"][0]
@@ -285,20 +334,17 @@ def get_season_stats(
                 "ts_pct": _safe_float(d.get("ts_pct")),
                 "net_rating": _safe_float(d.get("net_rating")),
                 "plus_minus": _safe_float(d.get("plus_minus")),
+                "season": resolved_season,
             })
         _cache_set(cache_key, result)
-        logger.info(f"Fetched season stats for {len(result)} players ({season})")
         return result
-    except Exception as e:
-        logger.error(f"Error fetching season stats: {e}")
-        raise HTTPException(status_code=503, detail=f"nba_api error: {str(e)}")
+    except Exception as exc:
+        logger.error("Error fetching season stats: %s", exc)
+        raise HTTPException(status_code=503, detail=f"nba_api error: {exc}") from exc
 
 
 @app.get("/players/{nba_id}/info")
 def get_player_info(nba_id: int):
-    """
-    Returns biographical info for a single player (position, height, weight, team).
-    """
     cache_key = f"player_info:{nba_id}"
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -328,15 +374,262 @@ def get_player_info(nba_id: int):
         return result
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error fetching player info for {nba_id}: {e}")
-        raise HTTPException(status_code=503, detail=f"nba_api error: {str(e)}")
+    except Exception as exc:
+        logger.error("Error fetching player info for %s: %s", nba_id, exc)
+        raise HTTPException(status_code=503, detail=f"nba_api error: {exc}") from exc
 
 
-# ── Injuries via ESPN unofficial API ──────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Official stats.nba.com Opportunity-First adapters
+# ---------------------------------------------------------------------------
+
+ALLOWED_TRACKING_MEASURES = {
+    "Rebounding",
+    "Possessions",
+    "CatchShoot",
+    "PullUpShot",
+    "Defense",
+    "Drives",
+    "Passing",
+    "ElbowTouch",
+    "PostTouch",
+    "PaintTouch",
+    "Efficiency",
+    "SpeedDistance",
+}
+
+
+@app.get("/tracking/league/{measure}")
+def get_tracking_measure(
+    measure: str,
+    season: Optional[str] = Query(default=None),
+    player_or_team: str = Query(default="Player", pattern="^(Player|Team)$"),
+    per_mode: str = Query(default="PerGame", pattern="^(Totals|PerGame)$"),
+    last_n_games: int = Query(default=0, ge=0, le=82),
+):
+    """Return an official NBA tracking result set without filling missing fields.
+
+    The upstream schema differs by measure. Consumers must map only fields that
+    actually exist in each response and lower data quality when a required field
+    is absent.
+    """
+    if measure not in ALLOWED_TRACKING_MEASURES:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "unsupported tracking measure", "allowed": sorted(ALLOWED_TRACKING_MEASURES)},
+        )
+
+    resolved_season = _resolve_season(season)
+    cache_key = f"tracking:{measure}:{resolved_season}:{player_or_team}:{per_mode}:{last_n_games}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    Endpoint = _load_endpoint("leaguedashptstats", "LeagueDashPtStats")
+    try:
+        endpoint = Endpoint(
+            pt_measure_type=measure,
+            player_or_team=player_or_team,
+            season=resolved_season,
+            season_type_all_star="Regular Season",
+            per_mode_simple=per_mode,
+            last_n_games=last_n_games,
+            timeout=45,
+        )
+        time.sleep(0.6)
+        rows = _rows_from_endpoint(endpoint)
+        result = {
+            "source": "stats.nba.com",
+            "source_tier": "TIER_1_OFFICIAL",
+            "data_quality": "HIGH" if rows else "LOW",
+            "season": resolved_season,
+            "measure": measure,
+            "player_or_team": player_or_team,
+            "rows": rows,
+            "fetched_at": _iso_now(),
+        }
+        _cache_set(cache_key, result)
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("Tracking measure %s unavailable: %s", measure, exc)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": str(exc),
+                "source": "stats.nba.com",
+                "source_tier": "TIER_1_OFFICIAL",
+                "data_quality": "LOW",
+                "measure": measure,
+            },
+        ) from exc
+
+
+@app.get("/tracking/play-types")
+def get_play_types(
+    season: Optional[str] = Query(default=None),
+    player_or_team: str = Query(default="P", pattern="^(P|T)$"),
+    play_type: Optional[str] = Query(default=None),
+    per_mode: str = Query(default="Totals", pattern="^(Totals|PerGame)$"),
+):
+    resolved_season = _resolve_season(season)
+    cache_key = f"playtypes:{resolved_season}:{player_or_team}:{play_type}:{per_mode}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    Endpoint = _load_endpoint("synergyplaytypes", "SynergyPlayTypes")
+    try:
+        endpoint = Endpoint(
+            league_id="00",
+            per_mode_simple=per_mode,
+            player_or_team_abbreviation=player_or_team,
+            season_type_all_star="Regular Season",
+            season=resolved_season,
+            play_type_nullable=play_type or "",
+            type_grouping_nullable="",
+            timeout=45,
+        )
+        time.sleep(0.6)
+        rows = _rows_from_endpoint(endpoint)
+        result = {
+            "source": "stats.nba.com",
+            "source_tier": "TIER_1_OFFICIAL",
+            "data_quality": "HIGH" if rows else "LOW",
+            "season": resolved_season,
+            "play_type": play_type,
+            "player_or_team": player_or_team,
+            "rows": rows,
+            "fetched_at": _iso_now(),
+        }
+        _cache_set(cache_key, result)
+        return result
+    except Exception as exc:
+        logger.warning("Synergy play-type data unavailable: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": str(exc),
+                "source": "stats.nba.com",
+                "source_tier": "TIER_1_OFFICIAL",
+                "data_quality": "LOW",
+            },
+        ) from exc
+
+
+@app.get("/teams/{team_id}/lineups")
+def get_team_lineups(
+    team_id: int,
+    season: Optional[str] = Query(default=None),
+    last_n_games: int = Query(default=0, ge=0, le=82),
+):
+    resolved_season = _resolve_season(season)
+    cache_key = f"lineups:{team_id}:{resolved_season}:{last_n_games}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    Endpoint = _load_endpoint("teamdashlineups", "TeamDashLineups")
+    try:
+        endpoint = Endpoint(
+            team_id=team_id,
+            group_quantity=5,
+            last_n_games=last_n_games,
+            measure_type_detailed_defense="Advanced",
+            per_mode_detailed="Totals",
+            season=resolved_season,
+            season_type_all_star="Regular Season",
+            timeout=45,
+        )
+        time.sleep(0.6)
+        rows = _rows_from_endpoint(endpoint)
+        result = {
+            "source": "stats.nba.com",
+            "source_tier": "TIER_1_OFFICIAL",
+            "data_quality": "HIGH" if rows else "LOW",
+            "team_id": team_id,
+            "season": resolved_season,
+            "rows": rows,
+            "fetched_at": _iso_now(),
+        }
+        _cache_set(cache_key, result)
+        return result
+    except Exception as exc:
+        logger.warning("Team lineup data unavailable for %s: %s", team_id, exc)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": str(exc),
+                "source": "stats.nba.com",
+                "source_tier": "TIER_1_OFFICIAL",
+                "data_quality": "LOW",
+            },
+        ) from exc
+
+
+@app.get("/teams/{team_id}/on-off")
+def get_team_on_off(
+    team_id: int,
+    season: Optional[str] = Query(default=None),
+    last_n_games: int = Query(default=0, ge=0, le=82),
+):
+    resolved_season = _resolve_season(season)
+    cache_key = f"onoff:{team_id}:{resolved_season}:{last_n_games}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    Endpoint = _load_endpoint("teamplayeronoffsummary", "TeamPlayerOnOffSummary")
+    try:
+        endpoint = Endpoint(
+            team_id=team_id,
+            last_n_games=last_n_games,
+            measure_type_detailed_defense="Advanced",
+            per_mode_detailed="Per100Possessions",
+            season=resolved_season,
+            season_type_all_star="Regular Season",
+            timeout=45,
+        )
+        time.sleep(0.6)
+        rows = _rows_from_endpoint(endpoint)
+        result = {
+            "source": "stats.nba.com",
+            "source_tier": "TIER_1_OFFICIAL",
+            "data_quality": "HIGH" if rows else "LOW",
+            "team_id": team_id,
+            "season": resolved_season,
+            "rows": rows,
+            "fetched_at": _iso_now(),
+        }
+        _cache_set(cache_key, result)
+        return result
+    except Exception as exc:
+        logger.warning("Team on/off data unavailable for %s: %s", team_id, exc)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": str(exc),
+                "source": "stats.nba.com",
+                "source_tier": "TIER_1_OFFICIAL",
+                "data_quality": "LOW",
+            },
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Lower-tier fallback reporting feeds
+# ---------------------------------------------------------------------------
+
 @app.get("/injuries")
 def get_injuries():
-    """Fetch NBA injury reports from ESPN unofficial API."""
+    """Fetch ESPN injury reporting as a fallback source.
+
+    Phase 4 will place the official NBA injury report ahead of this adapter. The
+    critical invariant is already enforced here: reported_at is a report/ingest
+    timestamp and can never be ESPN's returnDate.
+    """
+    fetched_at = _iso_now()
     try:
         resp = _requests.get(
             "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/injuries",
@@ -345,8 +638,15 @@ def get_injuries():
         )
         resp.raise_for_status()
         raw = resp.json()
-    except Exception as e:
-        return {"injuries": [], "error": str(e)}
+    except Exception as exc:
+        return {
+            "injuries": [],
+            "error": str(exc),
+            "source": "espn",
+            "source_tier": "TIER_3_REPORTING",
+            "data_quality": "LOW",
+            "fetched_at": fetched_at,
+        }
 
     injuries = []
     for team_block in raw.get("injuries", []):
@@ -354,6 +654,7 @@ def get_injuries():
         for item in team_block.get("injuries", []):
             athlete = item.get("athlete", {})
             details = item.get("details") or {}
+            source_reported_at = item.get("date") or item.get("lastModified") or fetched_at
             injuries.append({
                 "player_name": athlete.get("displayName", ""),
                 "espn_id": str(athlete.get("id", "")),
@@ -362,15 +663,22 @@ def get_injuries():
                 "description": details.get("detail") or item.get("shortComment", ""),
                 "return_eta": details.get("returnDate", ""),
                 "source": "espn",
-                "reported_at": details.get("returnDate") or None,
+                "source_tier": "TIER_3_REPORTING",
+                "reported_at": source_reported_at,
+                "fetched_at": fetched_at,
             })
-    return {"injuries": injuries}
+    return {
+        "injuries": injuries,
+        "source": "espn",
+        "source_tier": "TIER_3_REPORTING",
+        "data_quality": "MEDIUM" if injuries else "LOW",
+        "fetched_at": fetched_at,
+    }
 
 
-# ── News via ESPN unofficial API ───────────────────────────────────────────────
 @app.get("/news")
 def get_news():
-    """Fetch NBA news from ESPN unofficial API."""
+    fetched_at = _iso_now()
     try:
         resp = _requests.get(
             "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/news",
@@ -380,8 +688,15 @@ def get_news():
         )
         resp.raise_for_status()
         raw = resp.json()
-    except Exception as e:
-        return {"items": [], "error": str(e)}
+    except Exception as exc:
+        return {
+            "items": [],
+            "error": str(exc),
+            "source": "espn",
+            "source_tier": "TIER_3_REPORTING",
+            "data_quality": "LOW",
+            "fetched_at": fetched_at,
+        }
 
     items = []
     for article in raw.get("articles", []):
@@ -398,8 +713,16 @@ def get_news():
             "summary": article.get("description", ""),
             "url": article.get("links", {}).get("web", {}).get("href", ""),
             "source": "espn",
+            "source_tier": "TIER_3_REPORTING",
             "player_name": player_name,
             "team_abbr": team_abbr,
             "published_at": article.get("published", ""),
+            "fetched_at": fetched_at,
         })
-    return {"items": items}
+    return {
+        "items": items,
+        "source": "espn",
+        "source_tier": "TIER_3_REPORTING",
+        "data_quality": "MEDIUM" if items else "LOW",
+        "fetched_at": fetched_at,
+    }

@@ -13,12 +13,19 @@ import { NewsIngestService } from '../../modules/data-ingestion/news-ingest.serv
 import { PublicBettingService } from '../../modules/data-ingestion/public-betting.service';
 import { NotificationsService } from '../../modules/notifications/notifications.service';
 
-// Map Odds API market key → our MarketType enum
 const MARKET_KEY_MAP: Record<string, MarketType> = {
   h2h: MarketType.MONEYLINE,
   spreads: MarketType.SPREAD,
   totals: MarketType.TOTAL,
-  player_props: MarketType.PLAYER_PROP,
+};
+
+const PROP_STAT_TYPE_MAP: Record<string, string> = {
+  player_points: 'POINTS',
+  player_rebounds: 'REBOUNDS',
+  player_assists: 'ASSISTS',
+  player_threes: 'THREES',
+  player_blocks: 'BLOCKS',
+  player_steals: 'STEALS',
 };
 
 @Injectable()
@@ -54,7 +61,7 @@ export class JobsService implements OnModuleInit {
     if (this.oddsApi.isEnabled) {
       this.logger.log('Odds API is enabled — live odds sync active');
     } else {
-      this.logger.warn('ODDS_API_KEY not set — odds sync disabled, using simulation fallback');
+      this.logger.warn('ODDS_API_KEY not set — odds sync disabled; no synthetic market data will be written');
     }
     if (this.nbaData.isEnabled) {
       this.logger.log('NBA Data sidecar enabled — daily stat sync active');
@@ -114,44 +121,34 @@ export class JobsService implements OnModuleInit {
   }
 
   /**
-   * Every 30 minutes: sync live NBA odds from the Odds API when a key is available.
-   * Falls back to simulated odds movement in non-production environments when no
-   * key is configured. In production, a missing/invalid key means the sync is
-   * skipped entirely rather than writing fabricated odds data — this app surfaces
-   * betting decisions to real users, so silently faking data in prod would be a
-   * correctness/trust issue, not just a dev-convenience gap.
+   * Every 30 minutes: sync verified live NBA odds from The Odds API.
    *
-   * Interval chosen to keep Odds API usage (base odds + per-event player-props calls)
-   * comfortably within a 100k-requests/month plan — see README's Odds API cost notes.
+   * Integrity invariant: if the configured market source is unavailable, this
+   * job writes nothing. Synthetic odds must never enter market, snapshot, EV or
+   * CLV tables, including in development environments.
    */
   @Cron('*/30 * * * *')
   async syncOdds() {
     if (this.isOddsSyncRunning) return;
     this.isOddsSyncRunning = true;
     try {
-      if (this.oddsApi.isEnabled) {
-        await this.fetchAndPersistLiveOdds();
-      } else if (process.env.NODE_ENV !== 'production') {
-        await this.simulateOddsMovement();
-      } else {
-        this.logger.warn('Odds sync skipped: ODDS_API_KEY not configured in production — refusing to write simulated odds data.');
+      if (!this.oddsApi.isEnabled) {
+        this.logger.warn('Odds sync skipped: ODDS_API_KEY not configured; refusing to create synthetic market data');
+        return;
       }
+      await this.fetchAndPersistLiveOdds();
     } catch (e) {
       const status = e?.response?.status;
       this.logger.error(`Odds sync failed [${status ?? 'no HTTP status'}]: ${e.message}`);
       if (status === 401) {
-        this.logger.warn('Odds sync disabled until restart — check ODDS_API_KEY env var');
+        this.logger.warn('Odds sync authentication failed — check ODDS_API_KEY');
       }
     } finally {
       this.isOddsSyncRunning = false;
     }
   }
 
-  /**
-   * Daily at 07:00 UTC (03:00 ET): sync real game logs from stats.nba.com
-   * into the StatLine table via the nba-data sidecar.
-   * Only runs when NBA_DATA_URL is configured.
-   */
+  /** Daily at 07:00 UTC: sync real game logs from stats.nba.com. */
   @Cron('0 7 * * *')
   async syncNbaStats() {
     if (!this.nbaData.isEnabled || this.isNbaSyncRunning) return;
@@ -166,9 +163,8 @@ export class JobsService implements OnModuleInit {
     }
   }
 
-  // ─── Manual triggers (for admin endpoints) ────────────────────
-
   async triggerOddsSync(): Promise<string> {
+    if (!this.oddsApi.isEnabled) return 'ODDS_API_KEY not configured; no synthetic odds will be generated';
     if (this.isOddsSyncRunning) return 'Odds sync already running';
     void this.syncOdds();
     return 'Odds sync triggered';
@@ -188,52 +184,42 @@ export class JobsService implements OnModuleInit {
     return 'BallDontLie stat sync triggered';
   }
 
-  // ─── Private helpers ──────────────────────────────────────────
-
   private async fetchAndPersistLiveOdds() {
-    // Fetch h2h, spreads, and totals for all events
     const events = await this.oddsApi.getOdds('basketball_nba', 'h2h,spreads,totals');
     if (!events.length) return;
 
-    // Resolve our DB books by slug
+    const currentSeason = await this.nbaData.getCurrentSeason().catch(() => undefined);
     const books = await this.prisma.book.findMany({ where: { isActive: true } });
-    const bookBySlug = new Map<string, any>(books.map((b) => [b.slug, b]));
-
-    // Resolve our DB events by external API id (stored in the name field as fallback)
-    // We match on commence_time + teams
+    const bookBySlug = new Map<string, any>(books.map((book) => [book.slug, book]));
     const dbEvents = await this.prisma.event.findMany({
       where: { status: { in: ['SCHEDULED', 'LIVE'] } },
       include: { homeTeam: true, awayTeam: true },
     });
 
-    // Look up NBA sport and all teams for auto-creating events
-    const nbaSlug = 'nba';
-    const nbaSport = await this.prisma.sport.findFirst({ where: { slug: nbaSlug } });
+    const nbaSport = await this.prisma.sport.findFirst({ where: { slug: 'nba' } });
     const allTeams = nbaSport
       ? await this.prisma.team.findMany({ where: { sportId: nbaSport.id, isActive: true } })
       : [];
 
     const findTeam = (apiName: string) =>
       allTeams.find(
-        (t) =>
-          t.name.toLowerCase() === apiName.toLowerCase() ||
-          t.name.toLowerCase().includes(apiName.toLowerCase()) ||
-          apiName.toLowerCase().includes(t.name.toLowerCase()) ||
-          apiName.toLowerCase().includes(t.city?.toLowerCase() ?? '____'),
+        (team) =>
+          team.name.toLowerCase() === apiName.toLowerCase() ||
+          team.name.toLowerCase().includes(apiName.toLowerCase()) ||
+          apiName.toLowerCase().includes(team.name.toLowerCase()) ||
+          apiName.toLowerCase().includes(team.city?.toLowerCase() ?? '____'),
       );
 
     let updated = 0;
-
     for (const apiEvent of events) {
       let dbEvent = dbEvents.find(
-        (e) =>
-          e.homeTeam.name.toLowerCase().includes(apiEvent.home_team.toLowerCase()) ||
-          apiEvent.home_team.toLowerCase().includes(e.homeTeam.name.toLowerCase()) ||
-          e.awayTeam.name.toLowerCase().includes(apiEvent.away_team.toLowerCase()) ||
-          apiEvent.away_team.toLowerCase().includes(e.awayTeam.name.toLowerCase()),
+        (event) =>
+          (event.homeTeam.name.toLowerCase().includes(apiEvent.home_team.toLowerCase()) ||
+            apiEvent.home_team.toLowerCase().includes(event.homeTeam.name.toLowerCase())) &&
+          (event.awayTeam.name.toLowerCase().includes(apiEvent.away_team.toLowerCase()) ||
+            apiEvent.away_team.toLowerCase().includes(event.awayTeam.name.toLowerCase())),
       );
 
-      // If no matching DB event, create one from Odds API data
       if (!dbEvent && nbaSport) {
         const homeTeam = findTeam(apiEvent.home_team);
         const awayTeam = findTeam(apiEvent.away_team);
@@ -246,7 +232,7 @@ export class JobsService implements OnModuleInit {
                 awayTeamId: awayTeam.id,
                 startTime: new Date(apiEvent.commence_time),
                 status: 'SCHEDULED',
-                season: String(new Date().getFullYear() - (new Date().getMonth() < 8 ? 1 : 0)),
+                season: currentSeason,
               },
               include: { homeTeam: true, awayTeam: true },
             });
@@ -260,7 +246,6 @@ export class JobsService implements OnModuleInit {
           this.logger.warn(`Team not found in DB — home: "${apiEvent.home_team}", away: "${apiEvent.away_team}"`);
         }
       }
-
       if (!dbEvent) continue;
 
       for (const bookmaker of apiEvent.bookmakers) {
@@ -284,9 +269,8 @@ export class JobsService implements OnModuleInit {
             const existing = await this.prisma.marketOdds.findFirst({
               where: { marketId: dbMarket.id, bookId: book.id, outcome: outcome.name },
             });
-
             if (existing) {
-              if (existing.odds !== outcome.price) {
+              if (existing.odds !== outcome.price || existing.line !== (outcome.point ?? null)) {
                 await this.prisma.oddsHistory.create({
                   data: { marketOddsId: existing.id, odds: existing.odds, line: existing.line },
                 });
@@ -314,12 +298,9 @@ export class JobsService implements OnModuleInit {
     }
 
     this.logger.log(`Live odds sync: ${updated} odds updated from ${events.length} API events`);
-
-    // Sync player props per event (requires separate per-event API call)
     await this.syncPlayerPropsOdds(events, bookBySlug, dbEvents);
   }
 
-  // Valid player-prop market keys accepted by the Odds API v4
   private static readonly PROP_MARKETS =
     'player_points,player_rebounds,player_assists,player_threes,player_blocks,player_steals';
 
@@ -332,24 +313,26 @@ export class JobsService implements OnModuleInit {
 
     for (const apiEvent of events) {
       const dbEvent = dbEvents.find(
-        (e) =>
-          e.homeTeam.name.toLowerCase().includes(apiEvent.home_team.toLowerCase()) ||
-          apiEvent.home_team.toLowerCase().includes(e.homeTeam.name.toLowerCase()) ||
-          e.awayTeam.name.toLowerCase().includes(apiEvent.away_team.toLowerCase()) ||
-          apiEvent.away_team.toLowerCase().includes(e.awayTeam.name.toLowerCase()),
+        (event) =>
+          (event.homeTeam.name.toLowerCase().includes(apiEvent.home_team.toLowerCase()) ||
+            apiEvent.home_team.toLowerCase().includes(event.homeTeam.name.toLowerCase())) &&
+          (event.awayTeam.name.toLowerCase().includes(apiEvent.away_team.toLowerCase()) ||
+            apiEvent.away_team.toLowerCase().includes(event.awayTeam.name.toLowerCase())),
       );
       if (!dbEvent) continue;
 
       let eventWithProps: Awaited<ReturnType<typeof this.oddsApi.getEventOdds>>;
       try {
-        eventWithProps = await this.oddsApi.getEventOdds('basketball_nba', apiEvent.id, JobsService.PROP_MARKETS);
+        eventWithProps = await this.oddsApi.getEventOdds(
+          'basketball_nba',
+          apiEvent.id,
+          JobsService.PROP_MARKETS,
+        );
       } catch (e) {
-        // 429 re-thrown by getEventOdds — stop processing to avoid further rate-limit hits
         this.logger.warn('Rate limited during player props sync — aborting remaining events');
         break;
       }
-      // Small delay between per-event calls to stay within rate limits
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
       if (!eventWithProps) continue;
 
       for (const bookmaker of eventWithProps.bookmakers) {
@@ -357,10 +340,10 @@ export class JobsService implements OnModuleInit {
         if (!book) continue;
 
         for (const market of bookmaker.markets) {
-          if (market.key !== 'player_props') continue;
+          const propStatType = PROP_STAT_TYPE_MAP[market.key];
+          if (!propStatType) continue;
 
           for (const outcome of market.outcomes) {
-            // outcome.description holds the player name for player props
             const playerName = (outcome as any).description as string | undefined;
             if (!playerName) continue;
 
@@ -372,19 +355,6 @@ export class JobsService implements OnModuleInit {
             });
             if (!player) continue;
 
-            // Determine stat type from outcome.name (e.g. "player_points", "player_rebounds")
-            const statTypeMap: Record<string, string> = {
-              player_points: 'POINTS',
-              player_rebounds: 'REBOUNDS',
-              player_assists: 'ASSISTS',
-              player_threes: 'THREES',
-              player_blocks: 'BLOCKS',
-              player_steals: 'STEALS',
-            };
-            const propStatType = statTypeMap[outcome.name as string];
-            if (!propStatType) continue;
-
-            // Find or create player prop market
             let dbMarket = await this.prisma.market.findFirst({
               where: {
                 eventId: dbEvent.id,
@@ -406,8 +376,9 @@ export class JobsService implements OnModuleInit {
               });
             }
 
-            // over/under direction comes from the bet name
-            const direction = (outcome as any).name?.toLowerCase?.().includes('over') ? 'over' : 'under';
+            const rawDirection = String(outcome.name ?? '').toLowerCase();
+            if (rawDirection !== 'over' && rawDirection !== 'under') continue;
+            const direction = rawDirection;
             const line = outcome.point ?? null;
 
             const existing = await this.prisma.marketOdds.findFirst({
@@ -415,7 +386,7 @@ export class JobsService implements OnModuleInit {
             });
 
             if (existing) {
-              if (existing.odds !== outcome.price) {
+              if (existing.odds !== outcome.price || existing.line !== line) {
                 await this.prisma.oddsHistory.create({
                   data: { marketOddsId: existing.id, odds: existing.odds, line: existing.line },
                 });
@@ -427,7 +398,13 @@ export class JobsService implements OnModuleInit {
               }
             } else {
               await this.prisma.marketOdds.create({
-                data: { marketId: dbMarket.id, bookId: book.id, outcome: direction, odds: outcome.price, line },
+                data: {
+                  marketId: dbMarket.id,
+                  bookId: book.id,
+                  outcome: direction,
+                  odds: outcome.price,
+                  line,
+                },
               });
               propUpdated++;
             }
@@ -439,11 +416,6 @@ export class JobsService implements OnModuleInit {
     if (propUpdated > 0) this.logger.log(`Player props sync: ${propUpdated} prop odds updated`);
   }
 
-  /**
-   * Daily at 08:00 UTC (04:00 ET): sync real game logs from BallDontLie.
-   * Step 1 — discovery: match our Players to BDL player IDs by name (one-time per player).
-   * Step 2 — sync: pull current-season game stats for all matched players and upsert StatLines.
-   */
   @Cron('0 8 * * *')
   async syncBallDontLieStats() {
     if (!this.bdl.isEnabled || this.isBdlSyncRunning) return;
@@ -459,13 +431,11 @@ export class JobsService implements OnModuleInit {
     }
   }
 
-  /** Match DB players (bdlId IS NULL) to BallDontLie player IDs by name search. */
   private async discoverBdlPlayerIds() {
     const unmatched = await this.prisma.player.findMany({
       where: { isActive: true, bdlId: null },
       select: { id: true, name: true },
     });
-
     if (unmatched.length === 0) {
       this.logger.debug('BDL discovery: all players already matched');
       return;
@@ -476,14 +446,13 @@ export class JobsService implements OnModuleInit {
       try {
         const results = await this.bdl.searchPlayers(player.name);
         const match = results.find(
-          (r) =>
-            `${r.first_name} ${r.last_name}`.toLowerCase() === player.name.toLowerCase(),
+          (result) => `${result.first_name} ${result.last_name}`.toLowerCase() === player.name.toLowerCase(),
         );
         if (match) {
           await this.prisma.player.update({
             where: { id: player.id },
             data: { bdlId: match.id },
-          }).catch(() => null); // skip on unique constraint if two players share an id
+          }).catch(() => null);
           matched++;
         }
       } catch (e) {
@@ -493,29 +462,27 @@ export class JobsService implements OnModuleInit {
     this.logger.log(`BDL discovery: ${matched}/${unmatched.length} players matched`);
   }
 
-  /** Fetch current-season game stats for all BDL-matched players and upsert StatLines. */
   private async syncBdlStats() {
     const players = await this.prisma.player.findMany({
       where: { isActive: true, bdlId: { not: null } },
       select: { id: true, bdlId: true },
     });
-
     if (players.length === 0) {
       this.logger.debug('BDL sync: no matched players yet');
       return;
     }
 
-    // Build bdlId → dbPlayerId lookup
     const bdlToDb = new Map<number, string>();
-    for (const p of players) {
-      bdlToDb.set(p.bdlId!, p.id);
-    }
+    for (const player of players) bdlToDb.set(player.bdlId!, player.id);
 
-    const currentSeason = new Date().getFullYear() - (new Date().getMonth() < 8 ? 1 : 0);
+    const seasonLabel = await this.nbaData.getCurrentSeason();
+    const currentSeason = Number(seasonLabel.slice(0, 4));
+    if (!Number.isInteger(currentSeason)) throw new Error(`Invalid NBA season label: ${seasonLabel}`);
+
     const BATCH = 100;
-    const bdlIds = players.map((p) => p.bdlId!);
-
+    const bdlIds = players.map((player) => player.bdlId!);
     let inserted = 0;
+
     for (let i = 0; i < bdlIds.length; i += BATCH) {
       const batch = bdlIds.slice(i, i + BATCH);
       let stats: Awaited<ReturnType<BallDontLieService['getAllPlayerStatsForSeason']>>;
@@ -526,67 +493,64 @@ export class JobsService implements OnModuleInit {
         continue;
       }
 
-      // Anchor event: we need a valid eventId for StatLine FK.
-      // Use the most recent FINAL event we have — same approach as nba_api sync.
       const anchorEvent = await this.prisma.event.findFirst({
         where: { status: 'FINAL' },
         orderBy: { startTime: 'desc' },
       });
-      if (!anchorEvent) { this.logger.warn('BDL sync: no FINAL events found'); break; }
+      if (!anchorEvent) {
+        this.logger.warn('BDL sync: no FINAL events found');
+        break;
+      }
 
       for (const stat of stats) {
         const dbPlayerId = bdlToDb.get(stat.player.id);
         if (!dbPlayerId) continue;
-
         const gameDate = new Date(stat.game.date);
-        const existing = await this.prisma.statLine.findFirst({
-          where: { playerId: dbPlayerId, gameDate },
-        });
+        const existing = await this.prisma.statLine.findFirst({ where: { playerId: dbPlayerId, gameDate } });
         if (existing) continue;
 
-        // Parse "MM:SS" → decimal minutes
-        const parseMin = (s: string): number => {
-          if (!s || !s.includes(':')) return parseFloat(s) || 0;
-          const [m, sec] = s.split(':').map(Number);
-          return m + sec / 60;
+        const parseMin = (value: string): number => {
+          if (!value || !value.includes(':')) return parseFloat(value) || 0;
+          const [minutes, seconds] = value.split(':').map(Number);
+          return minutes + seconds / 60;
         };
 
-        const min   = parseMin(stat.min);
-        const pts   = stat.pts   ?? 0;
-        const fga   = stat.fga   ?? 0;
-        const fta   = stat.fta   ?? 0;
-        const fgm   = stat.fgm   ?? 0;
-        const fg3m  = stat.fg3m  ?? 0;
-        const tsPct  = (fga + fta) > 0 ? pts / (2 * (fga + 0.475 * fta)) : 0;
+        const minutes = parseMin(stat.min);
+        const points = stat.pts ?? 0;
+        const fga = stat.fga ?? 0;
+        const fta = stat.fta ?? 0;
+        const fgm = stat.fgm ?? 0;
+        const fg3m = stat.fg3m ?? 0;
+        const tsPct = (fga + fta) > 0 ? points / (2 * (fga + 0.475 * fta)) : 0;
         const efgPct = fga > 0 ? (fgm + 0.5 * fg3m) / fga : 0;
 
         await this.prisma.statLine.create({
           data: {
             playerId: dbPlayerId,
-            eventId:  anchorEvent.id,
-            season:   String(currentSeason),
+            eventId: anchorEvent.id,
+            season: seasonLabel,
             gameDate,
-            points:    pts,
-            rebounds:  stat.reb   ?? 0,
-            assists:   stat.ast   ?? 0,
-            steals:    stat.stl   ?? 0,
-            blocks:    stat.blk   ?? 0,
+            points,
+            rebounds: stat.reb ?? 0,
+            assists: stat.ast ?? 0,
+            steals: stat.stl ?? 0,
+            blocks: stat.blk ?? 0,
             turnovers: stat.turnover ?? 0,
-            minutes:   min,
+            minutes,
             fgm,
             fga,
-            fgPct:     stat.fg_pct   ?? 0,
+            fgPct: stat.fg_pct ?? 0,
             fg3m,
-            fg3a:      stat.fg3a     ?? 0,
-            fg3Pct:    stat.fg3_pct  ?? 0,
-            ftm:       stat.ftm      ?? 0,
+            fg3a: stat.fg3a ?? 0,
+            fg3Pct: stat.fg3_pct ?? 0,
+            ftm: stat.ftm ?? 0,
             fta,
-            ftPct:     stat.ft_pct   ?? 0,
+            ftPct: stat.ft_pct ?? 0,
             plusMinus: 0,
-            usgPct:    0,
-            tsPct:     Math.round(tsPct  * 10000) / 10000,
-            efgPct:    Math.round(efgPct * 10000) / 10000,
-            bpm:       0,
+            usgPct: 0,
+            tsPct: Math.round(tsPct * 10000) / 10000,
+            efgPct: Math.round(efgPct * 10000) / 10000,
+            bpm: 0,
           },
         }).catch(() => null);
         inserted++;
@@ -595,28 +559,18 @@ export class JobsService implements OnModuleInit {
     this.logger.log(`BDL sync complete: ${inserted} new stat lines inserted`);
   }
 
-  /**
-   * Fetch game logs from the nba-data sidecar and upsert into StatLine.
-   * Matches players by name (case-insensitive) against our DB.
-   * Skips players not in our DB (won't create unknowns).
-   */
   private async syncPlayerGameLogs() {
-    // 1. Get active players from sidecar
-    const nbaPlayers = await this.nbaData.getActivePlayers();
-    this.logger.log(`NBA sync: ${nbaPlayers.length} active players retrieved`);
+    const currentSeason = await this.nbaData.getCurrentSeason();
+    const nbaPlayers = await this.nbaData.getActivePlayers(currentSeason);
+    this.logger.log(`NBA sync: ${nbaPlayers.length} active players retrieved for ${currentSeason}`);
 
-    // 2. Load all DB players for name matching
     const dbPlayers = await this.prisma.player.findMany({
       where: { isActive: true },
       select: { id: true, name: true },
     });
-    const nameMap = new Map<string, string>(); // lowercased name → db player id
-    for (const p of dbPlayers) {
-      nameMap.set(p.name.toLowerCase(), p.id);
-    }
+    const nameMap = new Map<string, string>();
+    for (const player of dbPlayers) nameMap.set(player.name.toLowerCase(), player.id);
 
-    // 3. Load a recent dummy event to attach orphaned stat lines to
-    // (StatLine requires eventId; we create a "sync" event if none exists)
     const syncEvent = await this.prisma.event.findFirst({
       where: { status: 'FINAL' },
       orderBy: { startTime: 'desc' },
@@ -628,14 +582,16 @@ export class JobsService implements OnModuleInit {
 
     let synced = 0;
     let skipped = 0;
-
     for (const nbaPlayer of nbaPlayers) {
       const dbPlayerId = nameMap.get(nbaPlayer.name.toLowerCase());
-      if (!dbPlayerId) { skipped++; continue; }
+      if (!dbPlayerId) {
+        skipped++;
+        continue;
+      }
 
       let logs;
       try {
-        logs = await this.nbaData.getPlayerGameLogs(nbaPlayer.nba_id, '2024-25', 5);
+        logs = await this.nbaData.getPlayerGameLogs(nbaPlayer.nba_id, currentSeason, 5);
       } catch (e) {
         this.logger.warn(`Failed to fetch logs for ${nbaPlayer.name}: ${e.message}`);
         continue;
@@ -643,16 +599,13 @@ export class JobsService implements OnModuleInit {
 
       for (const log of logs) {
         const gameDate = new Date(log.game_date);
-        // Try to find an existing StatLine for this player on this date
-        const existing = await this.prisma.statLine.findFirst({
-          where: { playerId: dbPlayerId, gameDate },
-        });
-        if (existing) continue; // already have this game
+        const existing = await this.prisma.statLine.findFirst({ where: { playerId: dbPlayerId, gameDate } });
+        if (existing) continue;
 
         await this.prisma.statLine.create({
           data: {
             playerId: dbPlayerId,
-            eventId: syncEvent.id, // best available event anchor
+            eventId: syncEvent.id,
             season: log.season,
             gameDate,
             points: log.points,
@@ -677,7 +630,7 @@ export class JobsService implements OnModuleInit {
             efgPct: log.efg_pct,
             bpm: log.bpm,
           },
-        }).catch(() => null); // ignore unique constraint violations
+        }).catch(() => null);
         synced++;
       }
     }
@@ -685,9 +638,6 @@ export class JobsService implements OnModuleInit {
     this.logger.log(`NBA stat sync complete: ${synced} new stat lines synced, ${skipped} players not in DB`);
   }
 
-  // ─── Phase 1: Data Ingestion Jobs ────────────────────────────
-
-  /** Every 15 minutes: snapshot all open odds into OddsSnapshot table */
   @Cron('*/15 * * * *')
   async snapshotOddsJob() {
     if (this.isSnapshotRunning) return;
@@ -702,21 +652,19 @@ export class JobsService implements OnModuleInit {
     }
   }
 
-  /** Every 5 minutes: detect significant line movements (>=3% implied prob shift) */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async detectLineMovementsJob() {
     try {
       const moves = await this.dataIngestion.detectLineMovements(3);
       if (moves.length > 0) {
         this.logger.log(`Line movement alert: ${moves.length} significant move(s) detected`);
-        // Phase 4 hook: trigger WebSocket/email alerts here
       }
     } catch (e) {
       this.logger.error('Line movement detection failed:', e.message);
     }
   }
 
-  /** Every 30 minutes: sync injury reports from ESPN via Python sidecar */
+  /** Tier-3 fallback every 30 minutes until the official Phase-4 report adapter supersedes it. */
   @Cron('*/30 * * * *')
   async syncInjuriesJob() {
     if (this.isInjuryRunning) return;
@@ -731,7 +679,6 @@ export class JobsService implements OnModuleInit {
     }
   }
 
-  /** Every hour: sync NBA news from ESPN via Python sidecar */
   @Cron(CronExpression.EVERY_HOUR)
   async syncNewsJob() {
     if (this.isNewsRunning) return;
@@ -746,14 +693,13 @@ export class JobsService implements OnModuleInit {
     }
   }
 
-  /** Every 30 minutes: sync public betting splits from Action Network */
   @Cron('*/30 * * * *')
   async syncPublicBettingJob() {
     if (this.isPublicBettingRunning) return;
     this.isPublicBettingRunning = true;
     try {
       const count = await this.publicBetting.syncPublicBetting();
-      this.logger.debug(`Public betting sync: ${count} splits updated`);
+      this.logger.debug(`Public betting sync: ${count} verified splits updated`);
     } catch (e) {
       this.logger.error('Public betting sync failed:', e.message);
     } finally {
@@ -761,7 +707,6 @@ export class JobsService implements OnModuleInit {
     }
   }
 
-  /** Every 5 minutes: evaluate all active alert rules and fire notifications */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async evaluateAlertsJob() {
     if (this.isAlertEvalRunning) return;
@@ -789,26 +734,5 @@ export class JobsService implements OnModuleInit {
     } catch (e) {
       this.logger.error('Trial expiry job failed:', e.message);
     }
-  }
-
-  private async simulateOddsMovement() {
-    // Fetch all open market odds (no cap) so player props are included
-    const marketOdds = await this.prisma.marketOdds.findMany({
-      where: { isOpen: true },
-    });
-
-    let moved = 0;
-    for (const mo of marketOdds) {
-      const movement = (Math.random() - 0.5) * 4; // ±2 points
-      const newOdds = Math.round(mo.odds + movement);
-      if (newOdds !== mo.odds) {
-        await this.prisma.oddsHistory.create({
-          data: { marketOddsId: mo.id, odds: mo.odds, line: mo.line },
-        });
-        await this.prisma.marketOdds.update({ where: { id: mo.id }, data: { odds: newOdds } });
-        moved++;
-      }
-    }
-    if (moved > 0) this.logger.debug(`Simulated odds movement: ${moved} odds updated`);
   }
 }
