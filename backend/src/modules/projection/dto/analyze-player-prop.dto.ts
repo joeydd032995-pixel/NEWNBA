@@ -65,14 +65,20 @@ export class ProjectionInputDto {
   @ApiProperty({ type: DistributionInputDto })
   @ValidateNested() @Type(() => DistributionInputDto) minutes: DistributionInputDto;
 
-  @ApiProperty() @IsNumber() @Min(0) opportunityRatePerMinute: number;
+  @ApiProperty({ description: 'Fallback opportunity rate when possession-share inputs are unavailable' })
+  @IsNumber() @Min(0) opportunityRatePerMinute: number;
   @ApiProperty() @IsNumber() @Min(0) conversionRate: number;
   @ApiProperty() @IsNumber() @Min(0.0001) contextAdjustment: number;
 
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) baselinePace?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) expectedPace?: number;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) playerOpportunityShare?: number;
+  @ApiPropertyOptional({ minimum: 0, maximum: 1 })
+  @IsOptional() @IsNumber() @Min(0) @Max(1) playerOpportunityShare?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) expectedPossessions?: number;
+  @ApiPropertyOptional({ description: 'Baseline points-per-possession reference used for matchup adjustment' })
+  @IsOptional() @IsNumber() @Min(0.0001) baselinePpp?: number;
+  @ApiPropertyOptional({ description: 'Expected points per possession in the current matchup/context' })
+  @IsOptional() @IsNumber() @Min(0.0001) expectedPpp?: number;
 
   @ApiProperty({ type: UncertaintyInputDto })
   @ValidateNested() @Type(() => UncertaintyInputDto) uncertainty: UncertaintyInputDto;
