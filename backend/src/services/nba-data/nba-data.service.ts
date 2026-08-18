@@ -116,6 +116,29 @@ export interface NbaOfficialDataset<T = Record<string, any>> {
   team_id?: number;
 }
 
+export interface NbaOfficialPerson {
+  name: string;
+  number: number | null;
+}
+
+export interface NbaRefereeAssignmentRow {
+  game: string;
+  crew_chief: NbaOfficialPerson | null;
+  referee: NbaOfficialPerson | null;
+  umpire: NbaOfficialPerson | null;
+  alternate: NbaOfficialPerson | null;
+}
+
+export interface NbaRefereeAssignments {
+  assignments: NbaRefereeAssignmentRow[];
+  assignment_date: string | null;
+  source: 'official_nba_referee_assignments';
+  source_tier: 'TIER_1_OFFICIAL';
+  data_quality: 'LOW' | 'MEDIUM' | 'HIGH';
+  fetched_at: string;
+  source_url?: string;
+}
+
 @Injectable()
 export class NbaDataService {
   private readonly logger = new Logger(NbaDataService.name);
@@ -184,6 +207,13 @@ export class NbaDataService {
 
   async getPlayerInfo(nbaId: number): Promise<NbaPlayerInfo> {
     const { data } = await this.http.get<NbaPlayerInfo>(`/players/${nbaId}/info`);
+    return data;
+  }
+
+  async getOfficialRefereeAssignments(): Promise<NbaRefereeAssignments> {
+    const { data } = await this.http.get<NbaRefereeAssignments>('/referees/official', {
+      timeout: 20_000,
+    });
     return data;
   }
 
