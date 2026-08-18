@@ -1,7 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BetSlipStatus } from '@prisma/client';
-import { AddItemDto, CloseBetItemDto, SubmitTrackedSlipDto, UpdateSlipDto } from './dto/betslip.dto';
+import { BetSlipStatus, WagerStructure } from '@prisma/client';
+import {
+  AddItemDto,
+  CloseBetItemDto,
+  SubmitTrackedParlayDto,
+  SubmitTrackedSlipDto,
+  UpdateSlipDto,
+} from './dto/betslip.dto';
 import { calculateClv } from '../analytics/clv';
 import { WagerProjectionSnapshotService } from './wager-projection-snapshot.service';
 
@@ -48,7 +54,7 @@ export class BetslipService {
 
   async create(userId: string, name?: string) {
     return this.prisma.betSlip.create({
-      data: { userId, name },
+      data: { userId, name, structure: WagerStructure.SINGLE_BATCH },
       include: { items: true },
     });
   }
@@ -62,13 +68,10 @@ export class BetslipService {
     await this.validateTrackedItems([dto], false);
 
     const item = await this.prisma.betSlipItem.create({
-      data: this.toItemCreateData(id, dto),
+      data: this.toItemCreateData(id, dto, slip.structure === WagerStructure.PARLAY ? 0 : undefined),
       include: { book: true },
     });
 
-    // Player-prop items receive an immutable Opportunity-First snapshot when a
-    // defensible projection exists. Non-prop bets and insufficient-data props
-    // keep their existing behavior; snapshot capture deliberately fails open.
     await this.projectionSnapshots.captureForItem(item.id);
     await this.recalcTotals(id);
 
@@ -82,15 +85,14 @@ export class BetslipService {
   }
 
   /**
-   * Persist a UI tracking ticket as one database transaction. This records a
-   * wager; it does not execute a sportsbook order.
+   * Persist a batch of independently staked wagers. Each item settles and is
+   * attributed independently; the slip is only a tracking container.
    */
   async createAndSubmitTracked(userId: string, dto: SubmitTrackedSlipDto) {
     if (!dto.items.length) throw new BadRequestException('Cannot submit an empty bet slip');
     await this.validateTrackedItems(dto.items, true);
 
     const totalStake = dto.items.reduce((sum, item) => sum + Math.max(0, item.stake ?? 0), 0);
-    const totalOdds = dto.items.reduce((product, item) => product * americanToDecimal(item.odds), 1);
     const recommendedAt = new Date();
 
     const created = await this.prisma.$transaction(async (tx) => {
@@ -98,13 +100,15 @@ export class BetslipService {
         data: {
           userId,
           name: dto.name,
+          structure: WagerStructure.SINGLE_BATCH,
           totalStake,
-          totalOdds,
+          totalOdds: null,
+          ticketStake: null,
           status: BetSlipStatus.OPEN,
         },
       });
 
-      const items = [] as Array<{ id: string }>;
+      const items: Array<{ id: string }> = [];
       for (const itemDto of dto.items) {
         const item = await tx.betSlipItem.create({
           data: {
@@ -124,13 +128,57 @@ export class BetslipService {
       return { slipId: slip.id, items };
     });
 
-    // Snapshot creation is intentionally after the core wager transaction. A
-    // snapshot may fail open on insufficient model data, but the wager record
-    // itself remains exact and auditable.
-    for (const item of created.items) {
-      await this.projectionSnapshots.captureForItem(item.id);
-    }
+    await this.captureSnapshots(created.items);
+    return this.findOne(created.slipId, userId);
+  }
 
+  /**
+   * Persist a true parlay: one ticket stake and one compounded price. Leg stake
+   * fields remain zero so downstream accounting cannot double-count the ticket.
+   */
+  async createAndSubmitParlay(userId: string, dto: SubmitTrackedParlayDto) {
+    if (dto.items.length < 2) throw new BadRequestException('Parlay requires at least two legs');
+    await this.validateTrackedItems(dto.items, true);
+
+    const totalOdds = dto.items.reduce(
+      (product, item) => product * americanToDecimal(item.odds),
+      1,
+    );
+    const recommendedAt = new Date();
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const slip = await tx.betSlip.create({
+        data: {
+          userId,
+          name: dto.name,
+          structure: WagerStructure.PARLAY,
+          totalStake: dto.ticketStake,
+          ticketStake: dto.ticketStake,
+          totalOdds,
+          status: BetSlipStatus.OPEN,
+        },
+      });
+
+      const items: Array<{ id: string }> = [];
+      for (const itemDto of dto.items) {
+        const item = await tx.betSlipItem.create({
+          data: {
+            ...this.toItemCreateData(slip.id, itemDto, 0),
+            recommendedAt,
+          },
+          select: { id: true },
+        });
+        items.push(item);
+      }
+
+      await tx.betSlip.update({
+        where: { id: slip.id },
+        data: { status: BetSlipStatus.SUBMITTED },
+      });
+      return { slipId: slip.id, items };
+    });
+
+    await this.captureSnapshots(created.items);
     return this.findOne(created.slipId, userId);
   }
 
@@ -182,7 +230,10 @@ export class BetslipService {
   }
 
   async update(id: string, userId: string, dto: UpdateSlipDto) {
-    await this.findOne(id, userId);
+    const slip = await this.findOne(id, userId);
+    if (slip.status !== BetSlipStatus.OPEN) {
+      throw new BadRequestException('Cannot modify a submitted or settled bet slip');
+    }
     return this.prisma.betSlip.update({ where: { id }, data: dto });
   }
 
@@ -194,6 +245,10 @@ export class BetslipService {
     if (slip.items.length === 0) {
       throw new BadRequestException('Cannot submit an empty bet slip');
     }
+    if (slip.structure === WagerStructure.PARLAY && slip.items.length < 2) {
+      throw new BadRequestException('Parlay requires at least two legs');
+    }
+    await this.recalcTotals(id);
     return this.prisma.betSlip.update({
       where: { id },
       data: { status: BetSlipStatus.SUBMITTED },
@@ -210,14 +265,20 @@ export class BetslipService {
 
   async remove(id: string, userId: string) {
     const slip = await this.findOne(id, userId);
-    if (slip.status === BetSlipStatus.SUBMITTED) {
-      throw new BadRequestException('Cannot delete a submitted bet slip');
+    if (slip.status !== BetSlipStatus.OPEN) {
+      throw new BadRequestException('Cannot delete a submitted or settled bet slip');
     }
     await this.prisma.betSlip.delete({ where: { id } });
     return { message: 'Bet slip deleted' };
   }
 
-  private toItemCreateData(slipId: string, dto: AddItemDto) {
+  private async captureSnapshots(items: Array<{ id: string }>) {
+    for (const item of items) {
+      await this.projectionSnapshots.captureForItem(item.id);
+    }
+  }
+
+  private toItemCreateData(slipId: string, dto: AddItemDto, stakeOverride?: number) {
     return {
       betSlipId: slipId,
       marketId: dto.marketId,
@@ -231,7 +292,7 @@ export class BetslipService {
       decisionClass: dto.decisionClass as any,
       propStatType: dto.propStatType as any,
       seasonPhase: dto.seasonPhase as any,
-      stake: dto.stake ?? 0,
+      stake: stakeOverride ?? dto.stake ?? 0,
       ev: dto.ev,
       recommendedAt: new Date(),
     };
@@ -278,12 +339,30 @@ export class BetslipService {
   }
 
   private async recalcTotals(slipId: string) {
+    const slip = await this.prisma.betSlip.findUnique({
+      where: { id: slipId },
+      select: { structure: true, ticketStake: true },
+    });
+    if (!slip) return;
+
     const items = await this.prisma.betSlipItem.findMany({ where: { betSlipId: slipId } });
+    if (slip.structure === WagerStructure.PARLAY) {
+      const totalOdds = items.reduce((product, item) => product * americanToDecimal(item.odds), 1);
+      const ticketStake = slip.ticketStake ?? 0;
+      await this.prisma.betSlip.update({
+        where: { id: slipId },
+        data: {
+          totalStake: ticketStake,
+          totalOdds: items.length > 0 ? totalOdds : null,
+        },
+      });
+      return;
+    }
+
     const totalStake = items.reduce((sum, item) => sum + item.stake, 0);
-    const totalOdds = items.reduce((product, item) => product * americanToDecimal(item.odds), 1);
     await this.prisma.betSlip.update({
       where: { id: slipId },
-      data: { totalStake, totalOdds: items.length > 0 ? totalOdds : null },
+      data: { totalStake, totalOdds: null, ticketStake: null },
     });
   }
 }
