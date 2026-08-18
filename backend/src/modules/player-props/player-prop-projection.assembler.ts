@@ -28,7 +28,21 @@ interface ProjectionAssembly {
     rotationAvailable: boolean;
     availabilityAvailable: boolean;
     spreadForBlowoutModel: number | null;
+    replacementAdjustmentActive: boolean;
+    replacementSources: number;
   };
+}
+
+interface ReplacementAdjustment {
+  minutesDelta: number;
+  usageDelta: number;
+  ballHandlingDelta: number;
+  reboundChanceDelta: number;
+  fgaDelta: number;
+  threePointAttemptDelta: number;
+  defensiveImpact: number;
+  confidence: number;
+  quality: DataQuality | null;
 }
 
 @Injectable()
@@ -45,7 +59,7 @@ export class PlayerPropProjectionAssembler {
     const mode = params.mode ?? 'STANDARD';
     const seed = params.seed ?? stableSeed(`${params.eventId}:${params.playerId}:${params.statType}`);
 
-    const [statLines, rotation, availability, opportunityRows, spreadMarket] = await Promise.all([
+    const [statLines, rotation, availability, opportunityRows, spreadMarket, replacementRows] = await Promise.all([
       this.prisma.statLine.findMany({
         where: { playerId: params.playerId },
         orderBy: { gameDate: 'desc' },
@@ -66,18 +80,33 @@ export class PlayerPropProjectionAssembler {
         where: { eventId: params.eventId, marketType: 'SPREAD', isActive: true },
         include: { marketOdds: { where: { isOpen: true }, take: 8 } },
       }),
+      this.prisma.injuryReplacementProjection.findMany({
+        where: { eventId: params.eventId, replacementPlayerId: params.playerId },
+        orderBy: { projectedAt: 'desc' },
+      }).catch(() => []),
     ]);
 
     if (statLines.length < 3) return null;
 
+    const replacement = aggregateReplacement(replacementRows);
     const minuteInput = buildMinuteDistribution(statLines.map((row) => row.minutes), rotation);
-    const quality = determineDataQuality(rotation, availability?.dataQuality, opportunityRows.length);
-    const qualityReasons = quality.reasons;
+    const baseQuality = determineDataQuality(rotation, availability?.dataQuality, opportunityRows.length);
+    const dataQuality = combineDataQuality(baseQuality.level, replacement.quality);
+    const qualityReasons = [...baseQuality.reasons];
+    if (replacementRows.length > 0) qualityReasons.push('INJURY_REPLACEMENT_MODEL_ACTIVE');
+    if (replacement.quality === 'LOW') qualityReasons.push('LOW_QUALITY_REPLACEMENT_ALLOCATION');
     const spread = representativeSpread(spreadMarket?.marketOdds ?? []);
     const scripts = buildGameScripts(spread);
 
     const build = (stat: ProjectionStat, localSeed: number): ProjectionDistribution => {
-      const opportunity = buildOpportunityModel(stat, statLines, opportunityRows);
+      const baseOpportunity = buildOpportunityModel(stat, statLines, opportunityRows);
+      const opportunity = applyReplacementOpportunity(
+        stat,
+        baseOpportunity,
+        replacement,
+        minuteInput.distribution.median,
+        opportunityRows,
+      );
       return projectDistribution({
         stat,
         analysisMode: mode,
@@ -90,7 +119,7 @@ export class PlayerPropProjectionAssembler {
         scripts,
         blowoutProbability: spread === null ? undefined : spreadToBlowoutProbability(Math.abs(spread)),
         blowoutMinutesPenalty: 5,
-        dataQuality: quality.level,
+        dataQuality,
         unresolvedAvailability: !availability || availability.expectedAvailabilityProb < 0.8,
         unresolvedLineup: !rotation || rotation.starterStatus === 'UNKNOWN',
         unresolvedMinutesRestriction: Boolean(rotation?.loadManagementStatus === 'POSSIBLE' || rotation?.restrictionMinutes),
@@ -185,9 +214,11 @@ export class PlayerPropProjectionAssembler {
         return null;
     }
 
+    if (replacementRows.length > 0) opportunitySource += '_WITH_INJURY_REDISTRIBUTION';
+
     return {
       distribution,
-      dataQuality: quality.level,
+      dataQuality,
       qualityReasons,
       inputs: {
         minutesSource: minuteInput.source,
@@ -197,6 +228,8 @@ export class PlayerPropProjectionAssembler {
         rotationAvailable: Boolean(rotation),
         availabilityAvailable: Boolean(availability),
         spreadForBlowoutModel: spread,
+        replacementAdjustmentActive: replacementRows.length > 0,
+        replacementSources: replacementRows.length,
       },
     };
   }
@@ -284,6 +317,83 @@ function buildOpportunityModel(stat: ProjectionStat, statLines: any[], trackingR
     default:
       return { ratePerMinute: 0, conversionRate: 1 };
   }
+}
+
+export function applyReplacementOpportunity(
+  stat: ProjectionStat,
+  base: { ratePerMinute: number; conversionRate: number },
+  replacement: ReplacementAdjustment,
+  expectedMinutes: number,
+  trackingRows: any[],
+): { ratePerMinute: number; conversionRate: number } {
+  if (replacement.confidence <= 0 || expectedMinutes <= 0) return base;
+  const confidence = clamp(replacement.confidence, 0, 1);
+  let rateDelta = 0;
+
+  switch (stat) {
+    case 'POINTS':
+      rateDelta = replacement.fgaDelta / expectedMinutes;
+      break;
+    case 'REBOUNDS':
+      rateDelta = replacement.reboundChanceDelta / expectedMinutes;
+      break;
+    case 'THREES':
+      rateDelta = replacement.threePointAttemptDelta / expectedMinutes;
+      break;
+    case 'ASSISTS':
+    case 'TURNOVERS': {
+      const touches = trackingRows.length ? mean(trackingRows.map((row) => Math.max(0, row.touches ?? 0))) : 0;
+      if (touches > 0) {
+        const relativeHandlingChange = clamp(replacement.ballHandlingDelta / touches, -0.5, 0.75);
+        rateDelta = base.ratePerMinute * relativeHandlingChange;
+      }
+      break;
+    }
+    default:
+      rateDelta = 0;
+  }
+
+  return {
+    ratePerMinute: Math.max(0, base.ratePerMinute + rateDelta * confidence),
+    conversionRate: base.conversionRate,
+  };
+}
+
+function aggregateReplacement(rows: any[]): ReplacementAdjustment {
+  if (!rows.length) {
+    return {
+      minutesDelta: 0,
+      usageDelta: 0,
+      ballHandlingDelta: 0,
+      reboundChanceDelta: 0,
+      fgaDelta: 0,
+      threePointAttemptDelta: 0,
+      defensiveImpact: 0,
+      confidence: 0,
+      quality: null,
+    };
+  }
+  const qualityRank: Record<string, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+  const minimumQuality = rows.reduce((current, row) =>
+    qualityRank[String(row.dataQuality)] < qualityRank[current] ? String(row.dataQuality) : current,
+  'HIGH');
+  return {
+    minutesDelta: rows.reduce((sum, row) => sum + (row.minutesDelta ?? 0), 0),
+    usageDelta: rows.reduce((sum, row) => sum + (row.usageDelta ?? 0), 0),
+    ballHandlingDelta: rows.reduce((sum, row) => sum + (row.ballHandlingDelta ?? 0), 0),
+    reboundChanceDelta: rows.reduce((sum, row) => sum + (row.reboundChanceDelta ?? 0), 0),
+    fgaDelta: rows.reduce((sum, row) => sum + (row.fgaDelta ?? 0), 0),
+    threePointAttemptDelta: rows.reduce((sum, row) => sum + (row.threePointAttemptDelta ?? 0), 0),
+    defensiveImpact: rows.reduce((sum, row) => sum + (row.defensiveImpact ?? 0), 0),
+    confidence: mean(rows.map((row) => clamp(row.confidence ?? 0, 0, 1))),
+    quality: minimumQuality as DataQuality,
+  };
+}
+
+function combineDataQuality(base: DataQuality, replacement: DataQuality | null): DataQuality {
+  if (!replacement) return base;
+  const rank: Record<DataQuality, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+  return rank[replacement] < rank[base] ? replacement : base;
 }
 
 function buildUncertainty(
