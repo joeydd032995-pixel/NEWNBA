@@ -2,8 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 
-// ─── Response shapes from the Python sidecar ─────────────────────────────────
-
 export interface NbaPlayer {
   nba_id: number;
   name: string;
@@ -11,12 +9,13 @@ export interface NbaPlayer {
   team_city: string;
   team_name: string;
   is_active: boolean;
+  season?: string;
 }
 
 export interface NbaGameLog {
   nba_id: number;
   game_id: string;
-  game_date: string; // 'YYYY-MM-DD'
+  game_date: string;
   matchup: string;
   season: string;
   points: number;
@@ -62,6 +61,7 @@ export interface NbaPlayerSeasonStats {
   ts_pct: number;
   net_rating: number;
   plus_minus: number;
+  season?: string;
 }
 
 export interface NbaTodayGame {
@@ -89,7 +89,32 @@ export interface NbaPlayerInfo {
   is_active: boolean;
 }
 
-// ─── Service ─────────────────────────────────────────────────────────────────
+export type NbaTrackingMeasure =
+  | 'Rebounding'
+  | 'Possessions'
+  | 'CatchShoot'
+  | 'PullUpShot'
+  | 'Defense'
+  | 'Drives'
+  | 'Passing'
+  | 'ElbowTouch'
+  | 'PostTouch'
+  | 'PaintTouch'
+  | 'Efficiency'
+  | 'SpeedDistance';
+
+export interface NbaOfficialDataset<T = Record<string, any>> {
+  source: 'stats.nba.com';
+  source_tier: 'TIER_1_OFFICIAL';
+  data_quality: 'LOW' | 'MEDIUM' | 'HIGH';
+  season: string;
+  rows: T[];
+  fetched_at: string;
+  measure?: string;
+  player_or_team?: string;
+  play_type?: string | null;
+  team_id?: number;
+}
 
 @Injectable()
 export class NbaDataService {
@@ -101,11 +126,10 @@ export class NbaDataService {
     this.baseUrl = this.config.get<string>('NBA_DATA_URL', 'http://nba-data:8000');
     this.http = axios.create({
       baseURL: this.baseUrl,
-      timeout: 60_000, // nba_api can be slow; give it 60s
+      timeout: 60_000,
     });
   }
 
-  /** True when the sidecar URL is configured */
   get isEnabled(): boolean {
     return !!this.config.get<string>('NBA_DATA_URL');
   }
@@ -119,27 +143,36 @@ export class NbaDataService {
     }
   }
 
-  async getActivePlayers(): Promise<NbaPlayer[]> {
-    const { data } = await this.http.get<NbaPlayer[]>('/players/active');
+  async getCurrentSeason(): Promise<string> {
+    const { data } = await this.http.get<{ season: string }>('/season/current');
+    return data.season;
+  }
+
+  async getActivePlayers(season?: string): Promise<NbaPlayer[]> {
+    const { data } = await this.http.get<NbaPlayer[]>('/players/active', {
+      params: season ? { season } : undefined,
+    });
     return data;
   }
 
   async getPlayerGameLogs(
     nbaId: number,
-    season = '2024-25',
+    season?: string,
     lastN = 20,
   ): Promise<NbaGameLog[]> {
+    const params: Record<string, any> = { last_n: lastN };
+    if (season) params.season = season;
     const { data } = await this.http.get<NbaGameLog[]>(
       `/players/${nbaId}/game-logs`,
-      { params: { season, last_n: lastN } },
+      { params },
     );
     return data;
   }
 
-  async getSeasonStats(season = '2024-25'): Promise<NbaPlayerSeasonStats[]> {
+  async getSeasonStats(season?: string): Promise<NbaPlayerSeasonStats[]> {
     const { data } = await this.http.get<NbaPlayerSeasonStats[]>(
       '/players/season-stats',
-      { params: { season } },
+      { params: season ? { season } : undefined },
     );
     return data;
   }
@@ -151,6 +184,82 @@ export class NbaDataService {
 
   async getPlayerInfo(nbaId: number): Promise<NbaPlayerInfo> {
     const { data } = await this.http.get<NbaPlayerInfo>(`/players/${nbaId}/info`);
+    return data;
+  }
+
+  async getTrackingMeasure(
+    measure: NbaTrackingMeasure,
+    options: {
+      season?: string;
+      playerOrTeam?: 'Player' | 'Team';
+      perMode?: 'Totals' | 'PerGame';
+      lastNGames?: number;
+    } = {},
+  ): Promise<NbaOfficialDataset> {
+    const { data } = await this.http.get<NbaOfficialDataset>(
+      `/tracking/league/${measure}`,
+      {
+        params: {
+          ...(options.season ? { season: options.season } : {}),
+          player_or_team: options.playerOrTeam ?? 'Player',
+          per_mode: options.perMode ?? 'PerGame',
+          last_n_games: options.lastNGames ?? 0,
+        },
+      },
+    );
+    return data;
+  }
+
+  async getPlayTypes(
+    options: {
+      season?: string;
+      playerOrTeam?: 'P' | 'T';
+      playType?: string;
+      perMode?: 'Totals' | 'PerGame';
+    } = {},
+  ): Promise<NbaOfficialDataset> {
+    const { data } = await this.http.get<NbaOfficialDataset>('/tracking/play-types', {
+      params: {
+        ...(options.season ? { season: options.season } : {}),
+        player_or_team: options.playerOrTeam ?? 'P',
+        ...(options.playType ? { play_type: options.playType } : {}),
+        per_mode: options.perMode ?? 'Totals',
+      },
+    });
+    return data;
+  }
+
+  async getTeamLineups(
+    nbaTeamId: number,
+    season?: string,
+    lastNGames = 0,
+  ): Promise<NbaOfficialDataset> {
+    const { data } = await this.http.get<NbaOfficialDataset>(
+      `/teams/${nbaTeamId}/lineups`,
+      {
+        params: {
+          ...(season ? { season } : {}),
+          last_n_games: lastNGames,
+        },
+      },
+    );
+    return data;
+  }
+
+  async getTeamOnOff(
+    nbaTeamId: number,
+    season?: string,
+    lastNGames = 0,
+  ): Promise<NbaOfficialDataset> {
+    const { data } = await this.http.get<NbaOfficialDataset>(
+      `/teams/${nbaTeamId}/on-off`,
+      {
+        params: {
+          ...(season ? { season } : {}),
+          last_n_games: lastNGames,
+        },
+      },
+    );
     return data;
   }
 }
