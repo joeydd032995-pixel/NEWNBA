@@ -2,7 +2,14 @@ import { Controller, Get, Post, Patch, Delete, Param, Body, Request, UseGuards }
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BetslipService } from './betslip.service';
-import { CreateBetSlipDto, AddItemDto, CloseBetItemDto, SubmitTrackedSlipDto, UpdateSlipDto } from './dto/betslip.dto';
+import {
+  CreateBetSlipDto,
+  AddItemDto,
+  CloseBetItemDto,
+  SubmitTrackedParlayDto,
+  SubmitTrackedSlipDto,
+  UpdateSlipDto,
+} from './dto/betslip.dto';
 
 @ApiTags('Bet Slip')
 @ApiBearerAuth()
@@ -29,6 +36,11 @@ export class BetslipController {
   @Post('submit-tracked')
   createAndSubmitTracked(@Body() dto: SubmitTrackedSlipDto, @Request() req) {
     return this.betslipService.createAndSubmitTracked(req.user.id, dto);
+  }
+
+  @Post('submit-parlay')
+  createAndSubmitParlay(@Body() dto: SubmitTrackedParlayDto, @Request() req) {
+    return this.betslipService.createAndSubmitParlay(req.user.id, dto);
   }
 
   @Post(':id/items')
