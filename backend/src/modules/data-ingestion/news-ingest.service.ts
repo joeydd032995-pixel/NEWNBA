@@ -2,6 +2,23 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
+import { classifyReportingSource } from './news-source-registry';
+
+interface NewsPayloadItem {
+  id?: string;
+  link?: string;
+  headline?: string;
+  summary?: string | null;
+  url?: string | null;
+  source?: string | null;
+  source_key?: string | null;
+  source_class?: string | null;
+  source_tier?: string | null;
+  reporter_name?: string | null;
+  player_name?: string | null;
+  team_abbr?: string | null;
+  published_at?: string | null;
+}
 
 @Injectable()
 export class NewsIngestService {
@@ -18,15 +35,31 @@ export class NewsIngestService {
   async syncNews(): Promise<number> {
     let inserted = 0;
     try {
-      const resp = await axios.get<{ items: any[] }>(`${this.nbaSidecarUrl}/news`, { timeout: 15000 });
+      const resp = await axios.get<{ items: NewsPayloadItem[] }>(`${this.nbaSidecarUrl}/news`, { timeout: 15000 });
       const items = resp.data?.items ?? [];
 
       for (const item of items) {
-        const externalId: string = item.id ?? item.link ?? '';
+        const externalId = String(item.id ?? item.link ?? '').trim();
         if (!externalId) continue;
 
         const exists = await this.prisma.newsItem.findUnique({ where: { externalId } });
         if (exists) continue;
+
+        const source = String(item.source ?? 'unknown').trim().toLowerCase();
+        // Simulated reporting is never evidence, even if a future upstream
+        // adapter accidentally labels it as a normal source.
+        if (source.includes('simulated')) {
+          this.logger.warn(`Rejected simulated news evidence ${externalId}`);
+          continue;
+        }
+
+        const assessment = classifyReportingSource({
+          source,
+          sourceKey: item.source_key,
+          sourceClass: item.source_class,
+          sourceTier: item.source_tier,
+          reporterName: item.reporter_name,
+        });
 
         let playerId: string | null = null;
         if (item.player_name) {
@@ -46,16 +79,21 @@ export class NewsIngestService {
           teamId = team?.id ?? null;
         }
 
+        const publishedAt = parsePublishedAt(item.published_at);
         await this.prisma.newsItem.create({
           data: {
             externalId,
             headline: item.headline ?? '',
             summary: item.summary ?? null,
             url: item.url ?? null,
-            source: item.source ?? 'espn',
+            source,
+            sourceKey: assessment.sourceKey,
+            sourceTier: assessment.sourceTier,
+            sourceClass: assessment.sourceClass,
+            dataQuality: assessment.dataQuality,
             playerId,
             teamId,
-            publishedAt: item.published_at ? new Date(item.published_at) : new Date(),
+            publishedAt,
           },
         });
         inserted++;
@@ -84,4 +122,10 @@ export class NewsIngestService {
       take: limit,
     });
   }
+}
+
+function parsePublishedAt(value?: string | null): Date {
+  if (!value) return new Date();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
