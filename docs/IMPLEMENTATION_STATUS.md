@@ -1,233 +1,250 @@
 # Opportunity-First Implementation Status
 
-Branch: `agent/opportunity-first`  
-Draft PR: #45  
-Baseline: `main` at `63e2cfe46cf8026e272ccd5790dbbdcfa70f7f45`
+Branch: `agent/opportunity-priority-2`  
+Draft PR: #46  
+Baseline: merged `main` at `b90192e12cd2ed712d6f39fc996411e3d3f9faff`
 
-This file is deliberately conservative: a requirement is marked complete only when code exists in the execution path, not merely when a Prisma field or placeholder exists.
+This status is deliberately conservative: a requirement is complete only when it exists in an execution path and has passed the repository validation matrix. Fields or standalone helpers alone do not count.
 
 ## Phase 0 — Audit & Baseline
 
 **Status: COMPLETE**
 
-- Gap audit: `docs/GAP_AUDIT.md`
-- Baseline schema mapped and frozen before additive migrations.
-- Existing EV, arbitrage, optimizer, ensemble and A/B modules preserved.
+- Gap audit completed in `docs/GAP_AUDIT.md`.
+- Existing EV, arbitrage, optimizer, ensemble and A/B functionality preserved.
+- Post-merge CI now materializes the current `main` schema and marks current-main migrations applied before exercising only PR-additive migrations.
 
 ## Phase 1 — Core Data Model & Ingestion
 
-**Status: PARTIAL / MAJOR FOUNDATION COMPLETE**
+**Status: MAJOR FOUNDATION COMPLETE / EXTERNAL DATA GAPS REMAIN**
 
-Completed typed persistence:
+Completed persistence and execution paths include:
 
-- exact wager line/book/closing line/closing price/CLV
-- confidence, decision, prop type and season phase tracking
+- exact wager market/event/book/line/price provenance
+- closing price/line and CLV
+- confidence, decision, direction, prop type and season phase
+- explicit `SINGLE_BATCH` versus `PARLAY` wager structure
+- per-leg settlement status, actual value, source and settlement time
+- ticket-level parlay stake/payout/P&L
+- immutable wager projection snapshots
 - referee assignments/metrics
-- game environment
-- official/expected lineups
-- rotation projections and minutes ranges
-- coach rotation tendencies
-- player availability projections
-- player opportunity tracking
-- shot profiles
-- play-type statistics
-- defensive scheme and matchup assignments
-- five-man lineups
-- player on/off
-- injury replacement projections
-- post-bet reviews
-- performance slices
+- game environment and schedule-density context
+- official/expected lineups and rotations
+- availability and injury replacement projections
+- opportunity tracking, shot profiles and play types
+- five-man lineup/on-off data
+- post-bet reviews and performance slices
+- raw injury/news source tier and data-quality metadata
 
 Completed ingestion/integrity work:
 
-- official stats.nba.com tracking adapters in `nba-data`
-- official team lineup/on-off adapters
-- scheduled Opportunity-First tracking/play-type/lineup/on-off ingestion
-- official NBA injury PDF Tier-1 adapter
-- ESPN injury fallback demoted to Tier 3
-- injury report timestamp can no longer be populated from return date
-- simulated public-betting persistence removed and legacy rows purged
-- synthetic odds persistence removed in every environment
-- dynamic season resolution replaces 2024-25 defaults
+- official NBA injury-report adapter with ESPN fallback demoted below official evidence
+- official stats.nba.com tracking, play-type, lineup/on-off and shot-location adapters
+- official NBA referee assignments
+- current NBA team-profile arena identity adapter for `arenaName` and `arenaCity`
+- dynamic season resolution
+- simulated public-betting evidence removed
+- synthetic odds persistence removed
+- catch-and-shoot/pull-up missing values now persist as `null`, not observed zero
+- exact StatLine resolver registered
+- central Prisma boundary rejects unverified StatLine mutations
 
-Still partial:
+Still incomplete because a verified granular source is not yet available in-repo:
 
-- shot-location rim/midrange/corner/ATB fields require a dedicated official shot-location adapter; current tracking ingestion populates catch-and-shoot and pull-up fields only.
-- defensive scheme switch/drop/blitz/trap/zone and primary defender assignment still need a verified granular provider feed.
-- on/off usage/assist/rebound/shot redistribution fields are typed but official ingestion currently fills ORtg/DRtg/Net/Pace first; redistribution deltas remain pending.
-- current rotation projection engine exists as a pure tested model, but automated persistence for every scheduled player is not yet wired.
-- referee assignment ingestion and arena/geography source ingestion remain pending; the deterministic calculation engines are complete.
+- arena coordinates, IANA time zone and altitude
+- travel-distance ingestion based on verified arena coordinates
+- granular defensive switch/drop/blitz/trap/zone frequencies and primary-defender assignments
+- referee tendency history calculated from trustworthy exact historical event linkage
+- richer on/off redistribution deltas where the official endpoint does not expose the required fields directly
+
+Historical catch-and-shoot/pull-up zeros are not rewritten because the prior schema cannot distinguish an actual zero from unavailable data. Re-ingestion from a known source is required to repair those rows honestly.
 
 ## Phase 2 — Projection & Simulation Engine
 
-**Status: FUNCTIONAL CORE COMPLETE / CALIBRATION PARTIAL**
+**Status: FUNCTIONAL CORE COMPLETE / CALIBRATION REMAINS**
 
 Completed:
 
 - deterministic seeded Monte Carlo
 - FAST / STANDARD / DEEP modes
-- independent Points/Rebounds/Assists/Threes/Turnovers/Steals/Blocks models
-- Opportunity Equation
-- possession-share opportunity mode
-- expected PPP adjustment
-- game scripts
-- blowout/minutes sensitivity primitive
-- distribution mean/median/percentiles
-- alternate-line probability curves
-- uncertainty decomposition
-- empirical-correlation Gaussian-copula engine
-- PRA/PR/PA/RA independent component recombination
-- stocks distribution
-- double-/triple-double joint threshold simulation
-- playable-to calculator
-- PASS/WAIT/LEAN/BET/STRONG_BET decision gate
-- BET NOW / WAIT / PASS news layer
-- LOW/MEDIUM/HIGH data quality
-- source freshness/conflict engine
-- anti-bias / duplicate-evidence control
-- contradiction detector
-- player-prop feed now uses Opportunity-First probability rather than historical hit rate
+- Points/Rebounds/Assists/Threes/Turnovers/Steals/Blocks
+- PRA/PR/PA/RA correlation-aware recombination
+- stocks and DD/TD joint simulation
+- Minutes × Opportunity × Conversion × Context equation
+- possession-share and PPP adjustment
+- game scripts and uncertainty decomposition
+- alternate-line curves
+- playable-to price/line
+- PASS/WAIT/LEAN/BET/STRONG_BET
+- BET_NOW/WAIT/PASS news decision layer
+- source freshness/conflict and data-quality controls
+- anti-duplication/anti-narrative bias checks
+- historical hit rate remains context only
 
-Still partial:
+SGP hardening in PR #46:
 
-- spread-to-blowout mapping is transparent but requires historical calibration.
-- foul-risk inputs require personal-foul ingestion before the model can be considered complete.
-- role classification enum exists; automated classifier from tracking/usage profiles remains pending.
-- research stopping rule exists in the standalone projection service; feed-level orchestration can be tightened further.
+- legacy hard-coded SGP correlation coefficients removed from runtime
+- same-game player-prop dependence uses aligned trustworthy historical observations + empirical Pearson matrix + Gaussian copula
+- minimum aligned-history coverage is enforced
+- mixed/unmodeled same-game legs return `UNMODELED` and withhold correlation-adjusted probability/EV instead of substituting a heuristic
+- standard parlay analysis refuses same-event independence assumptions
+
+Remaining calibration work:
+
+- spread → blowout/minutes-loss mapping needs exact historical calibration
+- foul-risk layer needs trustworthy personal-foul/opponent context ingestion
+- automated role classifier can be improved beyond current rotation/opportunity inputs
 
 ## Phase 3 — Market Coverage
 
 **Status: SUBSTANTIALLY COMPLETE**
 
-Added first-class market types:
+Implemented:
 
-- TEAM_TOTAL
+- moneyline/spread/game totals
+- team totals
 - first-half ML/spread/total/team total
 - first-quarter ML/spread/total/team total
-- PLAYER_PROP_ALTERNATE
-- DERIVATIVE
+- player props and alternate player props
+- points/rebounds/assists/threes/turnovers/steals/blocks/stocks
+- PRA/PR/PA/RA
+- double-double/triple-double
+- derivatives enum/mapping support
+- exact alternate lines/books preserved
 
-Added prop types:
+Remaining model-quality gap:
 
-- TURNOVERS
-- STOCKS
-- DOUBLE_DOUBLE
-- TRIPLE_DOUBLE
-
-Completed:
-
-- documented The Odds API NBA market-key mapping
-- scheduled expanded-market ingestion
-- alternate lines preserved individually
-- event-odds API parsing fixed to handle the provider's single-event response contract
-
-Remaining:
-
-- add typed `teamId` identity directly on team-total markets rather than relying on market description/outcome subject identifiers.
+- team-total markets still lack a dedicated first-class team subject relation; provider description/outcome identity remains the fallback.
 
 ## Phase 4 — Injury, Lineup & News Hierarchy
 
-**Status: PARTIAL**
+**Status: SOURCE HIERARCHY ACTIVE / FEED COVERAGE PARTIAL**
 
 Completed:
 
-- Tier-1 official NBA injury-report PDF discovery/parser
-- Eastern-time publication timestamp normalization to UTC
-- official-first / ESPN-fallback ingestion
-- expected availability probability
-- source tier hierarchy
-- freshness decay
-- conflict detection
+- Tier-1 official NBA injury reports
+- correct publication-time handling
+- official-first availability resolution
+- raw `InjuryReport.sourceTier` and `dataQuality`
+- raw `NewsItem.sourceKey`, `sourceTier`, `sourceClass`, `dataQuality`
+- explicit reporting classes for official NBA/team/coach, national reporter, beat reporter, aggregator and unknown
+- unnamed ESPN headline feed remains aggregator/Tier 3
+- unknown sources cannot self-promote by claiming Tier 1
+- simulated reporting is rejected
+- same-tier conflicts remain unresolved; higher-tier evidence can override lower-tier conflict
 
 Remaining:
 
-- official team communications feed
-- national/beat reporter registry and ingestion
-- dedicated coaching-announcement feed
-- source tier fields should be added directly to raw `InjuryReport`/`NewsItem` records in a later additive migration; current availability projections already persist the resolved tier.
+- actual official team communications ingestion
+- dedicated coaching-announcement ingestion
+- populated attributable national/beat reporter feed/registry across all teams
 
-## Phase 5 — Performance, Attribution & Post-Bet Loop
+The hierarchy is wired; the missing work is source acquisition, not ranking logic.
 
-**Status: MAJOR CORE COMPLETE / AUTOMATION PARTIAL**
+## Phase 5 — Performance, Settlement, Attribution & Post-Bet Loop
+
+**Status: CORE LOOP COMPLETE FOR EXACT PLAYER-PROP SETTLEMENT**
 
 Completed:
 
-- exact wager sportsbook/line/price persistence
-- closing line/price persistence endpoint
-- deterministic line and price CLV
-- CLV rate and average CLV dashboard calculations
-- performance slices by confidence/prop/direction/season phase/market type/sportsbook
-- removal of fake fixed -110 ROI calculations
-- automatic conservative post-bet review job
-- structured minutes/usage/pace/market-timing attribution rules
+- exact tracked wager persistence from Player Props UI
+- explicit tracked-parlay persistence from Parlay Builder
+- one ticket stake for parlays; zero leg stakes to prevent double counting
+- automatic pre-tip closing-line capture
+- deterministic price/line CLV
+- immutable recommendation-time projection snapshot
+- exact player-prop leg settlement from `eventId + playerId` StatLine only
+- OVER/UNDER, stocks, combinations, DD and TD settlement
+- push/void-aware parlay settlement
+- independent-single payout aggregation
+- unsupported final markets stay pending instead of being guessed
+- performance dashboard consumes per-leg settlement for singles and ticket-level P&L for parlays
+- parlay ticket P&L is never copied onto individual legs
+- category ROI slices use independent settled wagers only
+- post-bet review uses exact event linkage and recommendation-time snapshot minutes
+- fixed-price assumptions such as universal -110 are not used for tracked financial performance
 
 Remaining:
 
-- automatic pre-tip closing-line capture from the final verified sportsbook snapshot
-- store pregame projected statistic/minutes/usage/pace directly on the wager so post-bet attribution never needs to reconstruct them
-- leg-level settlement for parlays before multi-leg category performance can be attributed honestly
+- verified automatic settlement adapters for non-player markets before they can leave `PENDING`
+- operator-specific settlement exceptions such as dead-heats/resettlement require sportsbook adapters rather than generic assumptions
 
 ## Phase 6 — Frontend & API Surface
 
-**Status: NOT COMPLETE**
+**Status: FUNCTIONAL CORE COMPLETE**
 
-Backend API additions already present:
+Implemented:
 
-- Opportunity-First projection endpoint
-- expanded player-prop feed
-- exact closing-market capture endpoint
-- Swagger DTOs for simulation modes and distribution inputs
+- `/opportunity` PRO-gated route
+- decision board
+- distribution/percentile view
+- lineup/rotation view
+- referee/environment view
+- CLV/attribution view
+- source/data-quality view
+- Player Props exact tracked-wager handoff
+- tracked singles drawer with independent-return accounting
+- Parlay Builder exact leg/book/line provenance
+- empirical SGP modeled/unmodeled state display
+- multi-game leg accumulation
+- true one-stake parlay persistence
 
-Frontend pages still required:
+Minor cleanup remaining:
 
-- projection distributions / alternate curves
-- lineup / rotation explorer
-- referee / environment impact
-- CLV / error attribution analytics
-- decision engine
-- source hierarchy / data-quality viewer
+- Player Props table markup can be simplified to avoid nested table-body fragments; builds currently pass.
 
 ## Phase 7 — Tests, Docs & Hardening
 
-**Status: PARTIAL**
+**Status: GREEN ON PR #46 CURRENT HEAD**
 
-Completed:
+Current validation on commit `6351dfbebd5ff4f15dc64f8cbe5e499667dc219a`:
 
-- projection reproducibility tests
-- decision-gate tests
-- source-quality tests
-- anti-bias tests
-- CLV tests
-- market-mapping tests
-- milestone tests
-- rotation/replacement tests
-- environment/referee tests
-- post-bet attribution tests
-- `docs/MODELS.md`
-- CI workflow added for Prisma validation, migrations, backend tests/build and Python compile
+- Prisma schema validation — PASS
+- Prisma client generation — PASS
+- current-main baseline materialization — PASS
+- PR additive migration deploy — PASS
+- backend Jest suite — PASS
+- Nest backend build — PASS
+- Python sidecar compile — PASS
+- production sidecar compile/import — PASS
+- React frontend build — PASS
+- merged Docker Compose configuration — PASS
 
-Not yet independently verified in this environment:
+Additional hardening tests cover:
 
-- GitHub Actions completion status is not visible through the current connector response surface.
-- Docker Compose end-to-end boot has not been demonstrated from this tool environment.
-- Frontend build/test gate remains to be added to CI once Phase 6 code is wired.
+- empirical SGP modeled/unmodeled behavior
+- standard-parlay same-event refusal
+- exact tracked settlement
+- single-batch versus parlay accounting
+- source credibility classification
+- exact StatLine resolution
+- recommendation snapshots
+- schedule density
+- shot-profile matching
+- existing projection/source/bias/CLV/rotation/replacement/referee/milestone paths
 
 ## Current Integrity Invariants
 
-1. Simulated public betting cannot be returned as verified evidence.
+1. Simulated public betting/reporting cannot be returned as verified evidence.
 2. No synthetic odds are persisted when the odds provider is unavailable.
-3. Player-prop `trueProb` is Opportunity-First model probability, not hit rate.
-4. Official NBA injury information outranks ESPN fallback.
-5. Missing tracking/rotation information lowers data quality instead of generating fake source data.
-6. Every Monte-Carlo result is seeded/reproducible.
-7. Model financial performance does not assume a universal -110 price.
+3. Player-prop model probability comes from Opportunity-First projection, not historical hit rate.
+4. Official NBA injury evidence outranks reporting/aggregator fallback.
+5. Missing tracking values are represented as missing when the schema can distinguish them.
+6. Monte Carlo output is seeded/reproducible.
+7. Financial performance uses actual tracked price/stake.
+8. Same-game correlation-adjusted EV is withheld when empirical coverage is insufficient.
+9. Unverified StatLine mutations are rejected at the Prisma boundary.
+10. Automatic player-prop settlement requires exact event/player linkage.
+11. True parlay P&L remains ticket-level; leg-level ROI is never invented.
+12. Arena name/city may come from current official NBA team profiles; coordinates/time zone/altitude remain unset until independently verified.
 
-## Blocking Work Before Merge
+## Remaining Priority Work Before Final Production Sign-Off
 
-1. Phase 6 frontend surfaces.
-2. Automatic rotation persistence / injury replacement recalculation pipeline.
-3. Official referee assignments + arena/environment source ingestion.
-4. Raw source-tier persistence improvements for injury/news.
-5. Automatic closing-line capture and pregame projection snapshot on wagers.
-6. Full CI/Docker verification.
-7. README.md, CLAUDE.md and PROJECT_PLAN.md final architecture updates.
+1. Add verified arena coordinates, IANA time zones, altitude and derived travel distance from an attributable source; do not infer or approximate them silently.
+2. Add official team/coaching communications and attributable national/beat reporter ingestion.
+3. Add verifiable granular defensive-scheme and primary-defender ingestion; otherwise leave those fields unpopulated.
+4. Build empirical referee-tendency history only from trustworthy exact game/referee/event linkage.
+5. Calibrate spread→blowout/minute-loss only after a sufficient exact-linked historical sample is available.
+6. Add verified settlement adapters for remaining non-player markets.
+7. Remove/disable legacy generic-anchor StatLine fetch routines in `JobsService` for efficiency; the central write guard already prevents them from corrupting new data.
+8. Re-ingest historical tracking rows where missing-vs-zero provenance can be recovered from a known source.
