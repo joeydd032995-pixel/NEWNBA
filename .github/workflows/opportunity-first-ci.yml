@@ -51,15 +51,20 @@ jobs:
         working-directory: backend
         run: |
           set -euo pipefail
-          git show origin/main:backend/prisma/schema.prisma > /tmp/newnba-main-baseline.prisma
+
+          git worktree add --detach /tmp/newnba-main origin/main
+          trap 'git worktree remove /tmp/newnba-main --force >/dev/null 2>&1 || true' EXIT
+
+          cp /tmp/newnba-main/backend/prisma/schema.prisma /tmp/newnba-main-baseline.prisma
           npx prisma db push --schema /tmp/newnba-main-baseline.prisma --skip-generate
 
           # The database now exactly matches current main. Mark every migration
           # already present on main as applied so migrate deploy exercises only
           # additive migrations introduced by this PR.
-          git ls-tree -r --name-only origin/main \
-            | grep '^backend/prisma/migrations/.*/migration\.sql$' \
-            | awk -F/ '{ print $(NF-1) }' \
+          find /tmp/newnba-main/backend/prisma/migrations \
+            -mindepth 2 -maxdepth 2 -type f -name migration.sql -print \
+            | sed 's#/migration.sql$##' \
+            | xargs -r -n1 basename \
             | sort -u \
             > /tmp/main-migrations.txt
 
@@ -68,6 +73,9 @@ jobs:
             [ -n "$migration" ] || continue
             npx prisma migrate resolve --applied "$migration"
           done < /tmp/main-migrations.txt
+
+          git worktree remove /tmp/newnba-main --force
+          trap - EXIT
       - name: Apply PR additive migrations
         working-directory: backend
         run: npx prisma migrate deploy
