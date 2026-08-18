@@ -11,6 +11,7 @@ export interface BetSlipItem {
   marketId: string
   eventName: string
   outcome: string
+  displayOutcome?: string
   odds: number
   stake: number
   ev?: number
