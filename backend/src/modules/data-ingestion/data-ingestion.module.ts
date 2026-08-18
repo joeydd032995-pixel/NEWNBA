@@ -10,6 +10,7 @@ import { PublicBettingService } from './public-betting.service';
 import { OpportunityDataIngestionJob } from '../../services/background-jobs/opportunity-data-ingestion.job';
 import { RotationReplacementJob } from '../../services/background-jobs/rotation-replacement.job';
 import { RefereeAssignmentJob } from '../../services/background-jobs/referee-assignment.job';
+import { ScheduleEnvironmentJob } from '../../services/background-jobs/schedule-environment.job';
 
 @Module({
   imports: [PrismaModule, NbaDataModule],
@@ -23,6 +24,7 @@ import { RefereeAssignmentJob } from '../../services/background-jobs/referee-ass
     OpportunityDataIngestionJob,
     RotationReplacementJob,
     RefereeAssignmentJob,
+    ScheduleEnvironmentJob,
   ],
   exports: [
     DataIngestionService,
