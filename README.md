@@ -90,7 +90,7 @@ NEWNBA/
 │       │   ├── analytics/
 │       │   ├── arbitrage/
 │       │   ├── auth/
-│       │   ├── bankoll/            # bankroll workflows
+│       │   ├── bankroll/            # bankroll workflows
 │       │   ├── betslip/
 │       │   ├── billing/
 │       │   ├── data-ingestion/
@@ -122,8 +122,6 @@ NEWNBA/
 ├── docker-compose.yml
 └── docker-compose.override.yml
 ```
-
-> Note: `bankoll/` above refers to the existing bankroll feature area conceptually; use the actual repository path under `backend/src/modules/bankroll/` when navigating the code.
 
 ### Runtime topology
 
