@@ -144,7 +144,6 @@ model StatLine {
   eventId        String
   season         String
   gameDate       DateTime
-  // Counting stats
   points         Float    @default(0)
   rebounds       Float    @default(0)
   assists        Float    @default(0)
@@ -152,7 +151,6 @@ model StatLine {
   blocks         Float    @default(0)
   turnovers      Float    @default(0)
   minutes        Float    @default(0)
-  // Shooting
   fgm            Float    @default(0)
   fga            Float    @default(0)
   fgPct          Float    @default(0)
@@ -162,7 +160,6 @@ model StatLine {
   ftm            Float    @default(0)
   fta            Float    @default(0)
   ftPct          Float    @default(0)
-  // Advanced
   plusMinus      Float    @default(0)
   usgPct         Float    @default(0)
   tsPct          Float    @default(0)
@@ -278,7 +275,18 @@ enum MarketType {
   MONEYLINE
   SPREAD
   TOTAL
+  TEAM_TOTAL
+  FIRST_HALF_MONEYLINE
+  FIRST_HALF_SPREAD
+  FIRST_HALF_TOTAL
+  FIRST_HALF_TEAM_TOTAL
+  FIRST_QUARTER_MONEYLINE
+  FIRST_QUARTER_SPREAD
+  FIRST_QUARTER_TOTAL
+  FIRST_QUARTER_TEAM_TOTAL
   PLAYER_PROP
+  PLAYER_PROP_ALTERNATE
+  DERIVATIVE
   TEAM_PROP
   FUTURES
   PARLAY
@@ -291,6 +299,10 @@ enum PropStatType {
   STEALS
   BLOCKS
   THREES
+  TURNOVERS
+  STOCKS
+  DOUBLE_DOUBLE
+  TRIPLE_DOUBLE
   MINUTES
   PRA
   PR
@@ -946,7 +958,7 @@ model GameEnvironment {
   id                     String   @id @default(uuid())
   eventId                String   @unique
   arenaName              String?
-  arenaCity              String?
+  arenaCity               String?
   arenaAltitudeMeters    Float?
   homeTimeZone           String?
   awayOriginTimeZone     String?
@@ -1553,9 +1565,9 @@ model ExpertPick {
   marketId    String
   outcome     String
   odds        Int?
-  confidence  Int       @default(3)  // 1–5 stars
+  confidence  Int       @default(3)
   reasoning   String?
-  result      String?   // "WIN" | "LOSS" | "PUSH" | null = pending
+  result      String?
   pickedAt    DateTime  @default(now())
   resolvedAt  DateTime?
 
