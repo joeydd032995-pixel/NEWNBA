@@ -642,14 +642,17 @@ function groupOddsByBookAndLine(rows: any[], binary: boolean) {
   for (const row of rows) {
     const line = binary ? null : row.line ?? null;
     const key = `${row.book.id}:${line ?? 'binary'}`;
-    const existing = groups.get(key) ?? {
-      bookId: row.book.id,
-      bookName: row.book.name,
-      line,
-      rows: [],
-    };
+    let existing = groups.get(key);
+    if (!existing) {
+      existing = {
+        bookId: row.book.id,
+        bookName: row.book.name,
+        line,
+        rows: [],
+      };
+      groups.set(key, existing);
+    }
     existing.rows.push(row);
-    groups.set(key, existing);
   }
   return [...groups.values()];
 }
