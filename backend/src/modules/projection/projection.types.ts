@@ -5,7 +5,14 @@ export type ProjectionStat =
   | 'THREES'
   | 'TURNOVERS'
   | 'STEALS'
-  | 'BLOCKS';
+  | 'BLOCKS'
+  | 'STOCKS'
+  | 'PRA'
+  | 'PR'
+  | 'PA'
+  | 'RA'
+  | 'DOUBLE_DOUBLE'
+  | 'TRIPLE_DOUBLE';
 
 export type AnalysisMode = 'FAST' | 'STANDARD' | 'DEEP';
 export type DataQuality = 'LOW' | 'MEDIUM' | 'HIGH';
