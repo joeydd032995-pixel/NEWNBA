@@ -26,10 +26,11 @@ export function americanToDecimalOdds(odds: number): number {
  * A positive result means the bettor captured a better price than the close.
  *
  * Line CLV is expressed in line points and normalized so positive is favorable:
- * - OVER: closing line - recommended line
- * - UNDER: recommended line - closing line
- * - HOME/AWAY spread: callers store the selected side's signed line, therefore
- *   closing line - recommended line is favorable for the selected side.
+ * - OVER: closing line - recommended line (6.5 bet, 7.5 close => +1)
+ * - UNDER: recommended line - closing line (7.5 bet, 6.5 close => +1)
+ * - HOME/AWAY spread: callers store the selected side's signed line, so
+ *   recommended line - closing line is favorable (-3.5 bet, -4.5 close => +1;
+ *   +4.5 bet, +3.5 close => +1).
  * - YES/NO/OTHER: no generic line semantics are assumed; line CLV is null.
  */
 export function calculateClv(input: ClvInput): ClvResult {
@@ -49,7 +50,7 @@ export function calculateClv(input: ClvInput): ClvResult {
     } else if (input.direction === 'UNDER') {
       lineClv = input.recommendedLine - input.closingLine;
     } else if (input.direction === 'HOME' || input.direction === 'AWAY') {
-      lineClv = input.closingLine - input.recommendedLine;
+      lineClv = input.recommendedLine - input.closingLine;
     }
   }
 
