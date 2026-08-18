@@ -1,520 +1,465 @@
-# CLAUDE.md — NEWNBA Codebase Guide
+# CLAUDE.md — NEWNBA Engineering Contract
 
-This file provides guidance for AI assistants working in the NEWNBA repository.
+This repository is an **Opportunity-First NBA betting intelligence platform**. Any coding agent working here must preserve the integrity rules in this file.
 
----
+## Non-negotiable architecture
 
-## Authorization Policy
+Monorepo boundaries:
 
-**AI assistants must never make unauthorized changes to this codebase.**
+- `backend/` — NestJS, Prisma, deterministic projection/decision models, schedulers
+- `frontend/` — React + TypeScript + Tailwind
+- `nba-data/` — FastAPI adapters for official NBA data and explicitly ranked fallbacks
 
-- **Explicit approval required**: Do not modify any file, schema, configuration, dependency, or git history unless the user has explicitly requested that specific change in the current session.
-- **Scope discipline**: Authorization for one task does not imply authorization for related tasks. Each distinct change requires its own approval.
-- **No proactive "improvements"**: Do not refactor, reformat, add comments, fix unrelated bugs, or update dependencies unless directly asked.
-- **Git operations**: Do not commit, push, create branches, or open pull requests without explicit instruction.
-- **Infrastructure & config**: Do not alter `.env` files, Docker configs, CI/CD pipelines, or database schemas without explicit instruction.
-- **When in doubt, ask**: If the scope of a requested change is unclear, ask the user before proceeding.
+Do not create a second backend, separate database, or competing projection source of truth.
 
-Violations of this policy may cause data loss, broken deployments, or unintended behavior in production systems.
+## Governing player-prop equation
 
----
+All player-prop projections must reduce to:
 
-## Project Overview
-
-NEWNBA is a full-stack sports betting analytics platform built around NBA data. It provides:
-- Positive EV (expected value) detection across sportsbooks
-- Arbitrage opportunity scanning
-- Custom model building (genetic algorithm optimization, ensemble methods, A/B testing)
-- NBA statistical formulas (True Shooting %, eFG%, Four Factors, Pythagorean Win %)
-- Real-time data ingestion (odds, injuries, news, public betting splits)
-- Player props, parlays, live betting, bankroll management
-
----
-
-## Repository Structure
-
-```
-NEWNBA/
-├── backend/          # NestJS + TypeScript API
-├── frontend/         # React 18 + TypeScript UI
-├── nba-data/         # Python FastAPI sidecar (stats.nba.com wrapper)
-├── docker-compose.yml
-├── .env.example
-├── setup.sh
-├── README.md
-└── PROJECT_PLAN.md
+```text
+Expected Production
+= Expected Minutes
+× Opportunity Rate
+× Conversion Rate
+× Context Adjustment
+× Pace Adjustment
+× PPP Adjustment
 ```
 
----
+Rules:
 
-## Technology Stack
+1. Minutes are projected before statistics.
+2. Opportunity is preferred over recent outcome.
+3. Conversion is modeled separately from opportunity.
+4. Current role overrides stale season-average role.
+5. Projection distributions are required; means alone are insufficient.
+6. Exact sportsbook line and price are required for actionable EV.
+7. Historical hit rate is context only and must never become `trueProb`.
 
-### Backend (`/backend`)
-| Concern | Tool |
-|---|---|
-| Framework | NestJS 10 (TypeScript) |
-| Database | PostgreSQL 16 via Prisma 5 ORM |
-| Cache/Queue | Redis 7 (ioredis) |
-| Auth | JWT + Passport.js (access + refresh tokens via httpOnly cookies) |
-| API Docs | Swagger at `/api/docs` |
-| Scheduling | node-cron (`@Cron` decorators) |
-| Validation | class-validator, class-transformer |
-| HTTP | axios |
-| Security | helmet, bcrypt (12 salt rounds) |
-| Tests | Jest, supertest |
+See `docs/MODELS.md`.
 
-### Frontend (`/frontend`)
-| Concern | Tool |
-|---|---|
-| Framework | React 18 + TypeScript |
-| Build | Vite 5 |
-| Routing | React Router 6 |
-| State | Zustand 4 (with `persist` middleware) |
-| Server State | TanStack React Query 5 |
-| Styling | Tailwind CSS 3 (custom navy/gold/cyan theme) |
-| Charts | Recharts |
-| Icons | lucide-react |
-| Notifications | react-hot-toast |
-| HTTP | axios (centralized `src/lib/api.ts`) |
+## Source hierarchy
 
-### Data Sidecar (`/nba-data`)
-| Concern | Tool |
-|---|---|
-| Framework | FastAPI |
-| NBA Data | nba_api (stats.nba.com) |
-| Server | Uvicorn |
+Use this order for material information:
 
----
+1. `TIER_1_OFFICIAL`
+   - official NBA injury reports
+   - stats.nba.com / NBA API data
+   - official team communications
+2. `TIER_2_HIGH_QUALITY`
+3. `TIER_3_REPORTING`
+   - ESPN and reputable reporters
+4. `LOW_PRIORITY`
+5. `SIMULATED`
 
-## Running the Project
+### Absolute data-integrity rules
 
-### Docker (recommended)
+- Simulated public-betting percentages are never valid evidence.
+- Synthetic sportsbook lines/odds must never be written when a provider fails.
+- Missing provider data must degrade to `LOW` quality or unresolved; never invent a plausible number.
+- An injury `returnEta` must never populate `reportedAt`.
+- Official injury information outranks ESPN fallback.
+- If credible current sources conflict, expose the conflict and lower quality.
+- Every decisive source should retain source identity and update time where the schema supports it.
+
+## Information decay
+
+Treat information by stability:
+
+### Very fast decay
+
+- injury status
+- starting lineup
+- minutes restriction
+- spread / total
+- prop line / price
+
+### Moderate decay
+
+- rotation
+- role
+- usage
+- minutes trend
+
+### Slow decay
+
+- player archetype
+- team scheme
+- long-run efficiency
+- coaching philosophy
+
+Do not allow old fast-decay information to override a current lower-level projection silently.
+
+## Analysis modes
+
+Every projection path must support:
+
+- `FAST` — screening
+- `STANDARD` — default analysis
+- `DEEP` — high-confidence/complex candidates
+
+Current seeded Monte-Carlo defaults:
+
+- FAST: 2,500 trials
+- STANDARD: 10,000 trials
+- DEEP: 40,000 trials
+
+All randomized calculations require an explicit deterministic seed.
+
+## Projection outputs
+
+Every supported stat projection should expose:
+
+- point estimate
+- mean
+- median
+- standard deviation
+- p05 / p10 / p25 / p50 / p75 / p90 / p95
+- probability above/below an offered line
+- uncertainty decomposition
+- data-quality classification
+- model/source provenance
+
+When alternate lines are available, price the probability curve rather than assuming lower lines are automatically better.
+
+## Current supported projection categories
+
+Independent base models:
+
+- Points
+- Rebounds
+- Assists
+- Threes
+- Turnovers
+- Steals
+- Blocks
+
+Correlated/composite models:
+
+- Stocks
+- PRA
+- PR
+- PA
+- RA
+- Double Double
+- Triple Double
+
+PRA/PR/PA/RA must project components independently before empirical correlation recombination.
+
+Double-/triple-double markets are joint threshold simulations, not hit-rate shortcuts.
+
+## Decision engine
+
+Allowed classifications:
+
+- PASS
+- WAIT
+- LEAN
+- BET
+- STRONG_BET
+
+News timing layer:
+
+- BET_NOW
+- WAIT
+- PASS
+
+`STRONG_BET` must require both meaningful modeled edge and sufficiently high data quality. Unresolved availability/lineup/minute restrictions must downgrade the decision.
+
+Every actionable recommendation should have when supported:
+
+- exact line
+- exact price
+- sportsbook
+- model probability
+- no-vig market probability
+- EV
+- fair line
+- playable-to line/price
+- confidence
+- primary risk
+- contrarian failure case
+
+## Anti-bias rules
+
+Do not count correlated statistics as independent evidence.
+
+Examples that may share one signal:
+
+- ORtg
+- TS%
+- eFG%
+
+Evidence should be grouped by causal category where possible:
+
+- minutes
+- role
+- opportunity
+- usage
+- matchup
+- environment
+- efficiency
+- market price
+
+Flag overreliance on:
+
+- recent results
+- historical hit rate
+- narrative
+- one evidence category
+
+Run recommendation consistency checks before surfacing multiple bets from one game.
+
+## Prisma rules
+
+- Additive migrations only unless an explicit migration path is supplied.
+- Every durable analytical field belongs in typed Prisma columns/models, not opaque JSON solely for convenience.
+- Add indexes for event/player/team/time dimensions used in production queries.
+- Keep existing public models and APIs compatible.
+- Never use `prisma db push` as a substitute for committed production migrations.
+- Preserve existing EV/arbitrage/optimizer/ensemble/A-B data.
+
+## Market rules
+
+Current first-class markets include:
+
+- ML / spread / total / team total
+- first-half ML / spread / total / team total
+- first-quarter ML / spread / total / team total
+- player props
+- alternate player props
+- derivative markets
+
+Current prop enum includes:
+
+- Points
+- Rebounds
+- Assists
+- Steals
+- Blocks
+- Threes
+- Turnovers
+- Stocks
+- Double Double
+- Triple Double
+- Minutes
+- PRA / PR / PA / RA
+
+If a provider adds a market key, map it explicitly and test the mapping. Unknown keys should be ignored rather than coerced incorrectly.
+
+## Odds integrity
+
+`OddsApiService.getOdds()` returns an event array.
+
+`OddsApiService.getEventOdds()` returns one event object.
+
+Do not regress this distinction.
+
+Every market record used for a wager must retain:
+
+- book
+- outcome
+- line if applicable
+- odds
+- open/closed state
+- timestamps/history
+
+## CLV
+
+Tracked wagers must preserve their exact recommendation market before the close.
+
+Price CLV:
+
+```text
+recommended decimal / closing decimal - 1
+```
+
+Line CLV is normalized so positive means favorable movement.
+
+Do not infer a closing line after the fact if no verified close was captured.
+
+## Financial performance
+
+Never assume every prediction was `$100 at -110`.
+
+Model predictions without exact price/stake may report calibration/win rate, but financial ROI/CLV must be calculated only from actual tracked wagers.
+
+For multi-leg wagers, do not attribute leg-level performance unless individual leg settlement is explicitly stored.
+
+## Post-bet review
+
+Prioritize process error before variance.
+
+Supported attribution categories include:
+
+- minutes
+- usage
+- injury information
+- rotation
+- matchup
+- pace
+- efficiency
+- market timing
+- price
+- variance
+- foul trouble
+- blowout
+- in-game injury
+- unexpected coaching decision
+
+Missing pregame inputs remain unavailable; they are not silently marked correct.
+
+## Environment and referee context
+
+Pure deterministic models exist for:
+
+- B2B
+- 3-in-4
+- 4-in-6
+- rest hours/advantage
+- travel distance
+- time-zone change
+- altitude
+- prior overtime/load
+- referee foul/FT/pace/interruption effects
+
+These calculators require verified source inputs. Never make up an arena coordinate, referee assignment or travel origin.
+
+Referee effects are supplementary and sample-shrunk. Never make them the primary handicap based on tiny samples.
+
+## Injury replacement
+
+Do not simply increase all teammates when a player is out.
+
+Replacement components are allocated independently:
+
+- minutes
+- usage
+- ball handling
+- rebounding
+- shot attempts
+- three-point attempts
+- defense
+
+Use actual role affinity and minute capacity when available.
+
+## API compatibility
+
+Prefer additive endpoints and response fields.
+
+Do not remove or rename existing EV, arbitrage, optimizer, ensemble, A/B, bet-slip or player-prop routes without a documented migration path.
+
+The player-prop feed deliberately preserves historical response concepts such as `bestEV` and `outcomes` while adding Opportunity-First projection metadata.
+
+## Frontend rules
+
+Existing pages must remain functional.
+
+New Opportunity-First views live in:
+
+- `frontend/src/pages/OpportunityFirstPage.tsx`
+- `frontend/src/lib/opportunityApi.ts`
+
+Before merge, integrate the page into the existing route/navigation tree without replacing the existing routing contract.
+
+All critical uncertainty and missing-source states must be visible in the UI; do not hide missing data behind zeros.
+
+## Testing requirements
+
+Every mathematical model must have deterministic unit tests.
+
+Required gates:
+
+- Prisma validate
+- Prisma generate
+- migrations apply cleanly
+- backend unit/integration tests
+- backend build
+- frontend build
+- Python module compile/import
+- Docker Compose config
+
+Seeded simulations must have reproducibility tests.
+
+The full Opportunity Equation has an integration test covering:
+
+```text
+rotation minutes
+→ opportunity inputs
+→ simulation distribution
+→ no-vig pricing
+→ decision gate
+```
+
+## Docker
+
+Default development command:
+
 ```bash
-cp .env.example .env        # fill in ODDS_API_KEY, etc.
 docker compose up --build
 ```
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3000/api
-- Swagger docs: http://localhost:3000/api/docs
-- NBA Data sidecar: http://localhost:8000
-
-### Local Dev
-```bash
-bash setup.sh               # interactive setup wizard
-# OR manually:
-cd backend && npm install && npx prisma db push && npm run db:seed && npm run start:dev
-cd frontend && npm install && npm run dev
-```
-
-### Demo Accounts (seeded)
-| Email | Password | Plan |
-|---|---|---|
-| admin@newnba.com | admin123 | PREMIUM |
-| pro@newnba.com | pro123 | PRO |
-| user@newnba.com | user123 | FREE |
-
----
-
-## Database
-
-Schema: `/backend/prisma/schema.prisma` (~785 lines, 30+ models)
-
-### Key Model Groups
-- **Auth**: `User` (planType: FREE | PRO | PREMIUM)
-- **Sports Data**: `Sport`, `Team`, `Player`, `StatLine`, `Event`
-- **Odds**: `Book`, `Market`, `MarketOdds`, `OddsHistory`, `OddsSnapshot`
-- **Analytics**: `EVMetrics`, `ArbitrageOpportunity`
-- **Models**: `CustomModel`, `ModelPrediction`, `ModelPerformance`
-- **Ensemble/Optimization**: `EnsembleModel`, `OptimizationRun`, `ABTest`
-- **User Features**: `Alert`, `Notification`, `BetSlip`, `SavedFilter`
-- **Ingestion**: `InjuryReport`, `NewsItem`, `PublicBettingSplit`, `ExpertPick`
-
-### Database Commands
-```bash
-# In /backend:
-npm run db:push        # push schema without migration
-npm run db:migrate     # create migration
-npm run db:seed        # seed demo data
-npm run db:studio      # open Prisma Studio GUI
-```
-
-### Conventions
-- Table names: snake_case via `@@map()`
-- Model names: PascalCase
-- All models have `createdAt` / `updatedAt` timestamps
-- UUIDs as primary keys: `@default(uuid())`
-- JSON fields (`Json` type) for flexible metadata
-
----
-
-## Backend Architecture
-
-### Module Structure
-Every feature is a NestJS module under `/backend/src/modules/`:
-```
-auth/           analytics/      ev/         arbitrage/
-sports/         alerts/         betslip/    player-props/
-data-ingestion/ expert-picks/   live/       parlay/
-bankroll/       notifications/
-```
-
-Each module contains:
-- `*.module.ts` — wires DI
-- `*.controller.ts` — HTTP endpoints
-- `*.service.ts` — business logic
-- `*.dto.ts` — validated input shapes (class-validator)
-- `*.spec.ts` — unit tests
-
-### Global Setup (`app.module.ts`)
-- API prefix: `/api`
-- CORS: frontend URL from env
-- Global pipes: `ValidationPipe({ whitelist: true, transform: true })`
-- Rate limiting: Throttler (configurable via `THROTTLE_TTL` / `THROTTLE_LIMIT`)
-- Security: Helmet headers
-
-### Authentication Flow
-1. `POST /api/auth/signup` or `POST /api/auth/login` → sets httpOnly cookies (`access_token`, `refresh_token`)
-2. All protected routes require `JwtAuthGuard`
-3. `POST /api/auth/refresh` → re-issues tokens using refresh token
-4. `POST /api/auth/logout` → clears cookies
-
-### Background Jobs (`jobs.service.ts`)
-Scheduled via `@Cron(CronExpression.EVERY_MINUTE)`:
-- EV calculation scan
-- Arbitrage scan
-- Odds API ingestion
-- Injury sync
-- News sync
-- Public betting splits
-- Alert evaluation
-
----
-
-## Frontend Architecture
-
-### Entry & Routing (`App.tsx`)
-- All routes are wrapped in `ProtectedRoute` or `PublicRoute`
-- Lazy-loaded pages via React Router 6
-
-### Pages (17 total)
-`DashboardPage`, `EVFeedPage`, `ArbitrageFeedPage`, `CustomModelsPage`, `PerformancePage`, `FormulasPage`, `OptimizationPage`, `EnsemblePage`, `ABTestingPage`, `AlertsPage`, `PlayerPropsPage`, `ExpertPicksPage`, `LiveBettingPage`, `ParlayBuilderPage`, `BankrollPage`, `LoginPage`, `SignupPage`
-
-### State Management
-- **Zustand stores** in `src/stores/`:
-  - `auth.ts` — user session, login/logout
-  - `betslip.ts` — bet slip items, odds calculation
-  - `bankroll.ts` — bankroll tracking
-- **React Query** — all server data fetching/caching (30s `staleTime`, no refetch on window focus)
-
-### API Layer (`src/lib/api.ts`)
-- Single axios instance with base URL from env
-- Auto-refresh on 401: intercepts → calls `/auth/refresh` → retries original request
-- Namespaced exports: `authApi`, `sportsApi`, `analyticsApi`, `evApi`, `arbitrageApi`, `alertsApi`, etc.
-
-### Styling Conventions
-- **Tailwind only** — no component-level CSS files
-- Custom theme colors (defined in `tailwind.config.js`):
-  - `navy-*` — background shades (#040812 to #233050)
-  - `gold` — primary accent (#f59e0b)
-  - `cyan` — secondary accent (#06b6d4)
-- Custom shadows: `shadow-gold-sm`, `shadow-cyan-sm`, `shadow-card`, `shadow-card-hover`
-- Custom animations: `pulse-gold`, `shimmer`, `slide-in-right`, `fade-in`
-- Fonts: Inter (body), JetBrains Mono (code/numbers)
-
----
-
-## Environment Variables
-
-Copy `.env.example` to `.env`. Key variables:
-
-```bash
-NODE_ENV=development
-PORT=3000
-FRONTEND_URL=http://localhost:5173
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/nba_betting
-REDIS_HOST=localhost
-REDIS_PORT=6379
-JWT_SECRET=<change-in-production>
-JWT_REFRESH_SECRET=<change-in-production>
-JWT_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
-ODDS_API_KEY=<required-for-live-odds>
-ODDS_API_BASE_URL=https://api.the-odds-api.com/v4
-BALLDONTLIE_API_KEY=<optional>
-NBA_DATA_URL=http://nba-data:8000   # docker; use http://localhost:8000 locally
-THROTTLE_TTL=60
-THROTTLE_LIMIT=100
-LOG_LEVEL=debug
-ACTION_NETWORK_ENABLED=true
-INJURY_SYNC_ENABLED=true
-NEWS_SYNC_ENABLED=true
-ODDS_SNAPSHOT_INTERVAL_MIN=15
-```
-
----
-
-## Testing
-
-### Backend
-```bash
-cd backend
-npm run test           # all unit tests
-npm run test:watch     # watch mode
-npm run test:cov       # coverage report
-npm run test:e2e       # end-to-end tests
-```
-- Test files: `**/*.spec.ts` under `src/`
-- Existing tests: `analytics.service.spec.ts`, `arbitrage.service.spec.ts`
-
-### Frontend
-No test framework currently configured. ESLint is set up:
-```bash
-cd frontend
-npm run lint
-```
-
----
-
-## Key Algorithms & Domain Logic
-
-### EV Calculation
-```
-EV = (trueProb × potentialWin) − (lossProb × stake)
-```
-- True probability derived by removing vig from book odds
-- `EVMetrics` stores `ev`, `evPct`, `trueProb`, `impliedProb`, `kellyFraction`
-
-### Arbitrage Detection
-- Fetch odds from multiple books for same market
-- Arbitrage exists when: `Σ(1 / odds_i) < 1`
-- `ArbitrageOpportunity` stores profit %, optimal stakes
-
-### NBA Formulas (implemented in `analytics.service.ts`)
-| Formula | Calculation |
-|---|---|
-| True Shooting % | `PTS / [2 × (FGA + 0.475 × FTA)]` |
-| eFG% | `(FG + 0.5 × 3P) / FGA` |
-| Four Factors | `0.40×eFG% + 0.25×TOV% + 0.20×ORB% + 0.15×FTR` |
-| Pythagorean Win% | `PF^13.91 / (PF^13.91 + PA^13.91)` |
-| Kelly Criterion | `f* = (bp − q) / b` |
-
-### Genetic Algorithm (Optimization)
-- Population: 50–200 individuals (model weight sets)
-- Fitness: `0.40×ROI + 0.30×WinRate + 0.20×SharpeRatio + 0.10×Calibration`
-- Selection: tournament, Crossover: single-point, Mutation: Gaussian
-- Elitism: 1–5 individuals preserved per generation
-
-### Ensemble Strategies
-- `WEIGHTED_AVERAGE` — linear blend of predictions
-- `VOTING` — confidence-weighted majority vote
-- `STACKING` — logit-space combination
-- `BOOSTING` — sequential correction weighting
-
-### A/B Testing
-- Welch's t-test (unequal variance)
-- P-value via Beta function
-- Automatic winner selection at configured significance threshold
-
-### 12 Preset Models
-`balanced`, `efficiency`, `moreyball`, `playerProps`, `defensive`, `sgp`, `liveBetting`, `playoff`, `backToBack`, `homeAway`, `momentum`, `contrarian`
-
----
-
-## Code Conventions
-
-### Backend
-- **Naming**: `camelCase` for variables/methods, `PascalCase` for classes/interfaces, `UPPER_SNAKE_CASE` for constants/enums
-- **File naming**: `kebab-case.type.ts` (e.g., `analytics.service.ts`, `create-model.dto.ts`)
-- **DTOs**: always use class-validator decorators (`@IsString()`, `@IsNumber()`, `@IsOptional()`)
-- **Guards**: apply per-controller or per-route via `@UseGuards(JwtAuthGuard)`
-- **Swagger**: annotate controllers with `@ApiTags()`, `@ApiBearerAuth()`, `@ApiOperation()`, `@ApiResponse()`
-- **Errors**: use NestJS built-in exceptions (`NotFoundException`, `ConflictException`, `UnauthorizedException`, `BadRequestException`)
-- **Logging**: inject `Logger` from `@nestjs/common`, use `this.logger.log()` / `this.logger.error()`
-- **Caching**: inject `CACHE_MANAGER` from `@nestjs/cache-manager`
-
-### Frontend
-- **Components**: functional only, PascalCase filenames
-- **Hooks**: prefix with `use`, camelCase
-- **API calls**: always go through `src/lib/api.ts` — never construct axios instances inline
-- **Stores**: access via hooks (`useAuthStore()`, `useBetSlipStore()`)
-- **Queries**: wrap in React Query `useQuery`/`useMutation`; set descriptive `queryKey` arrays
-- **Types**: define interfaces in the same file or a co-located `*.types.ts`
-- **Tailwind**: use `clsx` + `tailwind-merge` for conditional class composition
-
-### Database
-- New models: add to `schema.prisma`, run `npm run db:push` in dev or `npm run db:migrate` for tracked migrations
-- Add `@@map("snake_case_table_name")` to every new model
-- Add `createdAt DateTime @default(now())` and `updatedAt DateTime @updatedAt` to every new model
-- Index frequently queried foreign keys with `@@index([fieldName])`
-
----
-
-## Docker Services & Ports
-
-| Service | Port | Notes |
-|---|---|---|
-| frontend | 5173 | Vite dev server / nginx prod |
-| backend | 3000 | NestJS API (`/api` prefix) |
-| nba-data | 8000 | Python FastAPI sidecar |
-| postgres | 5432 | PostgreSQL 16 |
-| redis | 6379 | Redis 7 |
-
-Backend startup sequence in Docker:
-```bash
-npx prisma generate && npx prisma db push --accept-data-loss && npm run db:seed & npm run start:dev
-```
-
----
-
-## External APIs
-
-| API | Env Variable | Purpose |
-|---|---|---|
-| The Odds API | `ODDS_API_KEY` | Live odds from 40+ books |
-| BallDontLie | `BALLDONTLIE_API_KEY` | NBA player/team stats |
-| NBA Data sidecar | `NBA_DATA_URL` | stats.nba.com via Python |
-| Action Network | (scraping) | Public betting splits |
-
----
-
-## Git Workflow
-
-- Branch naming: `claude/<feature>-<id>` for AI-assisted work
-- Descriptive commit messages in imperative mood
-- Never force-push to `main` or `master`
-- Prisma schema changes should be committed alongside their migration files
-
----
-
-## Common Tasks
-
-### Add a new backend module
-1. Create `backend/src/modules/<name>/` with `.module.ts`, `.controller.ts`, `.service.ts`, `.dto.ts`
-2. Register the module in `app.module.ts`
-3. Add Swagger decorators to the controller
-
-### Add a new frontend page
-1. Create `frontend/src/pages/<Name>Page.tsx`
-2. Add route in `App.tsx`
-3. Add nav link in `Layout.tsx`
-4. Add API methods to `src/lib/api.ts` if needed
-
-### Add a new Prisma model
-1. Add model to `backend/prisma/schema.prisma`
-2. Run `npm run db:push` (dev) or `npm run db:migrate` (tracked)
-3. Update seed file if demo data needed
-4. Generate typed client: `npx prisma generate`
-
-### Run a full reset of the database
-```bash
-cd backend
-npx prisma db push --force-reset
-npm run db:seed
-```
-
----
-
-## Self-Improving Claude Code
-
-You are a learning system. Every session, you improve by capturing what works, extracting patterns, and evolving your own configuration. This is your operating loop.
-
-### Bootstrap (Session 1)
-
-If `.claude/` is missing or minimal:
-
-1. Ask (via AskUserQuestion): "How will you primarily use this workspace?"
-   - Building software (code, scripts, tools)
-   - Creating content (writing, articles, documentation)
-   - Knowledge management (notes, research, personal wiki)
-   - Evolving conversation partner (preferences, interests, ongoing dialogue)
-2. Create `.claude/learnings.md` and `.claude/rules/`
-3. Add to CLAUDE.md: use case + "Evolving via learnings.md → rules/"
-4. If using git: commit "Bootstrap .claude/ learning infrastructure"
-5. First learning: note the use case, key user/project context, and any decisions made — this seeds the habit
-
-### Workspace Structure
-
-`.claude/` is your self-improvement space — separate from user content.
-
-User content lives at project root. Name directories by intent:
-- Software/Writing: `input/` or `resources/` for source material, `deliverables/` for outputs
-- PKM: knowledge at root (`notes/`, `topics/`); `.claude/` tracks how you help, not the knowledge
-- Conversation partner: `.claude/` alone is sufficient
-
-### State Engine
-
-Sessions end. Memory doesn't persist. Files do.
-
-For work spanning sessions, maintain a state file in `.claude/` with: Goal, Status (ready/in-progress/blocked/done), Done, Next (singular and concrete), Open questions.
-
-- Update before session ends (non-negotiable for active work)
-- Session start: read state file, orient before acting
-- "Tasks complete" ≠ "done" — done means learnings extracted
-- Stale state? Ask user rather than guess
-- Conversation partner: skip unless tracking a specific thread
-
-### Core Loop
-
-Triggers: After non-trivial work (implicit), or when user says "learning loop" / "what did we learn" / "capture this" (explicit).
-
-1. **Reflect**:
-   - What worked? What didn't?
-   - What pattern emerged? (Name it)
-   - What would I do differently next time?
-2. **Triage** each finding (never just list):
-   - Apply now → make the change
-   - Capture → `.claude/learnings.md` with date and context
-   - Dismiss → say why, move on
-3. **Cascade**: Does this improvement apply to related content? Apply consistently or note why not.
-
-### Version Control (if using git)
-
-- Commit `.claude/` changes with related work
-- Review your evolution: `git log -- .claude/`
-- Not using git? File-based patterns still work — you lose history, not function.
-
-### Context Discipline
-
-The context window is a public good.
-
-- `CLAUDE.md`: <100 lines (identity + pointers)
-- `.claude/rules/`: <200 lines total (behavior imperatives)
-- `.claude/learnings.md`: review when entries exceed ~30
-- Anti-proliferation: new file needs justification; default is edit existing
-- Rules with paths: can specify file patterns for conditional loading
-
-### Evolution
-
-**Promotion**: When a learning changes behavior 2+ times → extract to `.claude/rules/`.
-
-**Consolidation** (learnings.md exceeds ~30 entries):
-1. Group by theme — what categories emerge?
-2. Promote repeated patterns to `rules/`
-3. Archive integrated entries to `learnings-archive.md`
-4. Ask user: "Themes emerging: [X, Y, Z]. Need structure?"
-
-**Structural emergence** (rule exceeds ~50 lines): Ask user to split: (a) short rule + process doc, or (b) rule + requirements spec.
-
-Affordances to grow into as needs emerge:
-- `.claude/rules/` supports `paths:` for conditional loading by file pattern
-- `hooks/` for event-triggered scripts
-- `skills/` for on-demand capabilities with scripts and assets
-
-### User Feedback Loop
-
-Use AskUserQuestion for evolution decisions:
-- Structural choices (new files, splits, consolidation)
-- When unsure if an insight is capture-worthy
-- When patterns emerge that could reshape the workspace
-- Validation of promoted rules before committing
-
-### Anti-Patterns
-
-| Don't | Do Instead |
-|---|---|
-| Create files preemptively | Create when needed |
-| End session without state update | Always update for ongoing work |
-| List findings without triage | Every finding: apply/capture/dismiss |
-| Mix user content into `.claude/` | `.claude/` = self-improvement only |
-| Guess at stale state | Ask user to clarify |
-| Evolve silently | Ask user before structural changes |
+
+`docker-compose.override.yml` selects `nba-data/Dockerfile.prod`, which runs `production_app.py` with the official injury and Opportunity-First routes mounted.
+
+Do not point production back to the legacy sidecar entrypoint accidentally.
+
+## Documentation requirements
+
+When changing a model equation:
+
+1. update code comments
+2. update/add deterministic tests
+3. update `docs/MODELS.md`
+4. update `docs/IMPLEMENTATION_STATUS.md` if phase status changes
+
+When changing architecture or public use:
+
+- update `README.md`
+- update `PROJECT_PLAN.md`
+- update this file when agent rules change
+
+## Current implementation truth
+
+Do not infer completion from typed schema alone.
+
+The conservative current state is maintained in:
+
+- `docs/GAP_AUDIT.md`
+- `docs/IMPLEMENTATION_STATUS.md`
+
+A feature should be described as complete only when it is in the real execution path and has validation coverage.
+
+## Merge discipline
+
+Work in reviewable chunks.
+
+Do not merge the Opportunity-First draft PR until:
+
+- existing routes are preserved
+- frontend route/nav integration is complete
+- source-dependent remaining feeds are either implemented or explicitly justified out of scope
+- CI is observed green
+- Docker Compose is verified
+- migration path is reviewed
+- no simulated betting evidence is reachable as real data
+
+## Betting language
+
+Do not use:
+
+- lock
+- guaranteed
+- can't lose
+- sure thing
+- free money
+
+Prefer:
+
+- estimated edge
+- positive expected value
+- model disagreement
+- price dependent
+- uncertainty remains
+- pass at current number
+
+The purpose of NEWNBA is not to maximize the number of bets. It is to maximize decision quality at the exact available price.
