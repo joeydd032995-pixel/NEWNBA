@@ -38,12 +38,6 @@ interface CandidateFeatures {
   defense: number;
 }
 
-/**
- * Builds tonight's rotation ranges before player-stat projection and then
- * redistributes unavailable-player role components into replacement players.
- * The job never writes fabricated source observations; all outputs are model
- * projections with explicit uncertainty and data-quality levels.
- */
 @Injectable()
 export class RotationReplacementJob {
   private readonly logger = new Logger(RotationReplacementJob.name);
@@ -418,7 +412,10 @@ function estimateClosingProbability(
 ): number {
   let probability = clamp((minutesMedian - 18) / 22, 0.05, 0.85);
   if (starterStatus === StarterStatus.CONFIRMED_STARTER) probability += 0.08;
-  if ([PlayerRotationRole.PRIMARY_CREATOR, PlayerRotationRole.SECONDARY_CREATOR].includes(role)) probability += 0.07;
+  if (
+    role === PlayerRotationRole.PRIMARY_CREATOR ||
+    role === PlayerRotationRole.SECONDARY_CREATOR
+  ) probability += 0.07;
   return clamp(probability, 0.02, 0.97);
 }
 
