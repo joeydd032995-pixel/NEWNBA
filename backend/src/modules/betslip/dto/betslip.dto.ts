@@ -1,4 +1,5 @@
-import { IsString, IsNumber, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsIn, IsArray, ArrayMinSize, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateBetSlipDto {
@@ -81,6 +82,20 @@ export class AddItemDto {
   @IsOptional()
   @IsNumber()
   ev?: number;
+}
+
+export class SubmitTrackedSlipDto {
+  @ApiProperty({ required: false, example: 'Tracked Opportunity-First wagers' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiProperty({ type: [AddItemDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => AddItemDto)
+  items: AddItemDto[];
 }
 
 export class CloseBetItemDto {
