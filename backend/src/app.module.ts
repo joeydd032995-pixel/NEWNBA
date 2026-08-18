@@ -21,6 +21,7 @@ import { ParlayModule } from './modules/parlay/parlay.module';
 import { BankrollModule } from './modules/bankroll/bankroll.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { ProjectionModule } from './modules/projection/projection.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { BillingModule } from './modules/billing/billing.module';
     BankrollModule,
     NotificationsModule,
     BillingModule,
+    ProjectionModule,
   ],
   providers: [
     // Applies to every route (state-changing methods only — GET/HEAD/OPTIONS
