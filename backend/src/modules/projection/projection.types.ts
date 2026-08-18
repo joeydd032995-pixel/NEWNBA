@@ -49,27 +49,22 @@ export interface OpportunityProjectionInput {
   analysisMode: AnalysisMode;
   seed: number;
   trials?: number;
-
   minutes: DistributionInput;
   opportunityRatePerMinute: number;
   conversionRate: number;
   contextAdjustment: number;
-
   baselinePace?: number;
   expectedPace?: number;
   playerOpportunityShare?: number;
   expectedPossessions?: number;
   baselinePpp?: number;
   expectedPpp?: number;
-
   uncertainty: UncertaintyInputs;
   scripts: GameScriptInput[];
-
   foulTroubleProbability?: number;
   foulMinutesPenalty?: number;
   blowoutProbability?: number;
   blowoutMinutesPenalty?: number;
-
   dataQuality: DataQuality;
   unresolvedAvailability?: boolean;
   unresolvedLineup?: boolean;
@@ -137,7 +132,7 @@ export interface DecisionInput {
 export interface DecisionResult {
   decision: DecisionClass;
   newsDecision: NewsDecision;
-  side: 'OVER' | 'UNDER' | 'PASS';
+  side: 'OVER' | 'UNDER' | 'YES' | 'NO' | 'PASS';
   marketLine: number;
   odds: number | null;
   probability: number;
