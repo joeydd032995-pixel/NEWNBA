@@ -69,24 +69,26 @@ export const useBetSlipStore = create<BetSlipStore>()(
       hasItem: (marketId, outcome) =>
         get().items.some(i => i.marketId === marketId && i.outcome === outcome),
 
+      // Retained for backward-compatible callers that only want an odds product.
+      // The tracked-slip drawer itself represents independent singles, not a parlay.
       totalOdds: () => {
         const { items } = get()
         if (items.length === 0) return 0
-        return items.reduce((product, item) => {
-          const decimal = item.odds > 0 ? 1 + item.odds / 100 : 1 + 100 / Math.abs(item.odds)
-          return product * decimal
-        }, 1)
+        return items.reduce((product, item) => product * americanToDecimal(item.odds), 1)
       },
 
-      totalStake: () => get().items.reduce((sum, i) => sum + i.stake, 0),
+      totalStake: () => get().items.reduce((sum, item) => sum + item.stake, 0),
 
-      potentialReturn: () => {
-        const { items } = get()
-        if (items.length === 0) return 0
-        const totalDecimal = get().totalOdds()
-        return get().totalStake() * totalDecimal
-      },
+      potentialReturn: () =>
+        get().items.reduce(
+          (sum, item) => sum + item.stake * americanToDecimal(item.odds),
+          0,
+        ),
     }),
-    { name: 'betslip-storage', partialize: (s) => ({ items: s.items }) }
-  )
+    { name: 'betslip-storage', partialize: (state) => ({ items: state.items }) },
+  ),
 )
+
+function americanToDecimal(odds: number): number {
+  return odds > 0 ? 1 + odds / 100 : 1 + 100 / Math.abs(odds)
+}
