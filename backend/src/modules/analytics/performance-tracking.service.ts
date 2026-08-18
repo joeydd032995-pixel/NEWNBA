@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { PerformanceDimension } from '@prisma/client';
+import {
+  BetSlipStatus,
+  LegSettlementStatus,
+  PerformanceDimension,
+  WagerStructure,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnalyticsService } from './analytics.service';
 import { americanToDecimalOdds } from './clv';
@@ -49,9 +54,8 @@ export class PerformanceTrackingService {
   }
 
   /**
-   * ModelPrediction does not contain a wager price/stake. Therefore this method
-   * reports predictive performance only and deliberately refuses to fabricate
-   * ROI from a fixed -110 assumption. Financial performance lives in BetSlip.
+   * ModelPrediction does not contain exact wager price/stake. Financial
+   * performance is therefore intentionally calculated from tracked BetSlips.
    */
   async calculatePerformance(modelId: string, period = 'all') {
     const predictions = await this.prisma.modelPrediction.findMany({
@@ -137,14 +141,20 @@ export class PerformanceTrackingService {
   }
 
   /**
-   * Full financial dashboard from confirmed wager records only.
-   * Multi-leg slips contribute to overall slip P&L, while category slices are
-   * limited to single-item slips because leg-level settlement is not stored yet.
+   * Financial performance uses two distinct accounting units:
+   * - SINGLE_BATCH: each settled item is an independently staked wager.
+   * - PARLAY: the ticket is one wager with one ticket stake and ticket P&L.
+   *
+   * Parlay ticket P&L is never copied onto individual legs. Individual leg CLV
+   * remains useful as market-timing evidence but is not treated as leg ROI.
    */
   async getDashboard(days = 90) {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const slips = await this.prisma.betSlip.findMany({
-      where: { status: { in: ['WON', 'LOST', 'VOID'] }, updatedAt: { gte: since } },
+      where: {
+        status: { in: ['SETTLED', 'WON', 'LOST', 'PUSH', 'VOID'] },
+        updatedAt: { gte: since },
+      },
       include: {
         user: { select: { id: true } },
         items: {
@@ -157,45 +167,60 @@ export class PerformanceTrackingService {
       orderBy: { updatedAt: 'asc' },
     });
 
-    let won = 0;
-    let lost = 0;
-    let pushed = 0;
-    let totalStaked = 0;
-    let totalReturned = 0;
-    const pnlSeries: number[] = [];
-    const returns: number[] = [];
-    const pnlByDay: Record<string, number> = {};
+    const singleRecords: SettledItemRecord[] = [];
+    const ticketRecords: SettledTicketRecord[] = [];
+    const clvRecords: ClvRecord[] = [];
 
     for (const slip of slips) {
-      const stake = slip.totalStake || slip.items.reduce((sum, item) => sum + item.stake, 0);
-      const day = slip.updatedAt.toISOString().slice(0, 10);
-      const result = settleSlip(slip.status, stake, slip.totalOdds);
-      totalStaked += result.staked;
-      totalReturned += result.returned;
-      if (result.counted) {
-        pnlSeries.push(result.pnl);
-        if (stake > 0) returns.push(result.pnl / stake);
+      for (const item of slip.items) {
+        if (item.clvPrice !== null || item.clvLine !== null) {
+          clvRecords.push({ clvPrice: item.clvPrice, clvLine: item.clvLine });
+        }
       }
-      pnlByDay[day] = (pnlByDay[day] ?? 0) + result.pnl;
-      if (slip.status === 'WON') won++;
-      else if (slip.status === 'LOST') lost++;
-      else pushed++;
+
+      if (slip.structure === WagerStructure.SINGLE_BATCH && slip.status === BetSlipStatus.SETTLED) {
+        for (const item of slip.items) {
+          const record = buildSettledItemRecord(slip, item);
+          if (record) singleRecords.push(record);
+        }
+        continue;
+      }
+
+      // New explicit parlays and historical ticket-level records remain one
+      // accounting unit. Historical ambiguous slips are not decomposed because
+      // their individual settlement state did not exist at recommendation time.
+      const ticket = buildTicketRecord(slip);
+      if (ticket) ticketRecords.push(ticket);
     }
 
-    const totalBets = won + lost + pushed;
-    const roi = totalStaked > 0 ? (totalReturned - totalStaked) / totalStaked : 0;
+    const financialRecords: FinancialRecord[] = [...singleRecords, ...ticketRecords];
+    const won = financialRecords.reduce((sum, record) => sum + record.won, 0);
+    const lost = financialRecords.reduce((sum, record) => sum + record.lost, 0);
+    const pushed = financialRecords.reduce((sum, record) => sum + record.pushed, 0);
+    const totalStaked = financialRecords.reduce((sum, record) => sum + record.stake, 0);
+    const totalPnl = financialRecords.reduce((sum, record) => sum + record.pnl, 0);
+    const totalReturned = totalStaked + totalPnl;
+    const totalBets = financialRecords.length;
+    const roi = totalStaked > 0 ? totalPnl / totalStaked : 0;
     const winRate = won + lost > 0 ? won / (won + lost) : 0;
+    const returns = financialRecords
+      .filter((record) => record.stake > 0 && record.countedForRisk)
+      .map((record) => record.pnl / record.stake);
+    const pnlSeries = financialRecords
+      .filter((record) => record.countedForRisk)
+      .map((record) => record.pnl);
     const sharpe = this.analyticsService.calcSharpeRatio(returns);
     const maxDrawdown = this.analyticsService.calcMaxDrawdown(pnlSeries);
+
+    const pnlByDay: Record<string, number> = {};
+    for (const record of financialRecords) {
+      pnlByDay[record.date] = (pnlByDay[record.date] ?? 0) + record.pnl;
+    }
 
     let cumulativePnl = 0;
     const growthHistory = Object.keys(pnlByDay).sort().map((date) => {
       cumulativePnl += pnlByDay[date];
-      return {
-        date,
-        pnl: round2(pnlByDay[date]),
-        cumPnl: round2(cumulativePnl),
-      };
+      return { date, pnl: round2(pnlByDay[date]), cumPnl: round2(cumulativePnl) };
     });
 
     const calendarData: Array<{ date: string; pnl: number }> = [];
@@ -204,30 +229,22 @@ export class PerformanceTrackingService {
       calendarData.push({ date, pnl: round2(pnlByDay[date] ?? 0) });
     }
 
-    const singleItemRecords = slips
-      .filter((slip) => slip.items.length === 1)
-      .map((slip) => buildSettledItemRecord(slip))
-      .filter((record): record is SettledItemRecord => record !== null);
+    // Category ROI slices intentionally use independent wagers only. Parlay
+    // ticket P&L cannot be truthfully assigned to any one leg/category.
+    const byMarketType = summarizeDimension(singleRecords, (record) => record.marketType ?? 'UNKNOWN');
+    const byConfidence = summarizeDimension(singleRecords, (record) => record.confidence ?? 'UNSPECIFIED');
+    const byPropType = summarizeDimension(singleRecords, (record) => record.propType ?? 'NON_PROP');
+    const byDirection = summarizeDimension(singleRecords, (record) => record.direction ?? 'UNSPECIFIED');
+    const bySeasonPhase = summarizeDimension(singleRecords, (record) => record.seasonPhase ?? 'UNSPECIFIED');
+    const bySportsbook = summarizeDimension(singleRecords, (record) => record.sportsbook ?? 'UNSPECIFIED');
 
-    const byMarketType = summarizeDimension(singleItemRecords, (record) => record.marketType ?? 'UNKNOWN');
-    const byConfidence = summarizeDimension(singleItemRecords, (record) => record.confidence ?? 'UNSPECIFIED');
-    const byPropType = summarizeDimension(singleItemRecords, (record) => record.propType ?? 'NON_PROP');
-    const byDirection = summarizeDimension(singleItemRecords, (record) => record.direction ?? 'UNSPECIFIED');
-    const bySeasonPhase = summarizeDimension(singleItemRecords, (record) => record.seasonPhase ?? 'UNSPECIFIED');
-    const bySportsbook = summarizeDimension(singleItemRecords, (record) => record.sportsbook ?? 'UNSPECIFIED');
-
-    const clvItems = singleItemRecords.filter((record) => record.clvPrice !== null);
-    const clvRate = clvItems.length
-      ? clvItems.filter((record) => (record.clvPrice ?? 0) > 0).length / clvItems.length
+    const pricedClv = clvRecords.filter((record) => record.clvPrice !== null);
+    const clvRate = pricedClv.length
+      ? pricedClv.filter((record) => (record.clvPrice ?? 0) > 0).length / pricedClv.length
       : 0;
-    const avgClv = clvItems.length
-      ? mean(clvItems.map((record) => record.clvPrice ?? 0))
-      : 0;
-    const avgLineClv = mean(
-      singleItemRecords
-        .filter((record) => record.clvLine !== null)
-        .map((record) => record.clvLine ?? 0),
-    );
+    const avgClv = pricedClv.length ? mean(pricedClv.map((record) => record.clvPrice ?? 0)) : 0;
+    const lineClv = clvRecords.filter((record) => record.clvLine !== null);
+    const avgLineClv = lineClv.length ? mean(lineClv.map((record) => record.clvLine ?? 0)) : 0;
 
     const predictions = await this.prisma.modelPrediction.findMany({
       where: { isResolved: true, createdAt: { gte: since } },
@@ -259,7 +276,7 @@ export class PerformanceTrackingService {
       where: { calculatedAt: { gte: twoHoursAgo } },
     });
 
-    await this.refreshPerformanceSlices(singleItemRecords, since);
+    await this.refreshPerformanceSlices(singleRecords, since);
 
     return {
       summary: {
@@ -272,13 +289,16 @@ export class PerformanceTrackingService {
         sharpe,
         maxDrawdown,
         totalStaked,
-        totalPnl: totalReturned - totalStaked,
+        totalReturned,
+        totalPnl,
+        independentWagers: singleRecords.length,
+        parlayOrLegacyTickets: ticketRecords.length,
         avgEVPct: evMetrics._avg.evPct ?? 0,
         activeOpportunities: evMetrics._count,
         clvRate,
         avgClv,
         avgLineClv,
-        clvSample: clvItems.length,
+        clvSample: pricedClv.length,
       },
       growthHistory,
       calendarData,
@@ -290,8 +310,9 @@ export class PerformanceTrackingService {
       bySportsbook,
       calibration,
       attributionLimitations: {
-        categorySlicesUseSingleItemSlipsOnly: true,
-        reason: 'BetSlip currently settles multi-leg wagers at slip level; individual parlay leg outcomes are not inferred.',
+        categorySlicesUseIndependentWagersOnly: true,
+        parlayTicketPnlCopiedToLegs: false,
+        reason: 'True parlay P&L is a ticket-level result; leg CLV is retained separately without inventing leg ROI.',
       },
     };
   }
@@ -312,9 +333,7 @@ export class PerformanceTrackingService {
     const period = `rolling_${Math.max(1, Math.round((Date.now() - since.getTime()) / 86_400_000))}d`;
     const userIds = [...new Set(records.map((record) => record.userId))];
     for (const userId of userIds) {
-      await this.prisma.performanceSlice.deleteMany({
-        where: { userId, period },
-      });
+      await this.prisma.performanceSlice.deleteMany({ where: { userId, period } });
       const userRecords = records.filter((record) => record.userId === userId);
       for (const definition of dimensions) {
         const summary = summarizeDimension(userRecords, definition.getter);
@@ -342,13 +361,18 @@ export class PerformanceTrackingService {
   }
 }
 
-type SettledItemRecord = {
+type FinancialRecord = {
   userId: string;
+  date: string;
   won: number;
   lost: number;
   pushed: number;
   stake: number;
   pnl: number;
+  countedForRisk: boolean;
+};
+
+type SettledItemRecord = FinancialRecord & {
   odds: number;
   marketType: string | null;
   confidence: string | null;
@@ -360,18 +384,29 @@ type SettledItemRecord = {
   clvLine: number | null;
 };
 
-function buildSettledItemRecord(slip: any): SettledItemRecord | null {
-  const item = slip.items[0];
-  if (!item) return null;
-  const stake = item.stake || slip.totalStake || 0;
-  const settlement = settleAmerican(item.odds, stake, slip.status);
+type SettledTicketRecord = FinancialRecord & {
+  structure: 'PARLAY' | 'LEGACY_TICKET';
+};
+
+type ClvRecord = {
+  clvPrice: number | null;
+  clvLine: number | null;
+};
+
+function buildSettledItemRecord(slip: any, item: any): SettledItemRecord | null {
+  const status = item.settlementStatus as LegSettlementStatus;
+  if (status === LegSettlementStatus.PENDING) return null;
+  const stake = item.stake ?? 0;
+  const result = settleLeg(status, item.odds, stake);
   return {
     userId: slip.userId,
-    won: slip.status === 'WON' ? 1 : 0,
-    lost: slip.status === 'LOST' ? 1 : 0,
-    pushed: slip.status === 'VOID' ? 1 : 0,
-    stake,
-    pnl: settlement.pnl,
+    date: settlementDate(slip, item),
+    won: status === LegSettlementStatus.WIN ? 1 : 0,
+    lost: status === LegSettlementStatus.LOSS ? 1 : 0,
+    pushed: status === LegSettlementStatus.PUSH || status === LegSettlementStatus.VOID ? 1 : 0,
+    stake: result.staked,
+    pnl: result.pnl,
+    countedForRisk: status === LegSettlementStatus.WIN || status === LegSettlementStatus.LOSS,
     odds: item.odds,
     marketType: item.market?.marketType ?? null,
     confidence: item.confidenceBucket ?? null,
@@ -384,22 +419,54 @@ function buildSettledItemRecord(slip: any): SettledItemRecord | null {
   };
 }
 
-function settleSlip(status: string, stake: number, totalOdds: number | null) {
-  if (status === 'VOID') return { staked: 0, returned: stake, pnl: 0, counted: false };
-  if (status === 'LOST') return { staked: stake, returned: 0, pnl: -stake, counted: true };
-  if (status === 'WON') {
-    const decimal = totalOdds && totalOdds > 1 ? totalOdds : 1;
-    const returned = stake * decimal;
-    return { staked: stake, returned, pnl: returned - stake, counted: true };
-  }
-  return { staked: 0, returned: 0, pnl: 0, counted: false };
+function buildTicketRecord(slip: any): SettledTicketRecord | null {
+  const stake = slip.ticketStake ?? slip.totalStake ?? 0;
+  if (stake < 0) return null;
+  const explicitPnl = finiteOrNull(slip.settlementProfitLoss);
+  const status = String(slip.status);
+  const result = explicitPnl !== null
+    ? {
+        staked: stake,
+        pnl: explicitPnl,
+        countedForRisk: status === 'WON' || status === 'LOST',
+      }
+    : settleLegacyTicket(status, stake, slip.totalOdds);
+  if (!result) return null;
+
+  return {
+    userId: slip.userId,
+    date: settlementDate(slip),
+    won: status === 'WON' ? 1 : 0,
+    lost: status === 'LOST' ? 1 : 0,
+    pushed: status === 'PUSH' || status === 'VOID' ? 1 : 0,
+    stake: result.staked,
+    pnl: result.pnl,
+    countedForRisk: result.countedForRisk,
+    structure: slip.structure === WagerStructure.PARLAY ? 'PARLAY' : 'LEGACY_TICKET',
+  };
 }
 
-function settleAmerican(odds: number, stake: number, status: string) {
-  if (status === 'VOID') return { pnl: 0 };
-  if (status === 'LOST') return { pnl: -stake };
-  if (status === 'WON') return { pnl: stake * (americanToDecimalOdds(odds) - 1) };
-  return { pnl: 0 };
+function settleLeg(status: LegSettlementStatus, odds: number, stake: number) {
+  if (status === LegSettlementStatus.WIN) {
+    return { staked: stake, pnl: stake * (americanToDecimalOdds(odds) - 1) };
+  }
+  if (status === LegSettlementStatus.LOSS) return { staked: stake, pnl: -stake };
+  if (status === LegSettlementStatus.PUSH || status === LegSettlementStatus.VOID) {
+    return { staked: stake, pnl: 0 };
+  }
+  return { staked: 0, pnl: 0 };
+}
+
+function settleLegacyTicket(status: string, stake: number, totalOdds: number | null) {
+  if (status === 'VOID' || status === 'PUSH') {
+    return { staked: stake, pnl: 0, countedForRisk: false };
+  }
+  if (status === 'LOST') return { staked: stake, pnl: -stake, countedForRisk: true };
+  if (status === 'WON') {
+    const decimal = totalOdds && totalOdds > 1 ? totalOdds : 1;
+    return { staked: stake, pnl: stake * (decimal - 1), countedForRisk: true };
+  }
+  return null;
 }
 
 function summarizeDimension(
@@ -428,6 +495,16 @@ function summarizeDimension(
       averageClv: clvRows.length ? mean(clvRows.map((row) => row.clvPrice ?? 0)) : 0,
     };
   }).sort((a, b) => b.bets - a.bets);
+}
+
+function settlementDate(slip: any, item?: any): string {
+  const value = item?.settledAt ?? slip.settledAt ?? slip.updatedAt ?? new Date();
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function finiteOrNull(value: unknown): number | null {
+  const numberValue = Number(value);
+  return value !== null && value !== undefined && Number.isFinite(numberValue) ? numberValue : null;
 }
 
 function mean(values: number[]) {
