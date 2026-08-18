@@ -57,8 +57,9 @@ jobs:
           # The database now exactly matches current main. Mark every migration
           # already present on main as applied so migrate deploy exercises only
           # additive migrations introduced by this PR.
-          git ls-tree -r --name-only origin/main -- backend/prisma/migrations \
-            | awk -F/ '/migration.sql$/ { print $(NF-1) }' \
+          git ls-tree -r --name-only origin/main \
+            | grep '^backend/prisma/migrations/.*/migration\.sql$' \
+            | awk -F/ '{ print $(NF-1) }' \
             | sort -u \
             > /tmp/main-migrations.txt
 
