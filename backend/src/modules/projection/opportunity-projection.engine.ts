@@ -24,17 +24,22 @@ const MODE_TRIALS: Record<OpportunityProjectionInput['analysisMode'], number> = 
  *
  * Expected Production = Expected Minutes × Opportunity Rate × Conversion Rate × Context Adjustment
  *
- * Pace adjustment is treated as part of context but returned separately for auditability.
+ * Opportunity rate may come directly from a per-minute rate or be derived from
+ * expected possessions × player opportunity share. Pace and expected-PPP
+ * matchup effects are audited separately even though both belong to context.
  */
 export function opportunityPointEstimate(input: OpportunityProjectionInput): number {
   validateInput(input);
   const paceAdjustment = getPaceAdjustment(input);
+  const pppAdjustment = getPppAdjustment(input);
+  const { rate } = getEffectiveOpportunityRate(input);
   return (
     input.minutes.median *
-    input.opportunityRatePerMinute *
+    rate *
     input.conversionRate *
     input.contextAdjustment *
-    paceAdjustment
+    paceAdjustment *
+    pppAdjustment
   );
 }
 
@@ -44,6 +49,8 @@ export function projectDistribution(input: OpportunityProjectionInput): Projecti
   const rng = seededRandom(input.seed);
   const scripts = normalizeProbabilities(input.scripts);
   const paceAdjustment = getPaceAdjustment(input);
+  const pppAdjustment = getPppAdjustment(input);
+  const effectiveOpportunity = getEffectiveOpportunityRate(input);
   const minuteStd = input.minutes.stdDev ?? inferMinutesStdDev(input);
   const samples: number[] = new Array(trials);
 
@@ -68,7 +75,7 @@ export function projectDistribution(input: OpportunityProjectionInput): Projecti
     minutes *= script.minutesMultiplier;
 
     const opportunityRate = sampleNormal(
-      input.opportunityRatePerMinute * script.opportunityMultiplier,
+      effectiveOpportunity.rate * script.opportunityMultiplier,
       input.uncertainty.opportunityRateStdDev,
       rng,
       0,
@@ -80,7 +87,7 @@ export function projectDistribution(input: OpportunityProjectionInput): Projecti
       0,
     );
     const context = sampleNormal(
-      input.contextAdjustment * (script.contextMultiplier ?? 1),
+      input.contextAdjustment * pppAdjustment * (script.contextMultiplier ?? 1),
       input.uncertainty.contextStdDev,
       rng,
       0,
@@ -136,10 +143,12 @@ export function projectDistribution(input: OpportunityProjectionInput): Projecti
     pointEstimate: opportunityPointEstimate(input),
     opportunityEquation: {
       expectedMinutes: input.minutes.median,
-      opportunityRatePerMinute: input.opportunityRatePerMinute,
+      opportunityRatePerMinute: effectiveOpportunity.rate,
+      opportunityRateSource: effectiveOpportunity.source,
       conversionRate: input.conversionRate,
       contextAdjustment: input.contextAdjustment,
       paceAdjustment,
+      pppAdjustment,
     },
   };
 }
@@ -165,9 +174,32 @@ export function alternateLineCurve(
   }));
 }
 
+function getEffectiveOpportunityRate(
+  input: OpportunityProjectionInput,
+): { rate: number; source: 'PER_MINUTE' | 'POSSESSION_SHARE' } {
+  if (
+    input.expectedPossessions !== undefined &&
+    input.expectedPossessions > 0 &&
+    input.playerOpportunityShare !== undefined &&
+    input.playerOpportunityShare >= 0 &&
+    input.minutes.median > 0
+  ) {
+    return {
+      rate: (input.expectedPossessions * input.playerOpportunityShare) / input.minutes.median,
+      source: 'POSSESSION_SHARE',
+    };
+  }
+  return { rate: input.opportunityRatePerMinute, source: 'PER_MINUTE' };
+}
+
 function getPaceAdjustment(input: OpportunityProjectionInput): number {
   if (!input.expectedPace || !input.baselinePace || input.baselinePace <= 0) return 1;
   return clamp(input.expectedPace / input.baselinePace, 0.8, 1.2);
+}
+
+function getPppAdjustment(input: OpportunityProjectionInput): number {
+  if (!input.expectedPpp || !input.baselinePpp || input.baselinePpp <= 0) return 1;
+  return clamp(input.expectedPpp / input.baselinePpp, 0.8, 1.2);
 }
 
 function inferMinutesStdDev(input: OpportunityProjectionInput): number {
@@ -192,6 +224,18 @@ function validateInput(input: OpportunityProjectionInput): void {
     throw new Error('Minutes median must fall inside the floor/ceiling range');
   }
   if (input.opportunityRatePerMinute < 0) throw new Error('Opportunity rate cannot be negative');
+  if (input.playerOpportunityShare !== undefined && (input.playerOpportunityShare < 0 || input.playerOpportunityShare > 1)) {
+    throw new Error('Player opportunity share must be within [0, 1]');
+  }
+  if (input.expectedPossessions !== undefined && input.expectedPossessions < 0) {
+    throw new Error('Expected possessions cannot be negative');
+  }
+  if (input.baselinePpp !== undefined && input.baselinePpp <= 0) {
+    throw new Error('Baseline PPP must be positive when provided');
+  }
+  if (input.expectedPpp !== undefined && input.expectedPpp <= 0) {
+    throw new Error('Expected PPP must be positive when provided');
+  }
   if (input.conversionRate < 0) throw new Error('Conversion rate cannot be negative');
   if (input.contextAdjustment <= 0) throw new Error('Context adjustment must be positive');
   if (!input.scripts.length) throw new Error('At least one game script is required');
