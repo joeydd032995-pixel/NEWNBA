@@ -8,13 +8,18 @@ const AN_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (compatible; NBABettingApp/1.0)',
 };
 
+/**
+ * Public betting is supplementary evidence only.
+ *
+ * Integrity rule: if the upstream source is unavailable, this service returns no
+ * data. It must never synthesize ticket or money percentages because downstream
+ * agents can otherwise mistake fabricated values for real market evidence.
+ */
 @Injectable()
 export class PublicBettingService {
   private readonly logger = new Logger(PublicBettingService.name);
 
-  constructor(
-    private prisma: PrismaService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async syncPublicBetting(): Promise<number> {
     let upserted = 0;
@@ -28,6 +33,7 @@ export class PublicBettingService {
       for (const game of games) {
         const homeTeamName: string = game.teams?.home?.full_name ?? '';
         const awayTeamName: string = game.teams?.away?.full_name ?? '';
+        if (!homeTeamName || !awayTeamName) continue;
 
         const dbEvent = await this.prisma.event.findFirst({
           where: {
@@ -44,7 +50,6 @@ export class PublicBettingService {
 
         if (!dbEvent || dbEvent.markets.length === 0) continue;
         const market = dbEvent.markets[0];
-
         const bets = game.public_bettors ?? {};
         const snappedAt = new Date();
 
@@ -52,10 +57,18 @@ export class PublicBettingService {
           ['home', bets.home],
           ['away', bets.away],
         ] as [string, any][]) {
-          if (pctRaw === undefined) continue;
-          const pctBets = parseFloat(pctRaw) || 0;
-          const pctMoney =
-            parseFloat(bets[`${side}_money`] ?? pctRaw) || 0;
+          if (pctRaw === undefined || pctRaw === null) continue;
+
+          const pctBets = Number.parseFloat(String(pctRaw));
+          const pctMoneyRaw = bets[`${side}_money`];
+          const pctMoney = pctMoneyRaw === undefined || pctMoneyRaw === null
+            ? pctBets
+            : Number.parseFloat(String(pctMoneyRaw));
+
+          // Reject malformed upstream values instead of silently coercing them to 0.
+          if (!Number.isFinite(pctBets) || !Number.isFinite(pctMoney)) continue;
+          if (pctBets < 0 || pctBets > 100 || pctMoney < 0 || pctMoney > 100) continue;
+
           await this.prisma.publicBettingSplit.upsert({
             where: {
               marketId_outcome_snappedAt: {
@@ -72,59 +85,29 @@ export class PublicBettingService {
               source: 'actionnetwork',
               snappedAt,
             },
-            update: { pctBets, pctMoney },
+            update: { pctBets, pctMoney, source: 'actionnetwork' },
           });
           upserted++;
         }
       }
     } catch (e) {
       this.logger.warn(
-        `Public betting sync from Action Network failed: ${(e as Error).message} — using simulation fallback`,
+        `Public betting sync unavailable: ${(e as Error).message}. No synthetic splits were written.`,
       );
-      await this.simulatePublicBetting();
+      return 0;
     }
     return upserted;
-  }
-
-  /** Simulate plausible public betting splits when real source unavailable */
-  private async simulatePublicBetting(): Promise<void> {
-    const markets = await this.prisma.market.findMany({
-      where: { marketType: 'MONEYLINE', isActive: true, event: { status: 'SCHEDULED' } },
-      take: 20,
-    });
-    const now = new Date();
-    for (const m of markets) {
-      const homePct = 40 + Math.random() * 20;
-      const awayPct = 100 - homePct;
-      for (const [outcome, pct] of [
-        ['home', homePct],
-        ['away', awayPct],
-      ] as [string, number][]) {
-        await this.prisma.publicBettingSplit
-          .upsert({
-            where: {
-              marketId_outcome_snappedAt: { marketId: m.id, outcome, snappedAt: now },
-            },
-            create: {
-              marketId: m.id,
-              outcome,
-              pctBets: pct,
-              pctMoney: pct + (Math.random() - 0.5) * 10,
-              source: 'simulated',
-              snappedAt: now,
-            },
-            update: { pctBets: pct, pctMoney: pct },
-          })
-          .catch(() => null);
-      }
-    }
   }
 
   async getSplitsForMarket(marketId: string): Promise<any[]> {
     const since = new Date();
     since.setHours(since.getHours() - 2);
     return this.prisma.publicBettingSplit.findMany({
-      where: { marketId, snappedAt: { gte: since } },
+      where: {
+        marketId,
+        snappedAt: { gte: since },
+        source: { not: 'simulated' },
+      },
       orderBy: { snappedAt: 'desc' },
       take: 10,
     });
@@ -132,14 +115,14 @@ export class PublicBettingService {
 
   async getLatestSplitForMarket(marketId: string): Promise<Record<string, number>> {
     const splits = await this.prisma.publicBettingSplit.findMany({
-      where: { marketId },
+      where: { marketId, source: { not: 'simulated' } },
       orderBy: { snappedAt: 'desc' },
       take: 4,
       select: { outcome: true, pctBets: true },
     });
     const result: Record<string, number> = {};
-    for (const s of splits) {
-      if (!(s.outcome in result)) result[s.outcome] = s.pctBets;
+    for (const split of splits) {
+      if (!(split.outcome in result)) result[split.outcome] = split.pctBets;
     }
     return result;
   }
