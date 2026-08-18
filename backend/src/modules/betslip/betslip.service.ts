@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BetSlipStatus } from '@prisma/client';
-import { AddItemDto, CloseBetItemDto, UpdateSlipDto } from './dto/betslip.dto';
+import { AddItemDto, CloseBetItemDto, SubmitTrackedSlipDto, UpdateSlipDto } from './dto/betslip.dto';
 import { calculateClv } from '../analytics/clv';
 import { WagerProjectionSnapshotService } from './wager-projection-snapshot.service';
 
@@ -59,29 +59,10 @@ export class BetslipService {
       throw new BadRequestException('Cannot modify a submitted or settled bet slip');
     }
 
-    if (dto.bookId) {
-      const book = await this.prisma.book.findUnique({ where: { id: dto.bookId } });
-      if (!book?.isActive) throw new BadRequestException('Sportsbook is invalid or inactive');
-    }
+    await this.validateTrackedItems([dto], false);
 
     const item = await this.prisma.betSlipItem.create({
-      data: {
-        betSlipId: id,
-        marketId: dto.marketId,
-        eventId: dto.eventId,
-        bookId: dto.bookId,
-        outcome: dto.outcome,
-        odds: dto.odds,
-        recommendedLine: dto.recommendedLine,
-        direction: dto.direction as any,
-        confidenceBucket: dto.confidenceBucket as any,
-        decisionClass: dto.decisionClass as any,
-        propStatType: dto.propStatType as any,
-        seasonPhase: dto.seasonPhase as any,
-        stake: dto.stake ?? 0,
-        ev: dto.ev,
-        recommendedAt: new Date(),
-      },
+      data: this.toItemCreateData(id, dto),
       include: { book: true },
     });
 
@@ -98,6 +79,59 @@ export class BetslipService {
         projectionSnapshot: true,
       },
     });
+  }
+
+  /**
+   * Persist a UI tracking ticket as one database transaction. This records a
+   * wager; it does not execute a sportsbook order.
+   */
+  async createAndSubmitTracked(userId: string, dto: SubmitTrackedSlipDto) {
+    if (!dto.items.length) throw new BadRequestException('Cannot submit an empty bet slip');
+    await this.validateTrackedItems(dto.items, true);
+
+    const totalStake = dto.items.reduce((sum, item) => sum + Math.max(0, item.stake ?? 0), 0);
+    const totalOdds = dto.items.reduce((product, item) => product * americanToDecimal(item.odds), 1);
+    const recommendedAt = new Date();
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const slip = await tx.betSlip.create({
+        data: {
+          userId,
+          name: dto.name,
+          totalStake,
+          totalOdds,
+          status: BetSlipStatus.OPEN,
+        },
+      });
+
+      const items = [] as Array<{ id: string }>;
+      for (const itemDto of dto.items) {
+        const item = await tx.betSlipItem.create({
+          data: {
+            ...this.toItemCreateData(slip.id, itemDto),
+            recommendedAt,
+          },
+          select: { id: true },
+        });
+        items.push(item);
+      }
+
+      await tx.betSlip.update({
+        where: { id: slip.id },
+        data: { status: BetSlipStatus.SUBMITTED },
+      });
+
+      return { slipId: slip.id, items };
+    });
+
+    // Snapshot creation is intentionally after the core wager transaction. A
+    // snapshot may fail open on insufficient model data, but the wager record
+    // itself remains exact and auditable.
+    for (const item of created.items) {
+      await this.projectionSnapshots.captureForItem(item.id);
+    }
+
+    return this.findOne(created.slipId, userId);
   }
 
   async captureClosingMarket(
@@ -183,16 +217,77 @@ export class BetslipService {
     return { message: 'Bet slip deleted' };
   }
 
+  private toItemCreateData(slipId: string, dto: AddItemDto) {
+    return {
+      betSlipId: slipId,
+      marketId: dto.marketId,
+      eventId: dto.eventId,
+      bookId: dto.bookId,
+      outcome: dto.outcome.trim().toLowerCase(),
+      odds: dto.odds,
+      recommendedLine: dto.recommendedLine,
+      direction: dto.direction as any,
+      confidenceBucket: dto.confidenceBucket as any,
+      decisionClass: dto.decisionClass as any,
+      propStatType: dto.propStatType as any,
+      seasonPhase: dto.seasonPhase as any,
+      stake: dto.stake ?? 0,
+      ev: dto.ev,
+      recommendedAt: new Date(),
+    };
+  }
+
+  private async validateTrackedItems(items: AddItemDto[], requireMarketAndEvent: boolean) {
+    for (const item of items) {
+      if (!Number.isFinite(item.odds) || item.odds === 0) {
+        throw new BadRequestException('Tracked wager odds must be a non-zero finite American price');
+      }
+      if ((item.stake ?? 0) < 0) throw new BadRequestException('Tracked wager stake cannot be negative');
+      if (requireMarketAndEvent && (!item.marketId || !item.eventId)) {
+        throw new BadRequestException('Tracked wager requires both marketId and eventId');
+      }
+    }
+
+    const marketIds = [...new Set(items.map((item) => item.marketId).filter((value): value is string => !!value))];
+    if (marketIds.length) {
+      const markets = await this.prisma.market.findMany({
+        where: { id: { in: marketIds } },
+        select: { id: true, eventId: true, isActive: true },
+      });
+      const byId = new Map(markets.map((market) => [market.id, market]));
+      for (const item of items) {
+        if (!item.marketId) continue;
+        const market = byId.get(item.marketId);
+        if (!market || !market.isActive) throw new BadRequestException(`Market ${item.marketId} is invalid or inactive`);
+        if (item.eventId && market.eventId !== item.eventId) {
+          throw new BadRequestException(`Market ${item.marketId} does not belong to event ${item.eventId}`);
+        }
+      }
+    }
+
+    const bookIds = [...new Set(items.map((item) => item.bookId).filter((value): value is string => !!value))];
+    if (bookIds.length) {
+      const books = await this.prisma.book.findMany({
+        where: { id: { in: bookIds }, isActive: true },
+        select: { id: true },
+      });
+      const activeBooks = new Set(books.map((book) => book.id));
+      const invalid = bookIds.find((bookId) => !activeBooks.has(bookId));
+      if (invalid) throw new BadRequestException(`Sportsbook ${invalid} is invalid or inactive`);
+    }
+  }
+
   private async recalcTotals(slipId: string) {
     const items = await this.prisma.betSlipItem.findMany({ where: { betSlipId: slipId } });
     const totalStake = items.reduce((sum, item) => sum + item.stake, 0);
-    const totalOdds = items.reduce((product, item) => {
-      const decimal = item.odds > 0 ? item.odds / 100 + 1 : 100 / Math.abs(item.odds) + 1;
-      return product * decimal;
-    }, 1);
+    const totalOdds = items.reduce((product, item) => product * americanToDecimal(item.odds), 1);
     await this.prisma.betSlip.update({
       where: { id: slipId },
       data: { totalStake, totalOdds: items.length > 0 ? totalOdds : null },
     });
   }
+}
+
+function americanToDecimal(odds: number): number {
+  return odds > 0 ? odds / 100 + 1 : 100 / Math.abs(odds) + 1;
 }
