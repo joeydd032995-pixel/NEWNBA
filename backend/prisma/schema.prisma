@@ -7,9 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================================
-// USER & AUTH
-// ============================================================
 model User {
   id                String    @id @default(uuid())
   email             String    @unique
@@ -40,33 +37,18 @@ model User {
   @@map("users")
 }
 
-enum PlanType {
-  FREE
-  PRO
-  PREMIUM
-}
+enum PlanType { FREE PRO PREMIUM }
+enum SubscriptionStatus { TRIALING ACTIVE EXPIRED CANCELED }
 
-enum SubscriptionStatus {
-  TRIALING
-  ACTIVE
-  EXPIRED
-  CANCELED
-}
-
-// ============================================================
-// SPORTS & TEAMS
-// ============================================================
 model Sport {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  slug        String   @unique
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-
-  teams       Team[]
-  events      Event[]
-  markets     Market[]
-
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  teams     Team[]
+  events    Event[]
+  markets   Market[]
   @@map("sports")
 }
 
@@ -82,11 +64,10 @@ model Team {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  sport                    Sport                       @relation(fields: [sportId], references: [id])
+  sport                    Sport                        @relation(fields: [sportId], references: [id])
   players                  Player[]
-  homeEvents               Event[]                     @relation("HomeTeam")
-  awayEvents               Event[]                     @relation("AwayTeam")
+  homeEvents               Event[]                      @relation("HomeTeam")
+  awayEvents               Event[]                      @relation("AwayTeam")
   newsItems                NewsItem[]
   gameLineups              GameLineup[]
   rotationProjections      RotationProjection[]
@@ -95,7 +76,6 @@ model Team {
   defensiveMatchups        DefensiveMatchupAssignment[] @relation("DefensiveTeam")
   fiveManLineups           FiveManLineup[]
   onOffStats               PlayerOnOffStat[]
-
   @@unique([sportId, abbreviation])
   @@index([sportId])
   @@map("teams")
@@ -114,157 +94,139 @@ model Player {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  team                         Team?                         @relation(fields: [teamId], references: [id])
-  statLines                    StatLine[]
-  propMarkets                  Market[]
-  injuryReports                InjuryReport[]
-  newsItems                    NewsItem[]
-  lineupSlots                  GameLineupPlayer[]
-  rotationProjections          RotationProjection[]
-  opportunityStats             PlayerOpportunityStat[]
-  shotProfiles                 PlayerShotProfile[]
-  playTypeStats                PlayerPlayTypeStat[]
-  onOffStats                   PlayerOnOffStat[]
-  fiveManLineupMemberships     FiveManLineupPlayer[]
-  availabilityProjections      PlayerAvailabilityProjection[]
-  replacementAsAbsent          InjuryReplacementProjection[] @relation("AbsentPlayer")
-  replacementAsCandidate       InjuryReplacementProjection[] @relation("ReplacementPlayer")
-  defensiveAssignmentsAsDefender DefensiveMatchupAssignment[] @relation("DefenderPlayer")
-  defensiveAssignmentsAsOffense  DefensiveMatchupAssignment[] @relation("OffensivePlayer")
-
+  team                            Team?                         @relation(fields: [teamId], references: [id])
+  statLines                       StatLine[]
+  propMarkets                     Market[]
+  injuryReports                   InjuryReport[]
+  newsItems                       NewsItem[]
+  lineupSlots                     GameLineupPlayer[]
+  rotationProjections             RotationProjection[]
+  opportunityStats                PlayerOpportunityStat[]
+  shotProfiles                    PlayerShotProfile[]
+  playTypeStats                   PlayerPlayTypeStat[]
+  onOffStats                      PlayerOnOffStat[]
+  fiveManLineupMemberships        FiveManLineupPlayer[]
+  availabilityProjections         PlayerAvailabilityProjection[]
+  replacementAsAbsent             InjuryReplacementProjection[] @relation("AbsentPlayer")
+  replacementAsCandidate          InjuryReplacementProjection[] @relation("ReplacementPlayer")
+  defensiveAssignmentsAsDefender  DefensiveMatchupAssignment[] @relation("DefenderPlayer")
+  defensiveAssignmentsAsOffense   DefensiveMatchupAssignment[] @relation("OffensivePlayer")
   @@index([teamId])
   @@index([bdlId])
   @@map("players")
 }
 
 model StatLine {
-  id             String   @id @default(uuid())
-  playerId       String
-  eventId        String
-  season         String
-  gameDate       DateTime
-  points         Float    @default(0)
-  rebounds       Float    @default(0)
-  assists        Float    @default(0)
-  steals         Float    @default(0)
-  blocks         Float    @default(0)
-  turnovers      Float    @default(0)
-  minutes        Float    @default(0)
-  fgm            Float    @default(0)
-  fga            Float    @default(0)
-  fgPct          Float    @default(0)
-  fg3m           Float    @default(0)
-  fg3a           Float    @default(0)
-  fg3Pct         Float    @default(0)
-  ftm            Float    @default(0)
-  fta            Float    @default(0)
-  ftPct          Float    @default(0)
-  plusMinus      Float    @default(0)
-  usgPct         Float    @default(0)
-  tsPct          Float    @default(0)
-  efgPct         Float    @default(0)
-  bpm            Float    @default(0)
-  createdAt      DateTime @default(now())
-
-  player         Player   @relation(fields: [playerId], references: [id])
-  event          Event    @relation(fields: [eventId], references: [id])
-
+  id        String   @id @default(uuid())
+  playerId  String
+  eventId   String
+  season    String
+  gameDate  DateTime
+  points    Float @default(0)
+  rebounds  Float @default(0)
+  assists   Float @default(0)
+  steals    Float @default(0)
+  blocks    Float @default(0)
+  turnovers Float @default(0)
+  minutes   Float @default(0)
+  fgm       Float @default(0)
+  fga       Float @default(0)
+  fgPct     Float @default(0)
+  fg3m      Float @default(0)
+  fg3a      Float @default(0)
+  fg3Pct    Float @default(0)
+  ftm       Float @default(0)
+  fta       Float @default(0)
+  ftPct     Float @default(0)
+  plusMinus Float @default(0)
+  usgPct    Float @default(0)
+  tsPct     Float @default(0)
+  efgPct    Float @default(0)
+  bpm       Float @default(0)
+  createdAt DateTime @default(now())
+  player Player @relation(fields: [playerId], references: [id])
+  event  Event  @relation(fields: [eventId], references: [id])
   @@index([playerId])
   @@index([eventId])
   @@map("stat_lines")
 }
 
-// ============================================================
-// EVENTS & MARKETS
-// ============================================================
 model Event {
-  id             String      @id @default(uuid())
-  sportId        String
-  homeTeamId     String
-  awayTeamId     String
-  startTime      DateTime
-  status         EventStatus @default(SCHEDULED)
-  homeScore      Int?
-  awayScore      Int?
-  period         String?
-  timeRemaining  String?
-  season         String?
-  week           Int?
-  isNeutralSite  Boolean     @default(false)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-
-  sport                       Sport                         @relation(fields: [sportId], references: [id])
-  homeTeam                    Team                          @relation("HomeTeam", fields: [homeTeamId], references: [id])
-  awayTeam                    Team                          @relation("AwayTeam", fields: [awayTeamId], references: [id])
-  markets                     Market[]
-  statLines                   StatLine[]
-  evMetrics                   EVMetrics[]
-  arbitrageOpps               ArbitrageOpportunity[]
-  refereeAssignments          RefereeAssignment[]
-  environment                 GameEnvironment?
-  gameLineups                 GameLineup[]
-  rotationProjections         RotationProjection[]
-  opportunityStats            PlayerOpportunityStat[]
-  shotProfiles                PlayerShotProfile[]
-  playTypeStats               PlayerPlayTypeStat[]
-  defensiveSchemeStats        TeamDefensiveSchemeStat[]
-  defensiveMatchups           DefensiveMatchupAssignment[]
-  fiveManLineupStats          FiveManLineupStat[]
-  availabilityProjections     PlayerAvailabilityProjection[]
-  injuryReplacementProjections InjuryReplacementProjection[]
-
+  id            String      @id @default(uuid())
+  sportId       String
+  homeTeamId    String
+  awayTeamId    String
+  startTime     DateTime
+  status        EventStatus @default(SCHEDULED)
+  homeScore     Int?
+  awayScore     Int?
+  period        String?
+  timeRemaining String?
+  season        String?
+  week          Int?
+  isNeutralSite Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  sport                         Sport @relation(fields: [sportId], references: [id])
+  homeTeam                      Team @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam                      Team @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  markets                       Market[]
+  statLines                     StatLine[]
+  evMetrics                     EVMetrics[]
+  arbitrageOpps                 ArbitrageOpportunity[]
+  refereeAssignments            RefereeAssignment[]
+  environment                   GameEnvironment?
+  gameLineups                   GameLineup[]
+  rotationProjections           RotationProjection[]
+  opportunityStats              PlayerOpportunityStat[]
+  shotProfiles                  PlayerShotProfile[]
+  playTypeStats                 PlayerPlayTypeStat[]
+  defensiveSchemeStats          TeamDefensiveSchemeStat[]
+  defensiveMatchups             DefensiveMatchupAssignment[]
+  fiveManLineupStats            FiveManLineupStat[]
+  availabilityProjections       PlayerAvailabilityProjection[]
+  injuryReplacementProjections  InjuryReplacementProjection[]
   @@index([sportId])
   @@index([status])
   @@index([startTime])
   @@map("events")
 }
 
-enum EventStatus {
-  SCHEDULED
-  LIVE
-  FINAL
-  POSTPONED
-  CANCELLED
-}
+enum EventStatus { SCHEDULED LIVE FINAL POSTPONED CANCELLED }
 
 model Book {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  slug        String   @unique
-  logoUrl     String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-
-  marketOdds  MarketOdds[]
+  id        String @id @default(uuid())
+  name      String @unique
+  slug      String @unique
+  logoUrl   String?
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  marketOdds   MarketOdds[]
   betSlipItems BetSlipItem[]
-
   @@map("books")
 }
 
 model Market {
-  id           String        @id @default(uuid())
+  id           String @id @default(uuid())
   eventId      String
   sportId      String
   marketType   MarketType
   playerId     String?
   propStatType PropStatType?
   description  String?
-  isActive     Boolean       @default(true)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  event        Event       @relation(fields: [eventId], references: [id])
-  sport        Sport       @relation(fields: [sportId], references: [id])
-  player       Player?     @relation(fields: [playerId], references: [id])
+  isActive     Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  event PublicBettingSplit[] @ignore
+  sport        Sport @relation(fields: [sportId], references: [id])
+  player       Player? @relation(fields: [playerId], references: [id])
   marketOdds   MarketOdds[]
   evMetrics    EVMetrics[]
   arbOpps      ArbitrageOpportunity[]
   publicBettingSplits PublicBettingSplit[]
   expertPicks  ExpertPick[]
   betSlipItems BetSlipItem[]
-
+  eventRelation Event @relation(fields: [eventId], references: [id], map: "markets_eventId_fkey")
   @@index([eventId])
   @@index([sportId])
   @@index([playerId])
@@ -272,99 +234,62 @@ model Market {
 }
 
 enum MarketType {
-  MONEYLINE
-  SPREAD
-  TOTAL
-  TEAM_TOTAL
-  FIRST_HALF_MONEYLINE
-  FIRST_HALF_SPREAD
-  FIRST_HALF_TOTAL
-  FIRST_HALF_TEAM_TOTAL
-  FIRST_QUARTER_MONEYLINE
-  FIRST_QUARTER_SPREAD
-  FIRST_QUARTER_TOTAL
-  FIRST_QUARTER_TEAM_TOTAL
-  PLAYER_PROP
-  PLAYER_PROP_ALTERNATE
-  DERIVATIVE
-  TEAM_PROP
-  FUTURES
-  PARLAY
+  MONEYLINE SPREAD TOTAL TEAM_TOTAL
+  FIRST_HALF_MONEYLINE FIRST_HALF_SPREAD FIRST_HALF_TOTAL FIRST_HALF_TEAM_TOTAL
+  FIRST_QUARTER_MONEYLINE FIRST_QUARTER_SPREAD FIRST_QUARTER_TOTAL FIRST_QUARTER_TEAM_TOTAL
+  PLAYER_PROP PLAYER_PROP_ALTERNATE DERIVATIVE TEAM_PROP FUTURES PARLAY
 }
 
 enum PropStatType {
-  POINTS
-  REBOUNDS
-  ASSISTS
-  STEALS
-  BLOCKS
-  THREES
-  TURNOVERS
-  STOCKS
-  DOUBLE_DOUBLE
-  TRIPLE_DOUBLE
-  MINUTES
-  PRA
-  PR
-  PA
-  RA
+  POINTS REBOUNDS ASSISTS STEALS BLOCKS THREES TURNOVERS STOCKS DOUBLE_DOUBLE TRIPLE_DOUBLE MINUTES PRA PR PA RA
 }
 
 model MarketOdds {
-  id          String   @id @default(uuid())
-  marketId    String
-  bookId      String
-  outcome     String
-  odds        Float
-  line        Float?
-  isOpen      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  market      Market   @relation(fields: [marketId], references: [id])
-  book        Book     @relation(fields: [bookId], references: [id])
+  id        String @id @default(uuid())
+  marketId  String
+  bookId    String
+  outcome   String
+  odds      Float
+  line      Float?
+  isOpen    Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  market Market @relation(fields: [marketId], references: [id])
+  book Book @relation(fields: [bookId], references: [id])
   oddsHistory OddsHistory[]
   oddsSnapshots OddsSnapshot[]
-
   @@index([marketId])
   @@index([bookId])
   @@map("market_odds")
 }
 
 model OddsHistory {
-  id           String     @id @default(uuid())
+  id String @id @default(uuid())
   marketOddsId String
-  odds         Float
-  line         Float?
-  recordedAt   DateTime   @default(now())
-
-  marketOdds   MarketOdds @relation(fields: [marketOddsId], references: [id])
-
+  odds Float
+  line Float?
+  recordedAt DateTime @default(now())
+  marketOdds MarketOdds @relation(fields: [marketOddsId], references: [id])
   @@index([marketOddsId])
   @@index([recordedAt])
   @@map("odds_history")
 }
 
-// ============================================================
-// EV & ARBITRAGE
-// ============================================================
 model EVMetrics {
-  id              String   @id @default(uuid())
-  marketId        String
-  eventId         String
-  outcome         String
-  bookOdds        Float
-  trueProb        Float
-  impliedProb     Float
-  ev              Float
-  evPct           Float
-  kellyFraction   Float
-  modelUsed       String?
-  calculatedAt    DateTime @default(now())
-
-  market          Market   @relation(fields: [marketId], references: [id])
-  event           Event    @relation(fields: [eventId], references: [id])
-
+  id String @id @default(uuid())
+  marketId String
+  eventId String
+  outcome String
+  bookOdds Float
+  trueProb Float
+  impliedProb Float
+  ev Float
+  evPct Float
+  kellyFraction Float
+  modelUsed String?
+  calculatedAt DateTime @default(now())
+  market Market @relation(fields: [marketId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
   @@index([marketId])
   @@index([eventId])
   @@index([calculatedAt])
@@ -372,70 +297,61 @@ model EVMetrics {
 }
 
 model ArbitrageOpportunity {
-  id           String   @id @default(uuid())
-  marketId     String
-  eventId      String
-  legs         Json
-  profit       Float
-  profitPct    Float
-  totalStake   Float
-  isActive     Boolean  @default(true)
-  detectedAt   DateTime @default(now())
-  expiresAt    DateTime?
-
-  market       Market   @relation(fields: [marketId], references: [id])
-  event        Event    @relation(fields: [eventId], references: [id])
-
+  id String @id @default(uuid())
+  marketId String
+  eventId String
+  legs Json
+  profit Float
+  profitPct Float
+  totalStake Float
+  isActive Boolean @default(true)
+  detectedAt DateTime @default(now())
+  expiresAt DateTime?
+  market Market @relation(fields: [marketId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
   @@index([marketId])
   @@index([eventId])
   @@index([isActive])
   @@map("arbitrage_opportunities")
 }
 
-// ============================================================
-// ANALYTICS MODELS
-// ============================================================
 model CustomModel {
-  id           String   @id @default(uuid())
-  userId       String
-  name         String
-  description  String?
-  weights      Json
-  isActive     Boolean  @default(true)
-  isPublic     Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  user              User              @relation(fields: [userId], references: [id])
-  predictions       ModelPrediction[]
-  performance       ModelPerformance[]
+  id String @id @default(uuid())
+  userId String
+  name String
+  description String?
+  weights Json
+  isActive Boolean @default(true)
+  isPublic Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id])
+  predictions ModelPrediction[]
+  performance ModelPerformance[]
   ensembleComponents EnsembleComponent[]
-  abTestVariantA    ABTest[]          @relation("VariantA")
-  abTestVariantB    ABTest[]          @relation("VariantB")
+  abTestVariantA ABTest[] @relation("VariantA")
+  abTestVariantB ABTest[] @relation("VariantB")
   performanceSlices PerformanceSlice[]
-
   @@index([userId])
   @@map("custom_models")
 }
 
 model ModelPrediction {
-  id           String   @id @default(uuid())
-  modelId      String
-  userId       String
-  eventId      String?
-  marketId     String?
-  outcome      String
+  id String @id @default(uuid())
+  modelId String
+  userId String
+  eventId String?
+  marketId String?
+  outcome String
   predictedProb Float
-  confidence   Float
+  confidence Float
   actualResult Boolean?
-  isResolved   Boolean  @default(false)
-  metadata     Json?
-  createdAt    DateTime @default(now())
-  resolvedAt   DateTime?
-
-  model        CustomModel @relation(fields: [modelId], references: [id])
-  user         User        @relation(fields: [userId], references: [id])
-
+  isResolved Boolean @default(false)
+  metadata Json?
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+  model CustomModel @relation(fields: [modelId], references: [id])
+  user User @relation(fields: [userId], references: [id])
   @@index([modelId])
   @@index([userId])
   @@index([eventId])
@@ -443,243 +359,188 @@ model ModelPrediction {
 }
 
 model ModelPerformance {
-  id           String   @id @default(uuid())
-  modelId      String
-  period       String
-  totalBets    Int      @default(0)
-  wins         Int      @default(0)
-  losses       Int      @default(0)
-  pushes       Int      @default(0)
-  roi          Float    @default(0)
-  winRate      Float    @default(0)
-  sharpeRatio  Float    @default(0)
-  calibration  Float    @default(0)
-  avgEV        Float    @default(0)
-  totalProfit  Float    @default(0)
-  maxDrawdown  Float    @default(0)
-  clvRate      Float    @default(0)
-  avgClv       Float    @default(0)
-  avgOdds      Float    @default(0)
+  id String @id @default(uuid())
+  modelId String
+  period String
+  totalBets Int @default(0)
+  wins Int @default(0)
+  losses Int @default(0)
+  pushes Int @default(0)
+  roi Float @default(0)
+  winRate Float @default(0)
+  sharpeRatio Float @default(0)
+  calibration Float @default(0)
+  avgEV Float @default(0)
+  totalProfit Float @default(0)
+  maxDrawdown Float @default(0)
+  clvRate Float @default(0)
+  avgClv Float @default(0)
+  avgOdds Float @default(0)
   calculatedAt DateTime @default(now())
-
-  model        CustomModel @relation(fields: [modelId], references: [id])
-
+  model CustomModel @relation(fields: [modelId], references: [id])
   @@index([modelId])
   @@map("model_performance")
 }
 
-// ============================================================
-// ENSEMBLE MODELS
-// ============================================================
 model EnsembleModel {
-  id           String           @id @default(uuid())
-  userId       String
-  name         String
-  description  String?
-  strategy     EnsembleStrategy
-  isActive     Boolean          @default(true)
-  metadata     Json?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-
-  user         User               @relation(fields: [userId], references: [id])
-  components   EnsembleComponent[]
-
+  id String @id @default(uuid())
+  userId String
+  name String
+  description String?
+  strategy EnsembleStrategy
+  isActive Boolean @default(true)
+  metadata Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id])
+  components EnsembleComponent[]
   @@index([userId])
   @@map("ensemble_models")
 }
 
-enum EnsembleStrategy {
-  WEIGHTED_AVERAGE
-  VOTING
-  STACKING
-  BOOSTING
-}
+enum EnsembleStrategy { WEIGHTED_AVERAGE VOTING STACKING BOOSTING }
 
 model EnsembleComponent {
-  id              String   @id @default(uuid())
+  id String @id @default(uuid())
   ensembleModelId String
-  modelId         String
-  weight          Float    @default(1.0)
-  order           Int      @default(0)
-  createdAt       DateTime @default(now())
-
-  ensembleModel   EnsembleModel @relation(fields: [ensembleModelId], references: [id])
-  model           CustomModel   @relation(fields: [modelId], references: [id])
-
+  modelId String
+  weight Float @default(1.0)
+  order Int @default(0)
+  createdAt DateTime @default(now())
+  ensembleModel EnsembleModel @relation(fields: [ensembleModelId], references: [id])
+  model CustomModel @relation(fields: [modelId], references: [id])
   @@index([ensembleModelId])
   @@index([modelId])
   @@map("ensemble_components")
 }
 
-// ============================================================
-// GENETIC ALGORITHM OPTIMIZATION
-// ============================================================
 model OptimizationRun {
-  id               String   @id @default(uuid())
-  userId           String
-  name             String
-  status           OptimizationStatus @default(PENDING)
-  config           Json
-  bestFitness      Float?
-  bestWeights      Json?
-  generations      Int      @default(0)
-  populationSize   Int      @default(50)
-  mutationRate     Float    @default(0.1)
-  crossoverRate    Float    @default(0.8)
-  elitismCount     Int      @default(2)
-  convergenceData  Json?
-  startedAt        DateTime?
-  completedAt      DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  user             User                   @relation(fields: [userId], references: [id])
-  candidates       OptimizationCandidate[]
-
+  id String @id @default(uuid())
+  userId String
+  name String
+  status OptimizationStatus @default(PENDING)
+  config Json
+  bestFitness Float?
+  bestWeights Json?
+  generations Int @default(0)
+  populationSize Int @default(50)
+  mutationRate Float @default(0.1)
+  crossoverRate Float @default(0.8)
+  elitismCount Int @default(2)
+  convergenceData Json?
+  startedAt DateTime?
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id])
+  candidates OptimizationCandidate[]
   @@index([userId])
   @@map("optimization_runs")
 }
 
-enum OptimizationStatus {
-  PENDING
-  RUNNING
-  COMPLETED
-  FAILED
-  CANCELLED
-}
+enum OptimizationStatus { PENDING RUNNING COMPLETED FAILED CANCELLED }
 
 model OptimizationCandidate {
-  id               String   @id @default(uuid())
+  id String @id @default(uuid())
   optimizationRunId String
-  generation       Int
-  weights          Json
-  fitness          Float
-  roi              Float?
-  winRate          Float?
-  sharpeRatio      Float?
-  isElite          Boolean  @default(false)
-  createdAt        DateTime @default(now())
-
-  optimizationRun  OptimizationRun @relation(fields: [optimizationRunId], references: [id])
-
+  generation Int
+  weights Json
+  fitness Float
+  roi Float?
+  winRate Float?
+  sharpeRatio Float?
+  isElite Boolean @default(false)
+  createdAt DateTime @default(now())
+  optimizationRun OptimizationRun @relation(fields: [optimizationRunId], references: [id])
   @@index([optimizationRunId])
   @@map("optimization_candidates")
 }
 
-// ============================================================
-// A/B TESTING
-// ============================================================
 model ABTest {
-  id              String       @id @default(uuid())
-  userId          String
-  name            String
-  description     String?
-  status          ABTestStatus @default(DRAFT)
-  variantAId      String
-  variantBId      String
-  sampleSize      Int          @default(100)
-  confidenceLevel Float        @default(0.95)
-  startedAt       DateTime?
-  endedAt         DateTime?
-  winnerId        String?
-  pValue          Float?
-  tStatistic      Float?
-  isSignificant   Boolean      @default(false)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  user            User           @relation(fields: [userId], references: [id])
-  variantA        CustomModel    @relation("VariantA", fields: [variantAId], references: [id])
-  variantB        CustomModel    @relation("VariantB", fields: [variantBId], references: [id])
-  results         ABTestResult[]
-
+  id String @id @default(uuid())
+  userId String
+  name String
+  description String?
+  status ABTestStatus @default(DRAFT)
+  variantAId String
+  variantBId String
+  sampleSize Int @default(100)
+  confidenceLevel Float @default(0.95)
+  startedAt DateTime?
+  endedAt DateTime?
+  winnerId String?
+  pValue Float?
+  tStatistic Float?
+  isSignificant Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id])
+  variantA CustomModel @relation("VariantA", fields: [variantAId], references: [id])
+  variantB CustomModel @relation("VariantB", fields: [variantBId], references: [id])
+  results ABTestResult[]
   @@index([userId])
   @@map("ab_tests")
 }
 
-enum ABTestStatus {
-  DRAFT
-  RUNNING
-  COMPLETED
-  PAUSED
-}
+enum ABTestStatus { DRAFT RUNNING COMPLETED PAUSED }
 
 model ABTestResult {
-  id           String   @id @default(uuid())
-  abTestId     String
-  variant      String
-  outcome      Boolean
+  id String @id @default(uuid())
+  abTestId String
+  variant String
+  outcome Boolean
   predictedProb Float
-  actualProb   Float?
-  ev           Float?
-  recordedAt   DateTime @default(now())
-
-  abTest       ABTest   @relation(fields: [abTestId], references: [id])
-
+  actualProb Float?
+  ev Float?
+  recordedAt DateTime @default(now())
+  abTest ABTest @relation(fields: [abTestId], references: [id])
   @@index([abTestId])
   @@map("ab_test_results")
 }
 
-// ============================================================
-// USER FEATURES
-// ============================================================
 model SavedFilter {
-  id          String   @id @default(uuid())
-  userId      String
-  name        String
-  filters     Json
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user        User     @relation(fields: [userId], references: [id])
-
+  id String @id @default(uuid())
+  userId String
+  name String
+  filters Json
+  isDefault Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id])
   @@index([userId])
   @@map("saved_filters")
 }
 
 model Alert {
-  id           String      @id @default(uuid())
-  userId       String
-  name         String
-  type         AlertType
-  conditions   Json
-  isActive     Boolean     @default(true)
+  id String @id @default(uuid())
+  userId String
+  name String
+  type AlertType
+  conditions Json
+  isActive Boolean @default(true)
   lastTriggered DateTime?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-
-  user          User           @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id])
   notifications Notification[]
-
   @@index([userId])
   @@map("alerts")
 }
 
-enum AlertType {
-  EV_THRESHOLD
-  ARBITRAGE
-  LINE_MOVEMENT
-  INJURY
-  CONTRARIAN
-  CUSTOM
-}
+enum AlertType { EV_THRESHOLD ARBITRAGE LINE_MOVEMENT INJURY CONTRARIAN CUSTOM }
 
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  alertId   String?
-  type      String
-  title     String
-  body      String
-  data      Json?
-  isRead    Boolean  @default(false)
+  id String @id @default(uuid())
+  userId String
+  alertId String?
+  type String
+  title String
+  body String
+  data Json?
+  isRead Boolean @default(false)
   createdAt DateTime @default(now())
-
-  user      User     @relation(fields: [userId], references: [id])
-  alert     Alert?   @relation(fields: [alertId], references: [id])
-
+  user User @relation(fields: [userId], references: [id])
+  alert Alert? @relation(fields: [alertId], references: [id])
   @@index([userId])
   @@index([userId, isRead])
   @@index([createdAt])
@@ -687,60 +548,51 @@ model Notification {
 }
 
 model BetSlip {
-  id           String       @id @default(uuid())
-  userId       String
-  name         String?
-  totalOdds    Float?
-  totalStake   Float        @default(0)
-  status       BetSlipStatus @default(OPEN)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-
-  user         User         @relation(fields: [userId], references: [id])
-  items        BetSlipItem[]
-
+  id String @id @default(uuid())
+  userId String
+  name String?
+  totalOdds Float?
+  totalStake Float @default(0)
+  status BetSlipStatus @default(OPEN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id])
+  items BetSlipItem[]
   @@index([userId])
   @@map("bet_slips")
 }
 
-enum BetSlipStatus {
-  OPEN
-  SUBMITTED
-  WON
-  LOST
-  VOID
-}
+enum BetSlipStatus { OPEN SUBMITTED WON LOST VOID }
 
 model BetSlipItem {
-  id                String   @id @default(uuid())
-  betSlipId         String
-  marketId          String?
-  eventId           String?
-  bookId            String?
-  outcome           String
-  odds              Float
-  recommendedLine   Float?
-  closingLine       Float?
-  closingOdds       Float?
-  clvLine           Float?
-  clvPrice          Float?
-  stake             Float    @default(0)
-  ev                Float?
-  direction         BetDirection?
-  confidenceBucket  ConfidenceBucket?
-  decisionClass     DecisionClass?
-  propStatType      PropStatType?
-  seasonPhase       SeasonPhase?
-  recommendedAt     DateTime @default(now())
-  closedAt          DateTime?
-  isLocked          Boolean  @default(false)
-  createdAt         DateTime @default(now())
-
-  betSlip            BetSlip        @relation(fields: [betSlipId], references: [id])
-  market             Market?        @relation(fields: [marketId], references: [id])
-  book               Book?          @relation(fields: [bookId], references: [id])
-  postBetReview      PostBetReview?
-
+  id String @id @default(uuid())
+  betSlipId String
+  marketId String?
+  eventId String?
+  bookId String?
+  outcome String
+  odds Float
+  recommendedLine Float?
+  closingLine Float?
+  closingOdds Float?
+  clvLine Float?
+  clvPrice Float?
+  stake Float @default(0)
+  ev Float?
+  direction BetDirection?
+  confidenceBucket ConfidenceBucket?
+  decisionClass DecisionClass?
+  propStatType PropStatType?
+  seasonPhase SeasonPhase?
+  recommendedAt DateTime @default(now())
+  closedAt DateTime?
+  isLocked Boolean @default(false)
+  createdAt DateTime @default(now())
+  betSlip BetSlip @relation(fields: [betSlipId], references: [id])
+  market Market? @relation(fields: [marketId], references: [id])
+  book Book? @relation(fields: [bookId], references: [id])
+  postBetReview PostBetReview?
+  projectionSnapshot WagerProjectionSnapshot?
   @@index([betSlipId])
   @@index([marketId])
   @@index([bookId])
@@ -750,100 +602,99 @@ model BetSlipItem {
   @@map("bet_slip_items")
 }
 
-enum BetDirection {
-  OVER
-  UNDER
-  HOME
-  AWAY
-  YES
-  NO
-  OTHER
+enum BetDirection { OVER UNDER HOME AWAY YES NO OTHER }
+enum ConfidenceBucket { LOW MODERATE HIGH }
+enum DecisionClass { PASS WAIT LEAN BET STRONG_BET }
+enum NewsDecisionClass { BET_NOW WAIT PASS }
+enum SeasonPhase { PRESEASON REGULAR_SEASON PLAY_IN PLAYOFFS FINALS }
+enum AnalysisMode { FAST STANDARD DEEP }
+enum DataQualityLevel { LOW MEDIUM HIGH }
+enum SourceTier { TIER_1_OFFICIAL TIER_2_HIGH_QUALITY TIER_3_REPORTING LOW_PRIORITY SIMULATED }
+
+model WagerProjectionSnapshot {
+  id String @id @default(uuid())
+  betSlipItemId String @unique
+  modelVersion String
+  analysisMode AnalysisMode
+  statType PropStatType
+  seed Int
+  trials Int
+  mean Float
+  median Float
+  stdDev Float
+  p05 Float
+  p10 Float
+  p25 Float
+  p50 Float
+  p75 Float
+  p90 Float
+  p95 Float
+  minutesFloor Float
+  minutesMedian Float
+  minutesCeiling Float
+  minutesStdDev Float
+  opportunityRatePerMinute Float
+  opportunityRateSource String
+  conversionRate Float
+  contextAdjustment Float
+  paceAdjustment Float
+  pppAdjustment Float
+  uncertaintyMinutes Float
+  uncertaintyOpportunity Float
+  uncertaintyConversion Float
+  uncertaintyContext Float
+  uncertaintyPace Float
+  uncertaintyTotal Float
+  dataQuality DataQualityLevel
+  modelProbability Float
+  rawImpliedProbability Float?
+  noVigProbability Float?
+  estimatedEv Float?
+  edgeProbability Float?
+  decisionClass DecisionClass?
+  newsDecision NewsDecisionClass?
+  marketLine Float?
+  marketOdds Float?
+  playableToLine Float?
+  playableToOdds Float?
+  qualityReasonCodes String[] @default([])
+  createdAt DateTime @default(now())
+  betSlipItem BetSlipItem @relation(fields: [betSlipItemId], references: [id], onDelete: Cascade)
+  @@index([statType])
+  @@index([dataQuality])
+  @@index([decisionClass])
+  @@index([createdAt])
+  @@map("wager_projection_snapshots")
 }
 
-enum ConfidenceBucket {
-  LOW
-  MODERATE
-  HIGH
-}
-
-enum DecisionClass {
-  PASS
-  WAIT
-  LEAN
-  BET
-  STRONG_BET
-}
-
-enum SeasonPhase {
-  PRESEASON
-  REGULAR_SEASON
-  PLAY_IN
-  PLAYOFFS
-  FINALS
-}
-
-enum AnalysisMode {
-  FAST
-  STANDARD
-  DEEP
-}
-
-enum DataQualityLevel {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum SourceTier {
-  TIER_1_OFFICIAL
-  TIER_2_HIGH_QUALITY
-  TIER_3_REPORTING
-  LOW_PRIORITY
-  SIMULATED
-}
-
-// ============================================================
-// DATA INGESTION — BASELINE + OPPORTUNITY-FIRST PHASE 1
-// ============================================================
 model OddsSnapshot {
-  id           String     @id @default(uuid())
+  id String @id @default(uuid())
   marketOddsId String
-  odds         Float
-  line         Float?
-  bookSlug     String
-  outcome      String
-  snappedAt    DateTime   @default(now())
-
-  marketOdds   MarketOdds @relation(fields: [marketOddsId], references: [id])
-
+  odds Float
+  line Float?
+  bookSlug String
+  outcome String
+  snappedAt DateTime @default(now())
+  marketOdds MarketOdds @relation(fields: [marketOddsId], references: [id])
   @@unique([marketOddsId, snappedAt])
   @@index([marketOddsId])
   @@index([snappedAt])
   @@map("odds_snapshots")
 }
 
-enum InjuryStatus {
-  OUT
-  DOUBTFUL
-  QUESTIONABLE
-  PROBABLE
-  GTD
-  ACTIVE
-}
+enum InjuryStatus { OUT DOUBTFUL QUESTIONABLE PROBABLE GTD ACTIVE }
 
 model InjuryReport {
-  id           String       @id @default(uuid())
-  playerId     String
-  status       InjuryStatus
-  description  String?
-  returnEta    String?
-  source       String?      @default("espn")
-  reportedAt   DateTime
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-
-  player       Player       @relation(fields: [playerId], references: [id])
-
+  id String @id @default(uuid())
+  playerId String
+  status InjuryStatus
+  description String?
+  returnEta String?
+  source String? @default("espn")
+  reportedAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  player Player @relation(fields: [playerId], references: [id])
   @@unique([playerId, reportedAt])
   @@index([playerId])
   @@index([status])
@@ -852,20 +703,18 @@ model InjuryReport {
 }
 
 model NewsItem {
-  id          String   @id @default(uuid())
-  externalId  String   @unique
-  headline    String
-  summary     String?
-  url         String?
-  source      String?  @default("espn")
-  playerId    String?
-  teamId      String?
+  id String @id @default(uuid())
+  externalId String @unique
+  headline String
+  summary String?
+  url String?
+  source String? @default("espn")
+  playerId String?
+  teamId String?
   publishedAt DateTime
-  createdAt   DateTime @default(now())
-
-  player      Player?  @relation(fields: [playerId], references: [id])
-  team        Team?    @relation(fields: [teamId], references: [id])
-
+  createdAt DateTime @default(now())
+  player Player? @relation(fields: [playerId], references: [id])
+  team Team? @relation(fields: [teamId], references: [id])
   @@index([playerId])
   @@index([teamId])
   @@index([publishedAt])
@@ -873,140 +722,116 @@ model NewsItem {
 }
 
 model PublicBettingSplit {
-  id        String   @id @default(uuid())
-  marketId  String
-  outcome   String
-  pctBets   Float    @default(0)
-  pctMoney  Float    @default(0)
-  source    String?  @default("actionnetwork")
+  id String @id @default(uuid())
+  marketId String
+  outcome String
+  pctBets Float @default(0)
+  pctMoney Float @default(0)
+  source String? @default("actionnetwork")
   snappedAt DateTime @default(now())
-
-  market    Market   @relation(fields: [marketId], references: [id])
-
+  market Market @relation(fields: [marketId], references: [id])
   @@unique([marketId, outcome, snappedAt])
   @@index([marketId])
   @@index([snappedAt])
   @@map("public_betting_splits")
 }
 
-// ============================================================
-// REFEREE & ENVIRONMENT
-// ============================================================
 model Referee {
-  id          String   @id @default(uuid())
-  nbaId       Int?     @unique
-  name        String
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id String @id @default(uuid())
+  nbaId Int? @unique
+  name String
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   assignments RefereeAssignment[]
-  metrics     RefereeMetric[]
-
+  metrics RefereeMetric[]
   @@index([name])
   @@map("referees")
 }
 
 model RefereeAssignment {
-  id          String     @id @default(uuid())
-  eventId     String
-  refereeId   String
-  role        RefereeRole @default(CREW)
-  source      String
-  sourceTier  SourceTier
+  id String @id @default(uuid())
+  eventId String
+  refereeId String
+  role RefereeRole @default(CREW)
+  source String
+  sourceTier SourceTier
   confirmedAt DateTime?
-  createdAt   DateTime   @default(now())
-
-  event       Event      @relation(fields: [eventId], references: [id])
-  referee     Referee    @relation(fields: [refereeId], references: [id])
-
+  createdAt DateTime @default(now())
+  event Event @relation(fields: [eventId], references: [id])
+  referee Referee @relation(fields: [refereeId], references: [id])
   @@unique([eventId, refereeId])
   @@index([eventId])
   @@index([refereeId])
   @@map("referee_assignments")
 }
 
-enum RefereeRole {
-  CREW_CHIEF
-  REFEREE
-  UMPIRE
-  CREW
-  ALTERNATE
-}
+enum RefereeRole { CREW_CHIEF REFEREE UMPIRE CREW ALTERNATE }
 
 model RefereeMetric {
-  id                   String   @id @default(uuid())
-  refereeId            String
-  season               String
-  games                Int      @default(0)
-  foulsPer48           Float    @default(0)
-  freeThrowsPer48      Float    @default(0)
-  freeThrowRateImpact  Float    @default(0)
-  paceImpact           Float    @default(0)
-  interruptionsPer48   Float    @default(0)
-  sampleSize           Int      @default(0)
-  calculatedAt         DateTime @default(now())
-
-  referee              Referee  @relation(fields: [refereeId], references: [id])
-
+  id String @id @default(uuid())
+  refereeId String
+  season String
+  games Int @default(0)
+  foulsPer48 Float @default(0)
+  freeThrowsPer48 Float @default(0)
+  freeThrowRateImpact Float @default(0)
+  paceImpact Float @default(0)
+  interruptionsPer48 Float @default(0)
+  sampleSize Int @default(0)
+  calculatedAt DateTime @default(now())
+  referee Referee @relation(fields: [refereeId], references: [id])
   @@unique([refereeId, season])
   @@index([season])
   @@map("referee_metrics")
 }
 
 model GameEnvironment {
-  id                     String   @id @default(uuid())
-  eventId                String   @unique
-  arenaName              String?
-  arenaCity               String?
-  arenaAltitudeMeters    Float?
-  homeTimeZone           String?
-  awayOriginTimeZone     String?
-  travelDistanceKm       Float?
-  timeZoneChangeHours    Float?
-  homeRestDays           Float?
-  awayRestDays           Float?
-  homeBackToBack         Boolean  @default(false)
-  awayBackToBack         Boolean  @default(false)
-  homeThreeInFour        Boolean  @default(false)
-  awayThreeInFour        Boolean  @default(false)
-  homeFourInSix          Boolean  @default(false)
-  awayFourInSix          Boolean  @default(false)
-  homePreviousOtMinutes  Float    @default(0)
-  awayPreviousOtMinutes  Float    @default(0)
+  id String @id @default(uuid())
+  eventId String @unique
+  arenaName String?
+  arenaCity String?
+  arenaAltitudeMeters Float?
+  homeTimeZone String?
+  awayOriginTimeZone String?
+  travelDistanceKm Float?
+  timeZoneChangeHours Float?
+  homeRestDays Float?
+  awayRestDays Float?
+  homeBackToBack Boolean @default(false)
+  awayBackToBack Boolean @default(false)
+  homeThreeInFour Boolean @default(false)
+  awayThreeInFour Boolean @default(false)
+  homeFourInSix Boolean @default(false)
+  awayFourInSix Boolean @default(false)
+  homePreviousOtMinutes Float @default(0)
+  awayPreviousOtMinutes Float @default(0)
   homePreviousGameMinutesLoad Float @default(0)
   awayPreviousGameMinutesLoad Float @default(0)
-  restAdvantageHours     Float    @default(0)
-  source                 String?
-  sourceTier             SourceTier?
-  calculatedAt           DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-
-  event                  Event    @relation(fields: [eventId], references: [id])
-
+  restAdvantageHours Float @default(0)
+  source String?
+  sourceTier SourceTier?
+  calculatedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  event Event @relation(fields: [eventId], references: [id])
   @@index([calculatedAt])
   @@map("game_environment")
 }
 
-// ============================================================
-// LINEUPS & ROTATION
-// ============================================================
 model GameLineup {
-  id          String        @id @default(uuid())
-  eventId     String
-  teamId      String
-  lineupType  LineupType
-  status      LineupStatus
-  source      String?
-  sourceTier  SourceTier?
+  id String @id @default(uuid())
+  eventId String
+  teamId String
+  lineupType LineupType
+  status LineupStatus
+  source String?
+  sourceTier SourceTier?
   confirmedAt DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  event       Event         @relation(fields: [eventId], references: [id])
-  team        Team          @relation(fields: [teamId], references: [id])
-  players     GameLineupPlayer[]
-
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  event Event @relation(fields: [eventId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+  players GameLineupPlayer[]
   @@unique([eventId, teamId, lineupType])
   @@index([eventId])
   @@index([teamId])
@@ -1014,65 +839,48 @@ model GameLineup {
   @@map("game_lineups")
 }
 
-enum LineupType {
-  EXPECTED_STARTERS
-  OFFICIAL_STARTERS
-  OPENING
-  CLOSING
-  SMALL_BALL
-  DOUBLE_BIG
-  BENCH_HEAVY
-}
-
-enum LineupStatus {
-  PROJECTED
-  CONFIRMED
-  SUPERSEDED
-}
+enum LineupType { EXPECTED_STARTERS OFFICIAL_STARTERS OPENING CLOSING SMALL_BALL DOUBLE_BIG BENCH_HEAVY }
+enum LineupStatus { PROJECTED CONFIRMED SUPERSEDED }
 
 model GameLineupPlayer {
-  id          String   @id @default(uuid())
-  lineupId    String
-  playerId    String
-  slot        Int?
-  isStarter   Boolean  @default(false)
-  isExpected  Boolean  @default(true)
+  id String @id @default(uuid())
+  lineupId String
+  playerId String
+  slot Int?
+  isStarter Boolean @default(false)
+  isExpected Boolean @default(true)
   minutesShare Float?
-  createdAt   DateTime @default(now())
-
-  lineup      GameLineup @relation(fields: [lineupId], references: [id])
-  player      Player     @relation(fields: [playerId], references: [id])
-
+  createdAt DateTime @default(now())
+  lineup GameLineup @relation(fields: [lineupId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
   @@unique([lineupId, playerId])
   @@index([playerId])
   @@map("game_lineup_players")
 }
 
 model RotationProjection {
-  id                   String               @id @default(uuid())
-  eventId              String
-  teamId               String
-  playerId             String
-  role                  PlayerRotationRole
-  starterStatus         StarterStatus
-  rotationOrder         Int?
-  minutesFloor          Float
-  minutesMedian         Float
-  minutesCeiling        Float
-  minutesStdDev         Float
-  uncertaintyScore      Float
-  closingProbability    Float               @default(0)
-  restrictionMinutes    Float?
-  loadManagementStatus  AvailabilityConstraint @default(NONE)
-  suspensionStatus      AvailabilityConstraint @default(NONE)
-  source                String?
-  sourceTier            SourceTier?
-  projectedAt           DateTime            @default(now())
-
-  event                 Event                @relation(fields: [eventId], references: [id])
-  team                  Team                 @relation(fields: [teamId], references: [id])
-  player                Player               @relation(fields: [playerId], references: [id])
-
+  id String @id @default(uuid())
+  eventId String
+  teamId String
+  playerId String
+  role PlayerRotationRole
+  starterStatus StarterStatus
+  rotationOrder Int?
+  minutesFloor Float
+  minutesMedian Float
+  minutesCeiling Float
+  minutesStdDev Float
+  uncertaintyScore Float
+  closingProbability Float @default(0)
+  restrictionMinutes Float?
+  loadManagementStatus AvailabilityConstraint @default(NONE)
+  suspensionStatus AvailabilityConstraint @default(NONE)
+  source String?
+  sourceTier SourceTier?
+  projectedAt DateTime @default(now())
+  event Event @relation(fields: [eventId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
   @@unique([eventId, playerId])
   @@index([eventId])
   @@index([teamId])
@@ -1081,50 +889,26 @@ model RotationProjection {
   @@map("rotation_projections")
 }
 
-enum PlayerRotationRole {
-  PRIMARY_CREATOR
-  SECONDARY_CREATOR
-  SCORING_SPECIALIST
-  CONNECTOR
-  RIM_BIG
-  STRETCH_BIG
-  DEFENSIVE_SPECIALIST
-  BENCH_SCORER
-  ROTATION_PLAYER
-  END_OF_BENCH
-}
-
-enum StarterStatus {
-  CONFIRMED_STARTER
-  EXPECTED_STARTER
-  BENCH
-  UNKNOWN
-}
-
-enum AvailabilityConstraint {
-  NONE
-  POSSIBLE
-  CONFIRMED
-}
+enum PlayerRotationRole { PRIMARY_CREATOR SECONDARY_CREATOR SCORING_SPECIALIST CONNECTOR RIM_BIG STRETCH_BIG DEFENSIVE_SPECIALIST BENCH_SCORER ROTATION_PLAYER END_OF_BENCH }
+enum StarterStatus { CONFIRMED_STARTER EXPECTED_STARTER BENCH UNKNOWN }
+enum AvailabilityConstraint { NONE POSSIBLE CONFIRMED }
 
 model CoachRotationTendency {
-  id                    String   @id @default(uuid())
-  teamId                String
-  season                String
-  coachName             String
-  averageRotationSize   Float
-  starterStaggerRate    Float
-  smallBallRate         Float
-  doubleBigRate         Float
-  benchHeavyRate        Float
+  id String @id @default(uuid())
+  teamId String
+  season String
+  coachName String
+  averageRotationSize Float
+  starterStaggerRate Float
+  smallBallRate Float
+  doubleBigRate Float
+  benchHeavyRate Float
   closingLineupStability Float
   timeoutSubstitutionRate Float?
-  sampleSize            Int      @default(0)
-  updatedAt             DateTime @updatedAt
-  createdAt             DateTime @default(now())
-
-  team                  Team     @relation(fields: [teamId], references: [id])
-
+  sampleSize Int @default(0)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  team Team @relation(fields: [teamId], references: [id])
   @@unique([teamId, season, coachName])
   @@index([teamId])
   @@index([season])
@@ -1132,24 +916,22 @@ model CoachRotationTendency {
 }
 
 model PlayerAvailabilityProjection {
-  id                         String           @id @default(uuid())
-  eventId                    String
-  playerId                   String
-  officialStatus             InjuryStatus?
-  expectedAvailabilityProb   Float
-  starterStatus              StarterStatus    @default(UNKNOWN)
+  id String @id @default(uuid())
+  eventId String
+  playerId String
+  officialStatus InjuryStatus?
+  expectedAvailabilityProb Float
+  starterStatus StarterStatus @default(UNKNOWN)
   expectedMinutesRestriction Float?
-  loadManagementStatus       AvailabilityConstraint @default(NONE)
-  suspensionStatus           AvailabilityConstraint @default(NONE)
-  dataQuality                DataQualityLevel
-  source                     String
-  sourceTier                 SourceTier
-  sourceUpdatedAt            DateTime?
-  projectedAt                DateTime         @default(now())
-
-  event                      Event            @relation(fields: [eventId], references: [id])
-  player                     Player           @relation(fields: [playerId], references: [id])
-
+  loadManagementStatus AvailabilityConstraint @default(NONE)
+  suspensionStatus AvailabilityConstraint @default(NONE)
+  dataQuality DataQualityLevel
+  source String
+  sourceTier SourceTier
+  sourceUpdatedAt DateTime?
+  projectedAt DateTime @default(now())
+  event Event @relation(fields: [eventId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
   @@unique([eventId, playerId])
   @@index([eventId])
   @@index([playerId])
@@ -1158,37 +940,32 @@ model PlayerAvailabilityProjection {
   @@map("player_availability_projections")
 }
 
-// ============================================================
-// OPPORTUNITY, SHOT PROFILE & PLAY TYPE DATA
-// ============================================================
 model PlayerOpportunityStat {
-  id                          String   @id @default(uuid())
-  playerId                    String
-  eventId                     String?
-  season                      String
-  gameDate                    DateTime
-  minutes                     Float    @default(0)
-  touches                     Float    @default(0)
-  touchesPerMinute            Float    @default(0)
-  timeOfPossessionSeconds     Float    @default(0)
-  drives                      Float    @default(0)
-  drivesPerMinute             Float    @default(0)
-  paintTouches                Float    @default(0)
-  postTouches                 Float    @default(0)
-  passesMade                  Float    @default(0)
-  potentialAssists            Float    @default(0)
-  potentialAssistsPerMinute   Float    @default(0)
-  reboundChances              Float    @default(0)
-  reboundChancesPerMinute     Float    @default(0)
-  contestedReboundRate        Float    @default(0)
-  expectedEfg                 Float    @default(0)
-  source                      String
-  sourceTier                  SourceTier
-  createdAt                   DateTime @default(now())
-
-  player                      Player   @relation(fields: [playerId], references: [id])
-  event                       Event?   @relation(fields: [eventId], references: [id])
-
+  id String @id @default(uuid())
+  playerId String
+  eventId String?
+  season String
+  gameDate DateTime
+  minutes Float @default(0)
+  touches Float @default(0)
+  touchesPerMinute Float @default(0)
+  timeOfPossessionSeconds Float @default(0)
+  drives Float @default(0)
+  drivesPerMinute Float @default(0)
+  paintTouches Float @default(0)
+  postTouches Float @default(0)
+  passesMade Float @default(0)
+  potentialAssists Float @default(0)
+  potentialAssistsPerMinute Float @default(0)
+  reboundChances Float @default(0)
+  reboundChancesPerMinute Float @default(0)
+  contestedReboundRate Float @default(0)
+  expectedEfg Float @default(0)
+  source String
+  sourceTier SourceTier
+  createdAt DateTime @default(now())
+  player Player @relation(fields: [playerId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
   @@unique([playerId, gameDate, source])
   @@index([playerId, gameDate])
   @@index([eventId])
@@ -1197,38 +974,36 @@ model PlayerOpportunityStat {
 }
 
 model PlayerShotProfile {
-  id                 String   @id @default(uuid())
-  playerId           String
-  eventId            String?
-  season             String
-  gameDate           DateTime?
-  minutes            Float    @default(0)
-  rimAttempts        Float    @default(0)
-  rimFrequency       Float    @default(0)
-  rimEfficiency      Float    @default(0)
-  midrangeAttempts   Float    @default(0)
-  midrangeFrequency  Float    @default(0)
-  midrangeEfficiency Float    @default(0)
-  corner3Attempts    Float    @default(0)
-  corner3Frequency   Float    @default(0)
-  corner3Efficiency  Float    @default(0)
-  atb3Attempts       Float    @default(0)
-  atb3Frequency      Float    @default(0)
-  atb3Efficiency     Float    @default(0)
-  catchShootAttempts Float    @default(0)
-  catchShootFrequency Float   @default(0)
-  catchShootEfficiency Float  @default(0)
-  pullupAttempts     Float    @default(0)
-  pullupFrequency    Float    @default(0)
-  pullupEfficiency   Float    @default(0)
-  expectedEfg        Float    @default(0)
-  source             String
-  sourceTier         SourceTier
-  createdAt          DateTime @default(now())
-
-  player             Player   @relation(fields: [playerId], references: [id])
-  event              Event?   @relation(fields: [eventId], references: [id])
-
+  id String @id @default(uuid())
+  playerId String
+  eventId String?
+  season String
+  gameDate DateTime?
+  minutes Float @default(0)
+  rimAttempts Float @default(0)
+  rimFrequency Float @default(0)
+  rimEfficiency Float @default(0)
+  midrangeAttempts Float @default(0)
+  midrangeFrequency Float @default(0)
+  midrangeEfficiency Float @default(0)
+  corner3Attempts Float @default(0)
+  corner3Frequency Float @default(0)
+  corner3Efficiency Float @default(0)
+  atb3Attempts Float @default(0)
+  atb3Frequency Float @default(0)
+  atb3Efficiency Float @default(0)
+  catchShootAttempts Float @default(0)
+  catchShootFrequency Float @default(0)
+  catchShootEfficiency Float @default(0)
+  pullupAttempts Float @default(0)
+  pullupFrequency Float @default(0)
+  pullupEfficiency Float @default(0)
+  expectedEfg Float @default(0)
+  source String
+  sourceTier SourceTier
+  createdAt DateTime @default(now())
+  player Player @relation(fields: [playerId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
   @@index([playerId, gameDate])
   @@index([eventId])
   @@index([season])
@@ -1236,71 +1011,55 @@ model PlayerShotProfile {
 }
 
 model PlayerPlayTypeStat {
-  id          String       @id @default(uuid())
-  playerId    String
-  eventId     String?
-  season      String
-  gameDate    DateTime?
-  playType    PlayType
-  possessions Float        @default(0)
-  frequency   Float        @default(0)
+  id String @id @default(uuid())
+  playerId String
+  eventId String?
+  season String
+  gameDate DateTime?
+  playType PlayType
+  possessions Float @default(0)
+  frequency Float @default(0)
   pointsPerPossession Float @default(0)
-  efgPct      Float        @default(0)
-  turnoverPct Float        @default(0)
-  freeThrowFrequency Float  @default(0)
-  source      String
-  sourceTier  SourceTier
-  createdAt   DateTime     @default(now())
-
-  player      Player       @relation(fields: [playerId], references: [id])
-  event       Event?       @relation(fields: [eventId], references: [id])
-
+  efgPct Float @default(0)
+  turnoverPct Float @default(0)
+  freeThrowFrequency Float @default(0)
+  source String
+  sourceTier SourceTier
+  createdAt DateTime @default(now())
+  player Player @relation(fields: [playerId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
   @@index([playerId, playType])
   @@index([eventId])
   @@index([season])
   @@map("player_play_type_stats")
 }
 
-enum PlayType {
-  PICK_AND_ROLL_BALL_HANDLER
-  PICK_AND_ROLL_ROLL_MAN
-  ISOLATION
-  POST_UP
-  HANDOFF
-  TRANSITION
-  HALF_COURT
-  SPOT_UP
-  CUT
-  OFF_SCREEN
-  PUTBACK
-}
+enum PlayType { PICK_AND_ROLL_BALL_HANDLER PICK_AND_ROLL_ROLL_MAN ISOLATION POST_UP HANDOFF TRANSITION HALF_COURT SPOT_UP CUT OFF_SCREEN PUTBACK }
 
 model TeamDefensiveSchemeStat {
-  id                     String   @id @default(uuid())
-  teamId                 String
-  eventId                String?
-  season                 String
-  gameDate               DateTime?
-  switchFrequency        Float    @default(0)
-  dropFrequency          Float    @default(0)
-  blitzFrequency         Float    @default(0)
-  trapFrequency          Float    @default(0)
-  zoneFrequency          Float    @default(0)
-  doubleTeamRate         Float    @default(0)
-  pointOfAttackRating    Float    @default(0)
-  helpAggressiveness     Float    @default(0)
-  rimProtectionRating    Float    @default(0)
-  transitionDefensePpp   Float    @default(0)
-  halfCourtDefensePpp    Float    @default(0)
-  corner3AllowanceRate   Float    @default(0)
-  rimAllowanceRate       Float    @default(0)
-  source                 String
-  sourceTier             SourceTier
-  createdAt              DateTime @default(now())
-
-  team                   Team     @relation(fields: [teamId], references: [id])
-  event                  Event?   @relation(fields: [eventId], references: [id])
-
+  id String @id @default(uuid())
+  teamId String
+  eventId String?
+  season String
+  gameDate DateTime?
+  switchFrequency Float @default(0)
+  dropFrequency Float @default(0)
+  blitzFrequency Float @default(0)
+  trapFrequency Float @default(0)
+  zoneFrequency Float @default(0)
+  doubleTeamRate Float @default(0)
+  pointOfAttackRating Float @default(0)
+  helpAggressiveness Float @default(0)
+  rimProtectionRating Float @default(0)
+  transitionDefensePpp Float @default(0)
+  halfCourtDefensePpp Float @default(0)
+  corner3AllowanceRate Float @default(0)
+  rimAllowanceRate Float @default(0)
+  source String
+  sourceTier SourceTier
+  createdAt DateTime @default(now())
+  team Team @relation(fields: [teamId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
   @@index([teamId, gameDate])
   @@index([eventId])
   @@index([season])
@@ -1308,23 +1067,21 @@ model TeamDefensiveSchemeStat {
 }
 
 model DefensiveMatchupAssignment {
-  id                       String   @id @default(uuid())
-  eventId                  String
-  defenseTeamId            String
-  defenderPlayerId         String
-  offensivePlayerId        String
-  expectedPossessionShare  Float
-  confirmed                Boolean  @default(false)
-  source                   String
-  sourceTier               SourceTier
-  updatedAt                DateTime @updatedAt
-  createdAt                DateTime @default(now())
-
-  event                    Event    @relation(fields: [eventId], references: [id])
-  defenseTeam              Team     @relation("DefensiveTeam", fields: [defenseTeamId], references: [id])
-  defenderPlayer           Player   @relation("DefenderPlayer", fields: [defenderPlayerId], references: [id])
-  offensivePlayer          Player   @relation("OffensivePlayer", fields: [offensivePlayerId], references: [id])
-
+  id String @id @default(uuid())
+  eventId String
+  defenseTeamId String
+  defenderPlayerId String
+  offensivePlayerId String
+  expectedPossessionShare Float
+  confirmed Boolean @default(false)
+  source String
+  sourceTier SourceTier
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  event Event @relation(fields: [eventId], references: [id])
+  defenseTeam Team @relation("DefensiveTeam", fields: [defenseTeamId], references: [id])
+  defenderPlayer Player @relation("DefenderPlayer", fields: [defenderPlayerId], references: [id])
+  offensivePlayer Player @relation("OffensivePlayer", fields: [offensivePlayerId], references: [id])
   @@unique([eventId, defenderPlayerId, offensivePlayerId])
   @@index([eventId])
   @@index([defenderPlayerId])
@@ -1332,20 +1089,15 @@ model DefensiveMatchupAssignment {
   @@map("defensive_matchup_assignments")
 }
 
-// ============================================================
-// FIVE-MAN LINEUPS & ON/OFF
-// ============================================================
 model FiveManLineup {
-  id          String   @id @default(uuid())
-  teamId      String
-  season      String
-  lineupKey   String
-  createdAt   DateTime @default(now())
-
-  team        Team     @relation(fields: [teamId], references: [id])
-  players     FiveManLineupPlayer[]
-  stats       FiveManLineupStat[]
-
+  id String @id @default(uuid())
+  teamId String
+  season String
+  lineupKey String
+  createdAt DateTime @default(now())
+  team Team @relation(fields: [teamId], references: [id])
+  players FiveManLineupPlayer[]
+  stats FiveManLineupStat[]
   @@unique([teamId, season, lineupKey])
   @@index([teamId])
   @@index([season])
@@ -1353,14 +1105,12 @@ model FiveManLineup {
 }
 
 model FiveManLineupPlayer {
-  id        String @id @default(uuid())
-  lineupId  String
-  playerId  String
-  slot      Int
-
-  lineup    FiveManLineup @relation(fields: [lineupId], references: [id])
-  player    Player        @relation(fields: [playerId], references: [id])
-
+  id String @id @default(uuid())
+  lineupId String
+  playerId String
+  slot Int
+  lineup FiveManLineup @relation(fields: [lineupId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
   @@unique([lineupId, playerId])
   @@unique([lineupId, slot])
   @@index([playerId])
@@ -1368,24 +1118,22 @@ model FiveManLineupPlayer {
 }
 
 model FiveManLineupStat {
-  id          String   @id @default(uuid())
-  lineupId    String
-  eventId     String?
+  id String @id @default(uuid())
+  lineupId String
+  eventId String?
   sampleStart DateTime?
-  sampleEnd   DateTime?
-  possessions Float    @default(0)
-  minutes     Float    @default(0)
-  ortg        Float    @default(0)
-  drtg        Float    @default(0)
-  netRating   Float    @default(0)
-  pace        Float    @default(0)
-  source      String
-  sourceTier  SourceTier
+  sampleEnd DateTime?
+  possessions Float @default(0)
+  minutes Float @default(0)
+  ortg Float @default(0)
+  drtg Float @default(0)
+  netRating Float @default(0)
+  pace Float @default(0)
+  source String
+  sourceTier SourceTier
   calculatedAt DateTime @default(now())
-
-  lineup      FiveManLineup @relation(fields: [lineupId], references: [id])
-  event       Event?        @relation(fields: [eventId], references: [id])
-
+  lineup FiveManLineup @relation(fields: [lineupId], references: [id])
+  event Event? @relation(fields: [eventId], references: [id])
   @@index([lineupId])
   @@index([eventId])
   @@index([calculatedAt])
@@ -1393,64 +1141,57 @@ model FiveManLineupStat {
 }
 
 model PlayerOnOffStat {
-  id                    String   @id @default(uuid())
-  playerId              String
-  teamId                String
-  season                String
-  sampleStart           DateTime?
-  sampleEnd             DateTime?
-  minutesOn             Float    @default(0)
-  minutesOff            Float    @default(0)
-  ortgOn                Float    @default(0)
-  ortgOff               Float    @default(0)
-  drtgOn                Float    @default(0)
-  drtgOff               Float    @default(0)
-  netRatingOn           Float    @default(0)
-  netRatingOff          Float    @default(0)
-  paceOn                Float    @default(0)
-  paceOff               Float    @default(0)
-  usageDelta            Float    @default(0)
-  assistRateDelta       Float    @default(0)
-  reboundRateDelta      Float    @default(0)
-  fgaRateDelta          Float    @default(0)
-  threePointRateDelta   Float    @default(0)
-  rimRateDelta          Float    @default(0)
-  source                String
-  sourceTier            SourceTier
-  calculatedAt          DateTime @default(now())
-
-  player                Player   @relation(fields: [playerId], references: [id])
-  team                  Team     @relation(fields: [teamId], references: [id])
-
+  id String @id @default(uuid())
+  playerId String
+  teamId String
+  season String
+  sampleStart DateTime?
+  sampleEnd DateTime?
+  minutesOn Float @default(0)
+  minutesOff Float @default(0)
+  ortgOn Float @default(0)
+  ortgOff Float @default(0)
+  drtgOn Float @default(0)
+  drtgOff Float @default(0)
+  netRatingOn Float @default(0)
+  netRatingOff Float @default(0)
+  paceOn Float @default(0)
+  paceOff Float @default(0)
+  usageDelta Float @default(0)
+  assistRateDelta Float @default(0)
+  reboundRateDelta Float @default(0)
+  fgaRateDelta Float @default(0)
+  threePointRateDelta Float @default(0)
+  rimRateDelta Float @default(0)
+  source String
+  sourceTier SourceTier
+  calculatedAt DateTime @default(now())
+  player Player @relation(fields: [playerId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
   @@index([playerId, season])
   @@index([teamId, season])
   @@index([calculatedAt])
   @@map("player_on_off_stats")
 }
 
-// ============================================================
-// INJURY REPLACEMENT MODEL INPUTS
-// ============================================================
 model InjuryReplacementProjection {
-  id                    String   @id @default(uuid())
-  eventId               String
-  absentPlayerId        String
-  replacementPlayerId   String
-  minutesDelta          Float    @default(0)
-  usageDelta            Float    @default(0)
-  ballHandlingDelta     Float    @default(0)
-  reboundChanceDelta    Float    @default(0)
-  fgaDelta              Float    @default(0)
-  threePointAttemptDelta Float   @default(0)
-  defensiveImpact       Float    @default(0)
-  confidence            Float    @default(0)
-  dataQuality           DataQualityLevel
-  projectedAt           DateTime @default(now())
-
-  event                 Event    @relation(fields: [eventId], references: [id])
-  absentPlayer          Player   @relation("AbsentPlayer", fields: [absentPlayerId], references: [id])
-  replacementPlayer     Player   @relation("ReplacementPlayer", fields: [replacementPlayerId], references: [id])
-
+  id String @id @default(uuid())
+  eventId String
+  absentPlayerId String
+  replacementPlayerId String
+  minutesDelta Float @default(0)
+  usageDelta Float @default(0)
+  ballHandlingDelta Float @default(0)
+  reboundChanceDelta Float @default(0)
+  fgaDelta Float @default(0)
+  threePointAttemptDelta Float @default(0)
+  defensiveImpact Float @default(0)
+  confidence Float @default(0)
+  dataQuality DataQualityLevel
+  projectedAt DateTime @default(now())
+  event Event @relation(fields: [eventId], references: [id])
+  absentPlayer Player @relation("AbsentPlayer", fields: [absentPlayerId], references: [id])
+  replacementPlayer Player @relation("ReplacementPlayer", fields: [replacementPlayerId], references: [id])
   @@unique([eventId, absentPlayerId, replacementPlayerId])
   @@index([eventId])
   @@index([absentPlayerId])
@@ -1458,87 +1199,58 @@ model InjuryReplacementProjection {
   @@map("injury_replacement_projections")
 }
 
-// ============================================================
-// PERFORMANCE, CLV & POST-BET ATTRIBUTION
-// ============================================================
 model PostBetReview {
-  id                       String   @id @default(uuid())
-  betSlipItemId            String   @unique
-  processGrade             ProcessGrade
-  expectedMinutes          Float?
-  actualMinutes            Float?
-  minutesProjectionError   Float?
-  expectedUsage            Float?
-  actualUsage              Float?
-  usageProjectionError     Float?
-  expectedPace             Float?
-  actualPace               Float?
-  paceProjectionError      Float?
-  rotationError            Boolean  @default(false)
-  matchupError             Boolean  @default(false)
-  marketTimingError        Boolean  @default(false)
-  varianceDominated        Boolean  @default(false)
-  foulTrouble              Boolean  @default(false)
-  blowout                  Boolean  @default(false)
-  inGameInjury             Boolean  @default(false)
+  id String @id @default(uuid())
+  betSlipItemId String @unique
+  processGrade ProcessGrade
+  expectedMinutes Float?
+  actualMinutes Float?
+  minutesProjectionError Float?
+  expectedUsage Float?
+  actualUsage Float?
+  usageProjectionError Float?
+  expectedPace Float?
+  actualPace Float?
+  paceProjectionError Float?
+  rotationError Boolean @default(false)
+  matchupError Boolean @default(false)
+  marketTimingError Boolean @default(false)
+  varianceDominated Boolean @default(false)
+  foulTrouble Boolean @default(false)
+  blowout Boolean @default(false)
+  inGameInjury Boolean @default(false)
   unexpectedCoachingDecision Boolean @default(false)
-  primaryError             ErrorAttributionType?
-  notes                    String?
-  reviewedAt               DateTime @default(now())
-
-  betSlipItem              BetSlipItem @relation(fields: [betSlipItemId], references: [id])
-
+  primaryError ErrorAttributionType?
+  notes String?
+  reviewedAt DateTime @default(now())
+  betSlipItem BetSlipItem @relation(fields: [betSlipItemId], references: [id])
   @@index([primaryError])
   @@index([reviewedAt])
   @@map("post_bet_reviews")
 }
 
-enum ProcessGrade {
-  CORRECT
-  MOSTLY_CORRECT
-  MIXED
-  MOSTLY_INCORRECT
-  INCORRECT
-}
-
-enum ErrorAttributionType {
-  MINUTES_PROJECTION
-  USAGE_PROJECTION
-  INJURY_INFORMATION
-  ROTATION
-  MATCHUP
-  PACE
-  EFFICIENCY
-  MARKET_TIMING
-  PRICE
-  VARIANCE
-  FOUL_TROUBLE
-  BLOWOUT
-  IN_GAME_INJURY
-  UNEXPECTED_COACHING
-}
+enum ProcessGrade { CORRECT MOSTLY_CORRECT MIXED MOSTLY_INCORRECT INCORRECT }
+enum ErrorAttributionType { MINUTES_PROJECTION USAGE_PROJECTION INJURY_INFORMATION ROTATION MATCHUP PACE EFFICIENCY MARKET_TIMING PRICE VARIANCE FOUL_TROUBLE BLOWOUT IN_GAME_INJURY UNEXPECTED_COACHING }
 
 model PerformanceSlice {
-  id             String   @id @default(uuid())
-  userId         String?
-  modelId        String?
-  period         String
-  dimension      PerformanceDimension
+  id String @id @default(uuid())
+  userId String?
+  modelId String?
+  period String
+  dimension PerformanceDimension
   dimensionValue String
-  totalBets      Int      @default(0)
-  wins           Int      @default(0)
-  losses         Int      @default(0)
-  pushes         Int      @default(0)
-  units          Float    @default(0)
-  roi            Float    @default(0)
-  averageOdds    Float    @default(0)
-  clvRate        Float    @default(0)
-  averageClv     Float    @default(0)
-  calculatedAt   DateTime @default(now())
-
-  user           User?       @relation(fields: [userId], references: [id])
-  model          CustomModel? @relation(fields: [modelId], references: [id])
-
+  totalBets Int @default(0)
+  wins Int @default(0)
+  losses Int @default(0)
+  pushes Int @default(0)
+  units Float @default(0)
+  roi Float @default(0)
+  averageOdds Float @default(0)
+  clvRate Float @default(0)
+  averageClv Float @default(0)
+  calculatedAt DateTime @default(now())
+  user User? @relation(fields: [userId], references: [id])
+  model CustomModel? @relation(fields: [modelId], references: [id])
   @@index([userId])
   @@index([modelId])
   @@index([dimension, dimensionValue])
@@ -1546,33 +1258,21 @@ model PerformanceSlice {
   @@map("performance_slices")
 }
 
-enum PerformanceDimension {
-  CONFIDENCE
-  PROP_TYPE
-  DIRECTION
-  SEASON_PHASE
-  MARKET_TYPE
-  SPORTSBOOK
-}
+enum PerformanceDimension { CONFIDENCE PROP_TYPE DIRECTION SEASON_PHASE MARKET_TYPE SPORTSBOOK }
 
-// ============================================================
-// EXPERT PICKS
-// ============================================================
 model ExpertPick {
-  id          String    @id @default(uuid())
-  expertName  String
-  source      String    @default("manual")
-  marketId    String
-  outcome     String
-  odds        Int?
-  confidence  Int       @default(3)
-  reasoning   String?
-  result      String?
-  pickedAt    DateTime  @default(now())
-  resolvedAt  DateTime?
-
-  market      Market    @relation(fields: [marketId], references: [id])
-
+  id String @id @default(uuid())
+  expertName String
+  source String @default("manual")
+  marketId String
+  outcome String
+  odds Int?
+  confidence Int @default(3)
+  reasoning String?
+  result String?
+  pickedAt DateTime @default(now())
+  resolvedAt DateTime?
+  market Market @relation(fields: [marketId], references: [id])
   @@index([marketId])
   @@index([expertName])
   @@index([pickedAt])
