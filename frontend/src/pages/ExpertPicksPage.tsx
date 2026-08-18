@@ -206,7 +206,7 @@ function AddPickForm({ onCreated }: { onCreated: () => void }) {
 function ArbitrageSidebar() {
   const { data, isLoading } = useQuery({
     queryKey: ['arb-sidebar'],
-    queryFn: () => arbitrageApi.getAll({ limit: 5 }),
+    queryFn: () => arbApi.getFeed({ limit: 5 }),
     staleTime: 30_000,
   })
   const arbs: any[] = data?.data ?? []
@@ -357,7 +357,6 @@ export default function ExpertPicksPage() {
     staleTime: 30_000,
   })
   const picks: any[] = data?.data ?? []
-
   const resolveMutation = useMutation({
     mutationFn: ({ id, result }: { id: string; result: 'WIN' | 'LOSS' | 'PUSH' }) =>
       expertPicksApi.resolve(id, result),
