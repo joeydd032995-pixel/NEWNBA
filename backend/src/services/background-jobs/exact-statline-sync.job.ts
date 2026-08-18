@@ -125,15 +125,19 @@ export class ExactStatLineSyncJob {
           });
 
           if (existing) {
-            await this.prisma.statLine.update({
-              where: { id: existing.id },
-              data,
-            });
+            await this.prisma.runVerifiedStatLineWrite(() =>
+              this.prisma.statLine.update({
+                where: { id: existing.id },
+                data,
+              }),
+            );
             updated++;
           } else {
-            await this.prisma.statLine.create({
-              data: { playerId, ...data },
-            });
+            await this.prisma.runVerifiedStatLineWrite(() =>
+              this.prisma.statLine.create({
+                data: { playerId, ...data },
+              }),
+            );
             created++;
           }
         }
