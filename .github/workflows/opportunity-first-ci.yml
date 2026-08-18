@@ -1,0 +1,72 @@
+name: Opportunity-First CI
+
+on:
+  push:
+    branches:
+      - agent/opportunity-first
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nba
+          POSTGRES_PASSWORD: nba
+          POSTGRES_DB: nba_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nba -d nba_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://nba:nba@localhost:5432/nba_test?schema=public
+      JWT_SECRET: ci-only-secret
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Validate Prisma schema
+        working-directory: backend
+        run: npx prisma validate
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+      - name: Apply migrations
+        working-directory: backend
+        run: npx prisma migrate deploy
+      - name: Run backend tests
+        working-directory: backend
+        run: npm test -- --runInBand
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
+
+  sidecar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install sidecar dependencies
+        working-directory: nba-data
+        run: pip install -r requirements.txt
+      - name: Compile sidecar
+        run: python -m py_compile nba-data/main.py
