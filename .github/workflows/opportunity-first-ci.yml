@@ -34,6 +34,8 @@ jobs:
       NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -48,7 +50,12 @@ jobs:
       - name: Generate Prisma client
         working-directory: backend
         run: npx prisma generate
-      - name: Apply migrations
+      - name: Materialize frozen main baseline
+        working-directory: backend
+        run: |
+          git show origin/main:backend/prisma/schema.prisma > /tmp/newnba-baseline.prisma
+          npx prisma db push --schema /tmp/newnba-baseline.prisma --skip-generate
+      - name: Apply additive migrations
         working-directory: backend
         run: npx prisma migrate deploy
       - name: Run backend tests
