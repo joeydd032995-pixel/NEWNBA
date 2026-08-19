@@ -27,6 +27,18 @@
       "framework": "express"
     }
   },
+  "redirects": [
+    {
+      "source": "/login",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/signup",
+      "destination": "/",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/__runtime-probe",
