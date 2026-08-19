@@ -2,32 +2,32 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { AppModule } from './app.module';
+import { FullAppModule } from './full-app.module';
 
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 
-/** Conventional zero-config Vercel NestJS entrypoint. */
+/** Full application entrypoint for local, Docker and non-Vercel runtimes. */
 async function bootstrap() {
   const startTime = Date.now();
-  console.log(`[bootstrap] Starting Vercel core NestJS application... (${new Date().toISOString()})`);
+  console.log(`[bootstrap] Starting full NestJS application... (${new Date().toISOString()})`);
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create(FullAppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
     rawBody: true,
   });
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
-  const frontendUrl = configService.get<string>('FRONTEND_URL');
-  const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : undefined;
+  const frontendUrl = configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
+  const dbUrl = configService.get<string>('DATABASE_URL', '');
+  const dbHost = dbUrl ? new URL(dbUrl).host : 'unknown';
+  console.log(`[bootstrap] Config: port=${port}, db=${dbHost}`);
 
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cookieParser());
   app.enableCors({
-    origin: [frontendUrl, vercelProductionUrl, 'http://localhost:3000', 'http://localhost:5173'].filter(Boolean) as string[],
+    origin: [frontendUrl, 'http://localhost:3000', 'http://localhost:5173'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   });
@@ -43,17 +43,17 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('NBA Betting Analytics API')
-    .setDescription('NBA betting analytics production core API')
+    .setDescription('Complete NBA sports betting analytics platform with genetic algorithms, ensemble models, and A/B testing')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, swaggerConfig));
 
   await app.listen(port);
-  console.log(`[bootstrap] Vercel core backend ready in ${Date.now() - startTime}ms`);
+  console.log(`[bootstrap] Full backend ready in ${Date.now() - startTime}ms`);
 }
 
 bootstrap().catch((err) => {
-  console.error('[bootstrap] FATAL: Vercel core application failed to start:', err);
+  console.error('[bootstrap] FATAL: Full application failed to start:', err);
   process.exit(1);
 });
