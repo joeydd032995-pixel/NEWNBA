@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
+import { resolveAuthSecrets } from './auth-secrets';
 
 @Module({
   imports: [
@@ -16,14 +17,14 @@ import { PrismaModule } from '../prisma/prisma.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const secret = config.get<string>('JWT_SECRET');
-        if (!secret) {
-          throw new Error(
-            'JWT_SECRET is not configured. Set it in .env or environment variables.',
+        const resolved = resolveAuthSecrets(config);
+        if (resolved.usingDerivedJwtSecret || resolved.usingDerivedRefreshSecret) {
+          console.warn(
+            '[auth] Explicit JWT secret environment variables are incomplete; using deterministic DATABASE_URL-derived fallback keys. Configure JWT_SECRET and JWT_REFRESH_SECRET in Vercel as soon as possible.',
           );
         }
         return {
-          secret,
+          secret: resolved.jwtSecret,
           signOptions: { expiresIn: config.get<string>('JWT_EXPIRES_IN', '15m') },
         };
       },

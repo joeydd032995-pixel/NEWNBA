@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
+import { resolveAuthSecrets } from '../auth-secrets';
 
 // Extract token from httpOnly cookie, falling back to Authorization header
 // so Swagger / API clients can still use Bearer tokens.
@@ -18,10 +19,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private configService: ConfigService,
     private prisma: PrismaService,
   ) {
+    const { jwtSecret } = resolveAuthSecrets(configService);
     super({
       jwtFromRequest: cookieOrBearer,
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'),
+      secretOrKey: jwtSecret,
       passReqToCallback: false,
     });
   }
