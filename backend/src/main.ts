@@ -2,9 +2,10 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import cookieParser = require('cookie-parser');
-import helmet = require('helmet');
 import { AppModule } from './app.module';
+
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
 
 /** Conventional zero-config Vercel NestJS entrypoint. */
 async function bootstrap() {
