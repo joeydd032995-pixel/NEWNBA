@@ -1,17 +1,30 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Type } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import * as cookieParser from 'cookie-parser';
-import helmet from 'helmet';
-import { AppModule } from './app.module';
+import cookieParser = require('cookie-parser');
+import helmet = require('helmet');
+
+async function resolveRootModule(): Promise<Type<unknown>> {
+  if (process.env.VERCEL === '1') {
+    console.warn(
+      '[bootstrap] Vercel isolated-core entrypoint enabled; full AppModule graph will not be evaluated.',
+    );
+    const { VercelCoreModule } = await import('./vercel-core.module');
+    return VercelCoreModule;
+  }
+
+  const { AppModule } = await import('./app.module');
+  return AppModule;
+}
 
 async function bootstrap() {
   const startTime = Date.now();
   console.log(`[bootstrap] Starting NestJS application... (${new Date().toISOString()})`);
   console.log(`[bootstrap] NODE_ENV=${process.env.NODE_ENV}, node=${process.version}`);
 
-  const app = await NestFactory.create(AppModule, {
+  const RootModule = await resolveRootModule();
+  const app = await NestFactory.create(RootModule, {
     logger: ['error', 'warn', 'log', 'debug'],
     rawBody: true,
   });
@@ -20,6 +33,9 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
   const frontendUrl = configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
+  const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : undefined;
   const dbUrl = configService.get<string>('DATABASE_URL', '');
   const dbHost = dbUrl ? new URL(dbUrl).host : 'unknown';
   console.log(`[bootstrap] Config: port=${port}, db=${dbHost}, redis=${configService.get('REDIS_HOST')}:${configService.get('REDIS_PORT')}`);
@@ -30,7 +46,7 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: [frontendUrl, 'http://localhost:3000', 'http://localhost:5173'],
+    origin: [frontendUrl, vercelProductionUrl, 'http://localhost:3000', 'http://localhost:5173'].filter(Boolean) as string[],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   });
