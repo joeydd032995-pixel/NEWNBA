@@ -23,43 +23,6 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { BillingModule } from './modules/billing/billing.module';
 import { ProjectionModule } from './modules/projection/projection.module';
 
-/**
- * Production recovery boundary for Vercel Services.
- *
- * The current full AppModule has a startup-time provider failure in Vercel even
- * though the runtime can connect to Neon and execute SQL successfully. Keep the
- * essential account + sports surface online while that optional-provider failure
- * is isolated. Local, CI, Docker and non-Vercel hosts continue to load the full
- * application exactly as before.
- */
-const VERCEL_CORE_MODE = process.env.VERCEL === '1';
-
-const OPTIONAL_FEATURE_MODULES = VERCEL_CORE_MODE
-  ? []
-  : [
-      AnalyticsModule,
-      EVModule,
-      ArbitrageModule,
-      JobsModule,
-      AlertsModule,
-      BetslipModule,
-      PlayerPropsModule,
-      DataIngestionModule,
-      ExpertPicksModule,
-      LiveModule,
-      ParlayModule,
-      BankrollModule,
-      NotificationsModule,
-      BillingModule,
-      ProjectionModule,
-    ];
-
-if (VERCEL_CORE_MODE) {
-  console.warn(
-    '[bootstrap] Vercel recovery core mode enabled: loading Config, Prisma, Auth and Sports only while optional startup failure is isolated.',
-  );
-}
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
@@ -77,8 +40,22 @@ if (VERCEL_CORE_MODE) {
     }),
     PrismaModule,
     AuthModule,
+    AnalyticsModule,
+    EVModule,
+    ArbitrageModule,
     SportsModule,
-    ...OPTIONAL_FEATURE_MODULES,
+    JobsModule,
+    AlertsModule,
+    BetslipModule,
+    PlayerPropsModule,
+    DataIngestionModule,
+    ExpertPicksModule,
+    LiveModule,
+    ParlayModule,
+    BankrollModule,
+    NotificationsModule,
+    BillingModule,
+    ProjectionModule,
   ],
   providers: [
     // Applies to every route (state-changing methods only — GET/HEAD/OPTIONS
