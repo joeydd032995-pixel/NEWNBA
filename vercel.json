@@ -5,6 +5,11 @@
       "root": "frontend/",
       "framework": "vite"
     },
+    "auth_backend": {
+      "root": "backend/",
+      "framework": "nestjs",
+      "entrypoint": "src/auth-main.ts"
+    },
     "backend": {
       "root": "backend/",
       "framework": "nestjs",
@@ -32,6 +37,12 @@
       "source": "/api/__runtime-probe",
       "destination": {
         "service": "runtime_probe"
+      }
+    },
+    {
+      "source": "/api/auth/(.*)",
+      "destination": {
+        "service": "auth_backend"
       }
     },
     {
