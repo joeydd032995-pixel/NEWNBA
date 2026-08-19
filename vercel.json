@@ -21,9 +21,19 @@
       "root": "nba-data/",
       "framework": "fastapi",
       "entrypoint": "production_app:app"
+    },
+    "runtime_probe": {
+      "root": "runtime-probe/",
+      "framework": "express"
     }
   },
   "rewrites": [
+    {
+      "source": "/api/__runtime-probe",
+      "destination": {
+        "service": "runtime_probe"
+      }
+    },
     {
       "source": "/api/(.*)",
       "destination": {
