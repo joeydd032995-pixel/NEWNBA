@@ -4,14 +4,14 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import cookieParser = require('cookie-parser');
 import helmet = require('helmet');
-import { AppModule } from './app.module';
+import { FullAppModule } from './full-app.module';
 
 /** Full application entrypoint for local, Docker and non-Vercel runtimes. */
 async function bootstrap() {
   const startTime = Date.now();
   console.log(`[bootstrap] Starting full NestJS application... (${new Date().toISOString()})`);
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create(FullAppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
     rawBody: true,
   });
