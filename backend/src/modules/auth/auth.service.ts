@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SignupDto } from './dto/auth.dto';
+import { resolveAuthSecrets } from './auth-secrets';
 
 const TRIAL_DURATION_DAYS = 14;
 
@@ -59,8 +60,9 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     try {
+      const { refreshSecret } = resolveAuthSecrets(this.configService);
       const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        secret: refreshSecret,
       });
       const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
       if (!user || !user.isActive) throw new UnauthorizedException();
@@ -91,13 +93,7 @@ export class AuthService {
 
   private async generateTokens(userId: string, email: string) {
     const payload = { sub: userId, email };
-    const jwtSecret = this.configService.get<string>('JWT_SECRET');
-    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
-    if (!jwtSecret || !refreshSecret) {
-      throw new Error(
-        'JWT_SECRET and JWT_REFRESH_SECRET must be configured. Check your .env or environment variables.',
-      );
-    }
+    const { jwtSecret, refreshSecret } = resolveAuthSecrets(this.configService);
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: jwtSecret,
