@@ -1,0 +1,40 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "frontend": {
+      "root": "frontend/",
+      "framework": "vite"
+    },
+    "backend": {
+      "root": "backend/",
+      "framework": "nestjs",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "nba_data",
+          "format": "url",
+          "env": "NBA_DATA_URL"
+        }
+      ]
+    },
+    "nba_data": {
+      "root": "nba-data/",
+      "framework": "fastapi",
+      "entrypoint": "production_app:app"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
+  ]
+}
