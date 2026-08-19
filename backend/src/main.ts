@@ -4,21 +4,14 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import cookieParser = require('cookie-parser');
 import helmet = require('helmet');
-import { VercelCoreModule } from './vercel-core.module';
+import { AppModule } from './app.module';
 
-/**
- * Vercel entrypoint.
- *
- * Keep this file intentionally conventional: Vercel's zero-config NestJS
- * detector expects src/main.ts and a statically identifiable module passed to
- * NestFactory.create(). The complete non-Vercel application starts from
- * full-main.ts via nest-cli.json.
- */
+/** Conventional zero-config Vercel NestJS entrypoint. */
 async function bootstrap() {
   const startTime = Date.now();
   console.log(`[bootstrap] Starting Vercel core NestJS application... (${new Date().toISOString()})`);
 
-  const app = await NestFactory.create(VercelCoreModule, {
+  const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
     rawBody: true,
   });
