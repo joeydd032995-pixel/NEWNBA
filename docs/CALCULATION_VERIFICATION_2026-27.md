@@ -14,7 +14,7 @@ Method: executed gates, an independent re-implementation of the engine math, a g
 
 Anything in the right column is **UNVERIFIED**, not passing. `docs/verification/probe_apis.py` re-checks every upstream where network and keys exist.
 
-Safety note: the sandbox's `DATABASE_URL` points at a remote Neon database. It was **not** touched. All DB work used a throwaway local Postgres.
+Safety note: the sandbox's `DATABASE_URL` points at a **Neon database that belongs to a different (MLB) project**: tables `batter_statcast`, `pitcher_statcast`, `game_results`, plus real `users`, `subscriptions` and `user_api_keys`, no `_prisma_migrations`. It also has a `model_predictions` table that collides by name with NEWNBA's schema, so running NEWNBA migrations or `db push` against it would be destructive. It was only inspected read-only (table names and row counts). **Never use it as NEWNBA's `DATABASE_URL`; NEWNBA needs its own database.** All migration/test work used a throwaway local Postgres.
 
 ## 1. Gate results
 
