@@ -1,0 +1,11 @@
+# DevOps — season-2026-27-readiness  [DISCOVERED, verified 2026-10-24]
+- S1: Dockerfile prod CMD `node dist/full-main` fails (MODULE_NOT_FOUND). Cause: `tsconfig.build.json` has no `include`, so `prisma/seed.ts` widens rootDir and emits `dist/src/full-main.js`. Fix options: `include: ["src"]` in tsconfig.build.json (preferred) or CMD `dist/src/full-main`.
+- S1: dev compose uses `prisma db push --accept-data-loss`; prod uses `migrate deploy`. Fresh DB fails `migrate deploy` (empty baseline).
+- CI (opportunity-first-ci.yml) masks the baseline gap via `db push` of main's schema; CI uses Node 20, sandbox verified on Node 22.
+- Sandbox: stats.nba.com / cdn.nba.com blocked (403/timeout); no ODDS_API_KEY / BALLDONTLIE_API_KEY. SANDBOX `DATABASE_URL` points to a remote Neon DB: do not run migrations/tests against it.
+- Sidecar `production_app:app` boots; `/health` => season 2026-27.
+- DEPLOY TARGET FINDINGS (2026-10-24):
+  - Sandbox DATABASE_URL = Neon DB of the MLB project (batter_statcast, game_results, users...; has a model_predictions table). NOT NEWNBA's. Do not point NEWNBA at it. NEWNBA needs a new Neon DB (empty), then: baseline schema + `prisma migrate resolve --applied 20260818000000_baseline_main` + `prisma migrate deploy` (see baseline decision).
+  - The Vercel connector in the Claude session is logged into team `joeyd032995-6756s-projects` (MLB/other projects); the `newnba-web` project lives in team `joeys-projects-2817e47f` (team_ST72...) which that connector cannot access (403; authorize_team_access 404).
+  - Sandbox network: TCP 5432 to Neon blocked; Neon HTTPS SQL endpoint reachable (read-only introspection only). Prisma migrate cannot run from the sandbox against Neon.
+  - Backend has 23 @Cron jobs (odds sync, EV/arb scans every minute, ingestion). These need a long-running process; Vercel serverless will not run them reliably. Use Vercel Cron-triggered routes or a long-running host. Bull needs Redis.
